@@ -1,0 +1,83 @@
+# Docker Compose reads from .env by default (local development).
+services:
+  # Local LLM API; models on disk under ./data/ollama (default) survive compose restarts.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: kma-ollama
+    restart: unless-stopped
+    volumes:
+      - ${OLLAMA_DATA_DIR:-./data/ollama}:/root/.ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    networks:
+      - km-agent
+
+  agent-db:
+    image: agnohq/pgvector:18
+    container_name: agent-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-ai}
+      POSTGRES_PASSWORD: ${DB_PASS:-ai}
+      POSTGRES_DB: ${DB_DATABASE:-ai}
+    volumes:
+      # Named volume: bind-mounting the host over /var/lib/postgresql breaks the image
+      # entrypoint (chown on PGDATA /var/lib/postgresql/18/docker) on Docker Desktop/macOS.
+      - km-agent-postgres:/var/lib/postgresql
+    # Host port -> container 5432. Use POSTGRES_PUBLISH_PORT (not DB_PORT) so an empty DB_PORT
+    # in .env does not break publishing; host-side tools/tests use DB_PORT = this value.
+    ports:
+      - "${POSTGRES_PUBLISH_PORT:-5432}:5432"
+    networks:
+      - km-agent
+
+  km-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${IMAGE_NAME:-jbcodeforce/km-agent}:${IMAGE_TAG:-latest}
+    container_name: km-agent
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # Hot-reload: mount source code
+      - .:/app
+      # User files
+      - ${KM_CONTEXT_DIR:-./context}:/app/context
+    environment:
+      - RUNTIME_ENV=dev
+      - AGNO_DEBUG=True
+      - PYTHONPATH=/app
+      # Database
+      - DB_HOST=agent-db
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-ai}
+      - DB_PASS=${DB_PASS:-ai}
+      - DB_DATABASE=${DB_DATABASE:-ai}
+      - WAIT_FOR_DB=True
+      - PRINT_ENV_ON_LOAD=False
+      # API keys
+      - EXA_API_KEY=${EXA_API_KEY:-}
+      - PARALLEL_API_KEY=${PARALLEL_API_KEY:-}
+      # Ollama (ollama-python / CLI default); models live in ./data/ollama on the host
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      # Git sync
+      - GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN:-}
+      - KM_REPO_URL=${KM_REPO_URL:-}
+      # Files
+      - KMA_CONTEXT_DIR=/app/context
+    depends_on:
+      - agent-db
+      - ollama
+    networks:
+      - km-agent
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  km-agent:
+
+volumes:
+  km-agent-postgres:

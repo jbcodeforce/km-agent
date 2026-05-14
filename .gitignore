@@ -1,0 +1,14 @@
+# Local Postgres files (compose bind mount default)
+/data/postgres/
+# Local Ollama models (compose bind mount default)
+/data/ollama/
+.env
+.venv/
+
+*/__pycache__/
+# =========================
+# IDEs / editors
+# =========================
+.idea/
+.vscode/
+.claude/
