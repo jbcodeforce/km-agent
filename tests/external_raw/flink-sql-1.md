@@ -1,3 +1,12 @@
+---
+title: "Create Table SQL (DDLs)"
+source: flink-studies/docs/coding/flink-sql-1.md
+ingested: 2026-05-14
+tags: [flink, sql]
+type: article
+compiled: false
+---
+
 # Create Table SQL (DDLs)
 
 ???- Info "Updates"

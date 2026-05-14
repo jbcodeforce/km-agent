@@ -1,11 +1,11 @@
 # Local Postgres files (compose bind mount default)
 /data/postgres/
-# Local Ollama models (compose bind mount default)
+# Legacy bind mount if you still keep ./data/ollama; native Ollama uses ~/.ollama
 /data/ollama/
 .env
 .venv/
 
-*/__pycache__/
+**/__pycache__/*
 # =========================
 # IDEs / editors
 # =========================

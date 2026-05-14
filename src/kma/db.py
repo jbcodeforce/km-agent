@@ -1,12 +1,21 @@
 
-
 from agno.db.postgres import PostgresDb
 from agno.knowledge import Knowledge
+from agno.knowledge.embedder.base import Embedder
+from agno.knowledge.embedder.ollama import OllamaEmbedder
 from agno.knowledge.embedder.openai import OpenAIEmbedder
 from agno.vectordb.pgvector import PgVector, SearchType
 from sqlalchemy import Engine, create_engine, text
 from os import getenv
 from urllib.parse import quote
+
+from kma.config import (
+    get_embed_dimensions,
+    get_embed_model_id,
+    get_embed_provider,
+    get_ollama_embed_host,
+)
+
 
 def build_db_url() -> str:
     """Build database URL from environment variables."""
@@ -36,23 +45,50 @@ def get_postgres_db(contents_table: str | None = None) -> PostgresDb:
         return PostgresDb(id=DB_ID, db_url=db_url, knowledge_table=contents_table)
     return PostgresDb(id=DB_ID, db_url=db_url)
 
-def create_knowledge(name: str, table_name: str) -> Knowledge:
+
+def build_default_embedder() -> Embedder:
+    """Embedder for Knowledge bases from ``KMA_EMBED_PROVIDER``."""
+    if get_embed_provider() == "ollama":
+        return OllamaEmbedder(
+            id=get_embed_model_id(),
+            host=get_ollama_embed_host(),
+            dimensions=get_embed_dimensions(),
+        )
+    api_key = getenv("OPENAI_API_KEY")
+    if not api_key or not api_key.strip():
+        raise ValueError(
+            "OPENAI_API_KEY is required when KMA_EMBED_PROVIDER=openai "
+            "(set the key in the environment or .env)"
+        )
+    base = getenv("OPENAI_BASE_URL")
+    base_url = base.strip() if base and base.strip() else None
+    return OpenAIEmbedder(
+        id=get_embed_model_id(),
+        dimensions=get_embed_dimensions(),
+        api_key=api_key.strip(),
+        base_url=base_url,
+    )
+
+
+def create_knowledge(name: str, table_name: str, embedder: Embedder | None = None) -> Knowledge:
     """Create a Knowledge instance with PgVector hybrid search.
 
     Args:
         name: Display name for the knowledge base.
         table_name: PostgreSQL table name for vector storage.
+        embedder: Optional custom embedder (defaults from ``KMA_EMBED_PROVIDER`` / config).
 
     Returns:
         Configured Knowledge instance.
     """
+    emb = embedder or build_default_embedder()
     return Knowledge(
         name=name,
         vector_db=PgVector(
             db_url=db_url,
             table_name=table_name,
             search_type=SearchType.hybrid,
-            embedder=OpenAIEmbedder(id="text-embedding-3-small"),
+            embedder=emb,
         ),
         contents_db=get_postgres_db(contents_table=f"{table_name}_contents"),
     )

@@ -4,17 +4,18 @@
 # From a clone (uses origin URL + current branch when KMA_RAW_BASE is unset):
 #   ./scripts/setup.sh
 #
-# One-liner (set KMA_RAW_BASE to your fork's raw root if not using the default):
-#   curl -fsSL https://raw.githubusercontent.com/OWNER/REPO/BRANCH/scripts/setup.sh | bash
+# One-liner (default upstream; override KMA_RAW_BASE for a fork):
+#   curl -fsSL https://raw.githubusercontent.com/jbcodeforce/km-agent/refs/heads/main/scripts/setup.sh | bash
 #
 # Environment:
 #   KMA_RAW_BASE   Root for raw.githubusercontent.com files (no trailing slash).
-#                  Example: https://raw.githubusercontent.com/OWNER/REPO/main
+#                  Example: https://raw.githubusercontent.com/OWNER/REPO/refs/heads/main
 #   KMA_TARGET_DIR Directory for compose.yaml (default: current directory).
+#   SKIP_OLLAMA_INSTALL  If set to 1, do not run the Ollama CLI installer (curl | sh).
 
 set -euo pipefail
 
-DEFAULT_RAW_BASE="${DEFAULT_RAW_BASE:-https://raw.githubusercontent.com/jbcodeforce/km-agent/main}"
+DEFAULT_RAW_BASE="${DEFAULT_RAW_BASE:-https://raw.githubusercontent.com/jbcodeforce/km-agent/refs/heads/main}"
 
 die() {
   echo "setup.sh: $*" >&2
@@ -36,6 +37,24 @@ require_docker_compose() {
 
 require_curl() {
   have_cmd curl || die "curl not found. Install curl or use a system that provides it."
+}
+
+# Install Ollama CLI via official script when missing (macOS / Linux).
+# Set SKIP_OLLAMA_INSTALL=1 to skip (e.g. CI that only needs compose).
+ensure_ollama_cli() {
+  if [[ "${SKIP_OLLAMA_INSTALL:-}" == "1" ]]; then
+    echo "Skipping Ollama CLI install (SKIP_OLLAMA_INSTALL=1)."
+    return 0
+  fi
+  if have_cmd ollama; then
+    echo "Ollama CLI already present: $(command -v ollama)"
+    return 0
+  fi
+  require_curl
+  echo "Installing Ollama CLI from https://ollama.com/install.sh ..."
+  curl -fsSL https://ollama.com/install.sh | sh
+  have_cmd ollama || die "Ollama install finished but 'ollama' is not on PATH. Open a new shell or add it to PATH."
+  echo "Ollama CLI installed: $(command -v ollama)"
 }
 
 # github.com/org/repo[.git] or git@github.com:org/repo[.git] -> org repo
@@ -62,7 +81,7 @@ raw_base_from_git() {
   if [[ "$branch" == "HEAD" ]]; then
     branch="main"
   fi
-  printf 'https://raw.githubusercontent.com/%s/%s/%s' "$org" "$repo" "$branch"
+  printf 'https://raw.githubusercontent.com/%s/%s/refs/heads/%s' "$org" "$repo" "$branch"
 }
 
 resolve_raw_base() {
@@ -89,12 +108,15 @@ download_compose() {
 }
 
 main() {
+  require_curl
+  ensure_ollama_cli
   require_docker_cli
   require_docker_compose
-  require_curl
   download_compose
-  echo "Next: copy example.env to .env, adjust variables, then from this directory run:"
-  echo "  docker compose up -d agent-db"
+  echo "Next:"
+  echo "  1. Start Ollama on the host (native): ./scripts/starter.sh"
+  echo "  2. Copy example.env to .env, adjust variables, then from this directory run:"
+  echo "     docker compose up -d agent-db"
 }
 
 main "$@"

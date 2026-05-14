@@ -1,17 +1,6 @@
 # Docker Compose reads from .env by default (local development).
+# Ollama runs on the host (see scripts/setup.sh + scripts/starter.sh), not in Compose.
 services:
-  # Local LLM API; models on disk under ./data/ollama (default) survive compose restarts.
-  ollama:
-    image: ollama/ollama:latest
-    container_name: kma-ollama
-    restart: unless-stopped
-    volumes:
-      - ${OLLAMA_DATA_DIR:-./data/ollama}:/root/.ollama
-    ports:
-      - "${OLLAMA_PORT:-11434}:11434"
-    networks:
-      - km-agent
-
   agent-db:
     image: agnohq/pgvector:18
     container_name: agent-db
@@ -61,8 +50,8 @@ services:
       # API keys
       - EXA_API_KEY=${EXA_API_KEY:-}
       - PARALLEL_API_KEY=${PARALLEL_API_KEY:-}
-      # Ollama (ollama-python / CLI default); models live in ./data/ollama on the host
-      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      # Native Ollama on the host (run ./scripts/starter.sh). host.docker.internal is set below.
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
       # Git sync
       - GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN:-}
       - KM_REPO_URL=${KM_REPO_URL:-}
@@ -70,7 +59,6 @@ services:
       - KMA_CONTEXT_DIR=/app/context
     depends_on:
       - agent-db
-      - ollama
     networks:
       - km-agent
     extra_hosts:

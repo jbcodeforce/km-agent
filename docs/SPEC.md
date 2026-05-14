@@ -16,7 +16,7 @@ The approach is to use native query interface, to look at files, slack channel, 
     ├── Linter       — health checks, finds gaps, suggests research
 
 * PostgreSQL 18 to keep agent knowledge,  with pgvector (hybrid vector + keyword search)
-* Ollama to serve local LLM
+* Ollama on the **host** (native CLI; `scripts/setup.sh` + `scripts/starter.sh`) to serve local LLM — not run in Docker Compose for memory reason
 *  **Language**: Python 3.12+, managed with `uv`
 
 ![](./images/architecture.drawio.png)

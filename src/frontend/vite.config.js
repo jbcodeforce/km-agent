@@ -5,7 +5,7 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const agentOsTarget =
-    env.VITE_AGENT_OS_ORIGIN || env.AGENT_OS_ORIGIN || 'http://127.0.0.1:7777'
+    env.VITE_AGENT_OS_ORIGIN || env.AGENT_OS_ORIGIN || 'http://127.0.0.1:8000'
 
   return {
     plugins: [vue()],

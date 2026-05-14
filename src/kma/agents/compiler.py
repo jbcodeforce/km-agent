@@ -9,11 +9,18 @@ Only reads raw/ and writes wiki/. Does not interact with users,
 query live sources, or run web searches.
 """
 
+from __future__ import annotations
+
+from collections.abc import Sequence
+from pathlib import Path
+
 from agno.agent import Agent
-from agno.models.ollama import OllamaResponses
+from agno.knowledge import Knowledge
+from agno.models.base import Model
 
 from kma.agents.settings import agent_db, kma_knowledge
-from kma.tools import build_compiler_tools
+from kma.llm_factory import build_default_llm_model
+from kma.tools.builder import build_compiler_tools
 
 COMPILER_INSTRUCTIONS = """\
 You are the Compiler, responsible for turning raw source material into a structured wiki.
@@ -21,7 +28,7 @@ You are the Compiler, responsible for turning raw source material into a structu
 ## Your Job
 1. Read the manifest (`read_manifest`) to find files where compiled is false
 2. For each uncompiled raw file:
-   a. Read the full document from raw/
+   a. Read the full document from raw/ (use ``raw/<label>/...`` when the manifest lists ``file_id`` with a label prefix)
    b. Write a summary to wiki/summaries/{doc-name}.md
    c. Extract key concepts from the document
    d. For each concept:
@@ -83,6 +90,10 @@ Articles: N | Sources: N | Outputs: N
 ...
 ```
 
+## Multi-root raw (when your tools use ``raw/<label>/...``)
+- If ``read_manifest`` entries include ``file_id`` like ``studies:sql/joins.md``, read that source at ``raw/studies/sql/joins.md`` and call ``update_manifest_compiled`` with the **same** ``file_id`` string when done.
+- If there is only the default ``context/raw`` tree, paths stay ``raw/your-file.md`` and ``file_id`` equals ``file`` (no label prefix).
+
 ## Design Principles
 - **Incremental**: Only process files where compiled is false. Never rewrite the entire wiki.
 - **Additive**: New information enriches existing articles. Note contradictions, don't silently overwrite.
@@ -96,16 +107,39 @@ Articles: N | Sources: N | Outputs: N
 - Do not delete files\
 """
 
-compiler = Agent(
-    id="compiler",
-    name="Compiler",
-    role="Reads raw documents and compiles them into structured wiki articles",
-    model=OpenAIResponses(id="gpt-5.4"),
-    db=agent_db,
-    instructions=COMPILER_INSTRUCTIONS,
-    knowledge=kma_knowledge,
-    search_knowledge=True,
-    tools=build_compiler_tools(kma_knowledge),
-    add_datetime_to_context=True,
-    markdown=True,
-)
+
+def build_compiler_agent(
+    *,
+    context_dir: Path | str | None = None,
+    raw_roots: Sequence[tuple[str, Path]] | None = None,
+    knowledge: Knowledge | None = None,
+    model: Model | None = None,
+) -> Agent:
+    """Construct the Compiler agent.
+
+    Args:
+        context_dir: Root containing ``wiki/`` and default ``raw/`` (default: config).
+        raw_roots: Optional ``(label, path)`` list for one or more raw directories; see
+            ``build_compiler_tools``. When omitted, raw is ``context_dir/raw``.
+        knowledge: Knowledge base (default: ``kma_knowledge`` from settings).
+        model: LLM (default from ``KMA_LLM_PROVIDER``, ``KMA_MODEL_ID``, and provider env).
+    """
+    kn: Knowledge = knowledge or kma_knowledge
+    ctx = Path(context_dir) if context_dir is not None else None
+    md = model or build_default_llm_model()
+    return Agent(
+        id="compiler",
+        name="Compiler",
+        role="Reads raw documents and compiles them into structured wiki articles",
+        model=md,
+        db=agent_db,
+        instructions=COMPILER_INSTRUCTIONS,
+        knowledge=kn,
+        search_knowledge=True,
+        tools=build_compiler_tools(kn, context_dir=ctx, raw_roots=raw_roots),
+        add_datetime_to_context=True,
+        markdown=True,
+    )
+
+
+compiler = build_compiler_agent()
