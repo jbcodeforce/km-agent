@@ -43,3 +43,8 @@ def build_default_llm_model() -> Model:
             "(set the key in the environment or .env)"
         )
     return Claude(id=mid, api_key=api_key.strip())
+
+
+def build_default_compiler_model() -> Model:
+    """Alias for :func:`build_default_llm_model` — used by compile scripts."""
+    return build_default_llm_model()

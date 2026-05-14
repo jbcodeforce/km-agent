@@ -33,6 +33,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "src"))
 
+from agno.run.base import RunStatus  # noqa: E402
+
 from kma.agents.compiler import build_compiler_agent  # noqa: E402
 from kma.agents.settings import kma_knowledge  # noqa: E402
 from kma.config import get_kma_context_dir  # noqa: E402
