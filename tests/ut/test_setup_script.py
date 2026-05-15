@@ -46,6 +46,12 @@ def test_starter_script_exists_and_shell_syntax() -> None:
     text = starter.read_text(encoding="utf-8")
     assert "agent-db" in text
     assert "docker compose" in text
+    assert "km-agent" in text
+    assert "--dev" in text
+    assert "uv sync" in text
+    assert ".venv/bin/python" in text
+    assert "uv run" in text
+    assert "ensure_km_agent_docker" in text
     result = subprocess.run(
         ["bash", "-n", str(starter)],
         capture_output=True,

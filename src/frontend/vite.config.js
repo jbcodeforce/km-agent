@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     server: {
-      port: parseInt(env.VITE_PORT || '5174', 10),
+      port: parseInt(env.KMA_VITE_PORT || env.VITE_PORT || '5174', 10),
       host: true,
       proxy: {
         '/agent-os': {

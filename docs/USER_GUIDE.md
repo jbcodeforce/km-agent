@@ -11,21 +11,27 @@ We continue to grow the use cases below—each section has a short outline today
 ### What you need
 
 - Docker
+- curl
+- git cli
 
-### 1. Clone the repository and create `.env`
+### 1. Clone the repository and create `.env` and setup.
 
-From the repository root:
-
-```bash
-cp example.env .env
-```
+* Clone
+  ```sh
+  git clone https://github.com/jbcodeforce/km-agent
+  cd km-agent
+  ```
+* Set environment variables: From the repository root:
+  ```bash
+  cp example.env .env
+  ```
 
 Edit **`.env`** at minimum for:
 
 | Area | Variables (examples) | Notes |
 |------|------------------------|--------|
-| Context on disk | `KMA_CONTEXT_DIR` | Default `./context` — here live `raw/`, `wiki/`, and other files agents read and write. |
-| Database | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_DATABASE` | On the **host**, use `localhost` and the **published** Postgres port (often same as `POSTGRES_PUBLISH_PORT` in Compose). See [DEVELOPER_PRACTICES — Postgres](DEVELOPER_PRACTICES.md#local-postgresql-docker-compose-only). |
+| Context on disk | `KMA_CONTEXT_DIR` | Default `./context` — here live `raw/`, `wiki/`, and other files agents read and write. You can have different contexts |
+| Database | `KMA_DB_HOST`, `KMA_DB_PORT`, `KMA_DB_USER`, `KMA_DB_PASS`, `KMA_DB_DATABASE` | On the **host**, use `localhost` and the **published** Postgres port (often same as `POSTGRES_PUBLISH_PORT` in Compose). See [DEVELOPER_PRACTICES — Postgres](DEVELOPER_PRACTICES.md#local-postgresql-docker-compose-only). |
 | Chat model | `KMA_LLM_PROVIDER`, `KMA_MODEL_ID` (or provider-specific keys) | Pull the Ollama model you reference before first chat. |
 | Embeddings | `KMA_EMBED_PROVIDER`, `KMA_EMBED_MODEL`, `KMA_EMBED_DIMENSIONS` | Vector size must match the model; do not change dimensions on an existing DB without a plan (see developer practices). |
 
@@ -34,8 +40,14 @@ Optional:
 - **`PARALLEL_API_KEY`** — enables the **Researcher** agent for web search and richer ingest (see use case *Ingest new material from the web*).
 - **`EXA_API_KEY`** — higher limits for Exa-backed search where configured (see `example.env` comments).
 
-### 2. Start 
-### 4. Start Ollama (when using local LLM / embeddings)
+Adjust model names to match `KMA_MODEL_ID` and `KMA_EMBED_MODEL` in `.env`.
+
+* Run setup.sh
+  ```sh
+  ./scripts/setup.sh
+  ```
+
+### 2- Start the Knowledge Management Agent components
 
 In a separate terminal, from the repo root:
 
@@ -43,26 +55,23 @@ In a separate terminal, from the repo root:
 ./scripts/starter.sh
 ```
 
-This script brings up **`agent-db`** when Compose is available and starts **Ollama** if nothing is already listening on the configured port. Pull the models you configured (chat + embedding), for example:
+This script brings up backend, database, frontend for chat interface and starts **Ollama** if nothing is already listening on the configured port. Pull the models you configured (chat + embedding), for example:
 
 ```bash
 ollama pull qwen2.5:3b
 ollama pull nomic-embed-text:latest
 ```
 
-Adjust model names to match `KMA_MODEL_ID` and `KMA_EMBED_MODEL` in `.env`.
-
-### 7. After first boot (recommended)
-
-- Ensure **`context/`** exists (or your `KMA_CONTEXT_DIR`) with at least `raw/` and `wiki/` as described in [`SPEC.md` — Context directory](SPEC.md#7-context-directory).
-- When you adopt a studies repo or many files, consider running **`context/load_context.py`** (or the documented reload flow in `SPEC.md`) so **`kma_knowledge`** gets bootstrap metadata for routing—without it, some recall paths are sparse.
-
-You are ready to use the **use cases** below.
+* Validate your environment:
+  ```sh
+  ./scripts/verify_agent_env.sh --frontend
+  ```
 
 ### Where to go next
 
 | Topic | Document |
 |--------|----------|
+| Different use cases | [Section below](#use-cases-living-document) |
 | Architecture, agents, pipeline, intents | [`SPEC.md`](./SPEC.md) |
 | Docker volumes, Ollama, tests, frontend proxy | [`DEVELOPER_PRACTICES.md`](./DEVELOPER_PRACTICES.md) |
 | Repo overview and quick links | [`../README.md`](../README.md) |
@@ -73,7 +82,43 @@ You are ready to use the **use cases** below.
 
 The following sections are **outlines**. We will keep adding steps, examples, troubleshooting, and screenshots. When you extend a use case, preserve the **Goal / Preconditions / Steps / Success / Next** shape so the guide stays scannable.
 
----
+### UC-1 — Attach a studies repository and compile documentation into the wiki
+
+**Goal:** Point km-agent at an existing Markdown tree (for example a `docs/` folder in [flink-studies](https://github.com/jbcodeforce/flink-studies)), normalize front matter and manifest entries, and run the **Compiler** agent so **`context/wiki/`** gains summaries, concept pages, and an updated **`index.md`**.
+
+**Preconditions:**
+
+- Postgres running; LLM and embedder configured (`KMA_LLM_PROVIDER`, `KMA_EMBED_*`).
+- Ollama (or cloud) models pulled for both chat and embeddings.
+
+* The following script validate your environment:
+  ```sh
+  ./scripts/verify_agent_env.sh --frontend
+  ```
+
+**Steps (outline):**
+
+1. Clone or locate the studies repo on disk.
+2. From the km-agent repo root, run the crawler and knowledge Compiler agent:
+
+   ```bash
+   uv run python scripts/compile_docs_folder.py /path/to/your-studies/docs \
+     --context ./context --source your-studies --label studies
+   ```
+
+   Use `--dry-run` or `--skip-compiler` to only prepare manifests and front matter without invoking the agent.
+
+3. Inspect `context/wiki/index.md` and `context/wiki/concepts/` after a successful run.
+
+**Success:** Uncompiled sources in the manifest move to **compiled**, and the wiki index reflects new or updated articles.
+
+**Next (to expand):**
+
+- Full flag reference for `compile_docs_folder.py` (`--force`, tags, `doc_type`).
+- Combining **studies** raw root with **ingested** `context/raw/` (multi-root) in one compile.
+- Troubleshooting: dimension mismatch, Ollama OOM, empty manifest.
+
+
 
 ### UC-1 — Ask questions using the wiki, files, and SQL
 
@@ -99,37 +144,6 @@ The following sections are **outlines**. We will keep adding steps, examples, tr
 - What to do when the answer is too generic (check wiki index, run compile, bootstrap `kma_knowledge`).
 
 ---
-
-### UC-2 — Attach a studies repository and compile documentation into the wiki
-
-**Goal:** Point km-agent at an existing Markdown tree (for example a `docs/` folder in [flink-studies](https://github.com/jbcodeforce/flink-studies)), normalize front matter and manifest entries, and run the **Compiler** so **`context/wiki/`** gains summaries, concept pages, and an updated **`index.md`**.
-
-**Preconditions:**
-
-- Postgres running; LLM and embedder configured (`KMA_LLM_PROVIDER`, `KMA_EMBED_*`).
-- Ollama (or cloud) models pulled for both chat and embeddings.
-
-**Steps (outline):**
-
-1. Clone or locate the studies repo on disk.
-2. From the km-agent repo root, run the compile helper (adjust paths and labels to your layout):
-
-   ```bash
-   uv run python scripts/compile_docs_folder.py /path/to/your-studies/docs \
-     --context ./context --source your-studies --label studies
-   ```
-
-   Use `--dry-run` or `--skip-compiler` to only prepare manifests and front matter without invoking the agent.
-
-3. Inspect `context/wiki/index.md` and `context/wiki/concepts/` after a successful run.
-
-**Success:** Uncompiled sources in the manifest move to **compiled**, and the wiki index reflects new or updated articles.
-
-**Next (to expand):**
-
-- Full flag reference for `compile_docs_folder.py` (`--force`, tags, `doc_type`).
-- Combining **studies** raw root with **ingested** `context/raw/` (multi-root) in one compile.
-- Troubleshooting: dimension mismatch, Ollama OOM, empty manifest.
 
 ---
 

@@ -135,7 +135,8 @@ def _prepare_file(
     force: bool,
     dry_run: bool,
 ) -> tuple[str, str | None]:
-    """Returns (status, error). status one of updated, skipped, dry_run."""
+    """Returns (status, error) for the file to process. status one of [updated, skipped, dry_run]"""
+    print(f"processing: {path}")
     rel = path.relative_to(docs_root).as_posix()
     text = path.read_text(encoding="utf-8")
     if _has_km_raw_frontmatter(text):
@@ -163,6 +164,7 @@ def _prepare_file(
         return ("dry_run", None)
     path.write_text(new_text, encoding="utf-8")
     _append_manifest_entry(docs_root, rel, title, source)
+
     return ("updated", None)
 
 

@@ -1,6 +1,6 @@
 # Knowledge Management Agent (km-agent)
 
-**km-agent** is an agentic workspace that turns your study materials and newly discovered sources into a **structured, queryable knowledge base** you can talk to through chat. It is inspired by the Agno [Pal](https://github.com/agno-agi/pal) project and built on [Agno](https://github.com/agno-agi/agno) **AgentOS**, PostgreSQL with **pgvector**, and an optional **Vue** chat UI.
+**km-agent** is an agentic workspace that turns your study materials and newly discovered sources into a **structured, queryable knowledge base** you can talk to through chat. It is inspired by the [Karpathy LLM wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) and Agno [Pal](https://github.com/agno-agi/pal) project and built on [Agno](https://github.com/agno-agi/agno) **AgentOS**, PostgreSQL with **pgvector**, and an optional **Vue** chat UI. 
 
 ---
 

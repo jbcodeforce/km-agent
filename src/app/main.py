@@ -21,7 +21,38 @@ agent_os = AgentOS(
     config=str(Path(__file__).parent / "config.yaml"),
 )
 
-app = agent_os.get_app()
+_api_app = agent_os.get_app()
+
+
+def _serve_ui_enabled() -> bool:
+    v = getenv("KMA_SERVE_UI", "").strip().lower()
+    return v in ("1", "true", "yes")
+
+
+def _static_dir() -> Path:
+    override = getenv("KMA_STATIC_DIR")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parent.parent / "frontend" / "dist"
+
+
+def _build_app():
+    """AgentOS routes at / when UI is off; at /agent-os when UI is on (matches Vite dev proxy prefix)."""
+    if not _serve_ui_enabled():
+        return _api_app
+    static = _static_dir()
+    if not static.is_dir():
+        return _api_app
+    from fastapi import FastAPI
+    from fastapi.staticfiles import StaticFiles
+
+    root = FastAPI()
+    root.mount("/agent-os", _api_app)
+    root.mount("/", StaticFiles(directory=str(static), html=True), name="static")
+    return root
+
+
+app = _build_app()
 
 
 if __name__ == "__main__":

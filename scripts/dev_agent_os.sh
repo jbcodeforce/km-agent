@@ -5,22 +5,23 @@
 # process (see src/frontend/vite.config.js). Set VITE_AGENT_OS_ORIGIN if your
 # backend listens elsewhere.
 #
-# Prereqs: Postgres via DB_* in .env (e.g. ./scripts/starter.sh for agent-db + Ollama),
+# Prereqs: Postgres via KMA_DB_* (or legacy DB_*) in .env (e.g. ./scripts/starter.sh for agent-db + Ollama),
 #          `uv sync`, and in src/frontend: `npm ci` (or npm install).
 #
 # From repo root:
 #   ./scripts/dev_agent_os.sh
 #
 # Backend only (same as before):
+#   KMA_SKIP_FRONTEND=1 ./scripts/dev_agent_os.sh
 #   SKIP_FRONTEND=1 ./scripts/dev_agent_os.sh
 #
-# Optional environment:
-#   AGENT_OS_HOST  Bind address for AgentOS (default: 127.0.0.1)
-#   AGENT_OS_PORT  AgentOS port (default: 8000)
-#   VITE_PORT      Vite dev port (default: 5174; read from src/frontend/.env if set)
+# Optional environment (prefer KMA_*; legacy names in parentheses):
+#   KMA_AGENT_OS_HOST (AGENT_OS_HOST)  Bind address for AgentOS (default: 127.0.0.1)
+#   KMA_AGENT_OS_PORT (AGENT_OS_PORT, PORT)  AgentOS port (default: 8000)
+#   KMA_VITE_PORT (VITE_PORT)      Vite dev port (default: 5174; read from src/frontend/.env if set)
 #   RUNTIME_ENV    e.g. dev
 #   AGNO_DEBUG     e.g. True
-#   SKIP_FRONTEND  Set to 1 to run only AgentOS in the foreground (no Vite)
+#   KMA_SKIP_FRONTEND (SKIP_FRONTEND)  Set to 1 to run only AgentOS in the foreground (no Vite)
 
 set -euo pipefail
 
@@ -33,8 +34,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${REPO_ROOT}" || die "cannot cd to ${REPO_ROOT}"
 
 export PYTHONPATH="${REPO_ROOT}/src${PYTHONPATH:+:${PYTHONPATH}}"
-export AGENT_OS_HOST="${AGENT_OS_HOST:-127.0.0.1}"
-export AGENT_OS_PORT="${AGENT_OS_PORT:-8000}"
+export AGENT_OS_HOST="${KMA_AGENT_OS_HOST:-${AGENT_OS_HOST:-127.0.0.1}}"
+export AGENT_OS_PORT="${KMA_AGENT_OS_PORT:-${AGENT_OS_PORT:-${PORT:-8000}}}"
 export RUNTIME_ENV="${RUNTIME_ENV:-dev}"
 export AGNO_DEBUG="${AGNO_DEBUG:-True}"
 
@@ -46,7 +47,7 @@ have_cmd() {
 
 have_cmd uv || die "uv not found; install uv and run 'uv sync' from the repo root."
 
-if [[ "${SKIP_FRONTEND:-0}" == "1" ]]; then
+if [[ "${KMA_SKIP_FRONTEND:-${SKIP_FRONTEND:-0}}" == "1" ]]; then
   if [[ -f "${REPO_ROOT}/.env" ]]; then
     exec uv run --env-file "${REPO_ROOT}/.env" python -m app.main
   else

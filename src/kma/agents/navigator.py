@@ -21,6 +21,7 @@ from agno.models.base import Model
 
 from kma.agents.instructions import BASE_INSTRUCTIONS, EXA_INSTRUCTIONS, WIKI_INSTRUCTIONS
 from kma.agents.settings import agent_db, kma_knowledge, kma_learnings
+from kma.config import kma_agent_reasoning_enabled, kma_stream_events_enabled
 from kma.llm_factory import build_default_llm_model
 from kma.tools.builder import build_navigator_tools
 
@@ -82,6 +83,8 @@ def build_navigator_agent(
         read_chat_history=True,
         num_history_runs=10,
         markdown=True,
+        reasoning=kma_agent_reasoning_enabled(),
+        stream_events=True if kma_stream_events_enabled() else None,
     )
 
 

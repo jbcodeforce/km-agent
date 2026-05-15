@@ -19,6 +19,7 @@ from agno.knowledge import Knowledge
 from agno.models.base import Model
 
 from kma.agents.settings import agent_db, kma_knowledge
+from kma.config import kma_agent_reasoning_enabled, kma_stream_events_enabled
 from kma.llm_factory import build_default_llm_model
 from kma.tools.builder import build_compiler_tools
 
@@ -139,6 +140,8 @@ def build_compiler_agent(
         tools=build_compiler_tools(kn, context_dir=ctx, raw_roots=raw_roots),
         add_datetime_to_context=True,
         markdown=True,
+        reasoning=kma_agent_reasoning_enabled(),
+        stream_events=True if kma_stream_events_enabled() else None,
     )
 
 

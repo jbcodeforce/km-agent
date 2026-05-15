@@ -28,3 +28,6 @@ venv*
 tmp/
 .claude/
 .cursor/
+
+**/node_modules
+src/frontend/dist

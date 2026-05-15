@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from pathlib import Path
-
+import os
 from agno.knowledge import Knowledge
 from agno.tools.file import FileTools
 from agno.tools.sql import SQLTools
@@ -79,7 +79,7 @@ def build_navigator_tools(knowledge: Knowledge, context_dir: Path | str | None =
     tools.extend([read_wiki_index, read_wiki_state])
 
     # Manifest access — lets Navigator discover ingested raw sources
-    _, _, read_manifest, _ = create_ingest_tools(raw_dir)
+    _, _, read_manifest, *_ = create_ingest_tools(raw_dir)
     tools.append(read_manifest)
 
     return tools
@@ -88,7 +88,8 @@ def build_navigator_tools(knowledge: Knowledge, context_dir: Path | str | None =
 def build_researcher_tools(knowledge: Knowledge) -> list:
     """Tools for the Researcher agent — Parallel search/extract + ingest to raw/."""
     raw_dir = get_kma_context_dir() / "raw"
-    ingest_url, ingest_text, read_manifest, _ = create_ingest_tools(RAW_DIR)
+    ingest_url, ingest_text, read_manifest, _, sync_raw_manifest_from_disk = create_ingest_tools(raw_dir)
+    os.environ["PARALLEL_API_KEY"] = os.getenv("KMA_PARALLEL_API_KEY", "")
     return [
         FileTools(base_dir=get_kma_context_dir(), enable_delete_file=False),
         ParallelTools(),
@@ -96,4 +97,5 @@ def build_researcher_tools(knowledge: Knowledge) -> list:
         ingest_url,
         ingest_text,
         read_manifest,
+        sync_raw_manifest_from_disk,
     ]

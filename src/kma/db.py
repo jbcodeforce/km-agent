@@ -17,14 +17,28 @@ from kma.config import (
 )
 
 
+def _env_db(kma_key: str, legacy_key: str, default: str) -> str:
+    """Prefer ``KMA_*`` names; fall back to legacy ``DB_*`` for backward compatibility."""
+    v = getenv(kma_key)
+    if v is not None and str(v).strip() != "":
+        return v
+    v2 = getenv(legacy_key)
+    if v2 is not None and str(v2).strip() != "":
+        return v2
+    return default
+
+
 def build_db_url() -> str:
-    """Build database URL from environment variables."""
-    driver = getenv("DB_DRIVER", "postgresql+psycopg")
-    user = getenv("DB_USER", "ai")
-    password = quote(getenv("DB_PASS", "ai"), safe="")
-    host = getenv("DB_HOST", "localhost")
-    port = getenv("DB_PORT", "5432")
-    database = getenv("DB_DATABASE", "ai")
+    """Build database URL from environment variables.
+
+    Reads ``KMA_DB_*`` first, then ``DB_*`` (legacy), then defaults.
+    """
+    driver = _env_db("KMA_DB_DRIVER", "DB_DRIVER", "postgresql+psycopg")
+    user = _env_db("KMA_DB_USER", "DB_USER", "ai")
+    password = quote(_env_db("KMA_DB_PASS", "DB_PASS", "ai"), safe="")
+    host = _env_db("KMA_DB_HOST", "DB_HOST", "localhost")
+    port = _env_db("KMA_DB_PORT", "DB_PORT", "5432")
+    database = _env_db("KMA_DB_DATABASE", "DB_DATABASE", "ai")
 
     return f"{driver}://{user}:{password}@{host}:{port}/{database}"
 

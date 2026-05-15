@@ -21,6 +21,7 @@ from kma.tools.ingest import (
     _slugify,
     _write_manifest,
     create_ingest_tools,
+    sync_manifest_from_raw_markdown,
 )
 
 
@@ -130,7 +131,7 @@ def test_create_ingest_tools_read_manifest_empty(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
     raw.mkdir()
     tools = create_ingest_tools(raw)
-    assert len(tools) == 4
+    assert len(tools) == 5
     read_manifest = next(t for t in tools if t.name == "read_manifest")
     out = read_manifest.entrypoint()
     assert "empty" in out.lower() or "No documents" in out
@@ -145,3 +146,40 @@ def test_create_ingest_tools_update_manifest_compiled(tmp_path: Path) -> None:
     assert upd.entrypoint(filename="x.md") == "Marked as compiled: x.md"
     assert _read_manifest(raw)[0]["compiled"] is True
     assert "Not found" in upd.entrypoint(filename="missing.md")
+
+
+def test_sync_manifest_from_raw_markdown(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    (raw / "doc.md").write_text(
+        "---\n"
+        'title: "My Study"\n'
+        "source: https://ex.test/page\n"
+        "ingested: 2026-03-01\n"
+        "compiled: false\n"
+        "---\n\n# Body\n",
+        encoding="utf-8",
+    )
+    msg = sync_manifest_from_raw_markdown(raw)
+    assert "1" in msg
+    m = _read_manifest(raw)
+    assert len(m) == 1
+    assert m[0]["file"] == "doc.md"
+    assert m[0]["title"] == "My Study"
+    assert m[0]["source"] == "https://ex.test/page"
+    assert m[0]["ingested"] == "2026-03-01T00:00:00Z"
+    assert m[0]["compiled"] is False
+
+
+def test_sync_raw_manifest_from_disk_tool(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    (raw / "a.md").write_text(
+        "---\ntitle: A\nsource: s\ningested: 2026-01-02\ncompiled: true\n---\n",
+        encoding="utf-8",
+    )
+    tools = create_ingest_tools(raw)
+    sync_tool = next(t for t in tools if t.name == "sync_raw_manifest_from_disk")
+    out = sync_tool.entrypoint()
+    assert "Synced" in out
+    assert _read_manifest(raw)[0]["compiled"] is True

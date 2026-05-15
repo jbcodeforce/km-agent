@@ -5,7 +5,38 @@ from typing import Literal
 # Default context root (string) for env files and backward compatibility.
 KMA_CONTEXT_DIR = os.getenv("KMA_CONTEXT_DIR", "./context")
 
-PARALLEL_API_KEY = os.getenv("PARALLEL_API_KEY")
+
+def _env_truthy(name: str) -> bool:
+    raw = os.getenv(name)
+    if raw is None or not str(raw).strip():
+        return False
+    return str(raw).strip().lower() in ("1", "true", "yes", "on")
+
+
+def kma_agent_reasoning_enabled() -> bool:
+    """When True, Agno runs an explicit reasoning phase (extra model work; logs + SSE reasoning events)."""
+    return _env_truthy("KMA_AGENT_REASONING")
+
+
+def kma_stream_events_enabled() -> bool:
+    """When True, streaming runs emit tool / model / reasoning progress events (see Agno RunEvent / TeamRunEvent)."""
+    return _env_truthy("KMA_STREAM_EVENTS")
+
+
+def kma_show_team_member_responses_enabled() -> bool:
+    """When True, team debug surfaces member responses (Agno ``show_members_responses``)."""
+    return _env_truthy("KMA_SHOW_TEAM_MEMBERS")
+
+
+def _env_first_nonempty(*keys: str) -> str | None:
+    for key in keys:
+        raw = os.getenv(key)
+        if raw is not None and raw.strip() != "":
+            return raw.strip()
+    return None
+
+
+PARALLEL_API_KEY = _env_first_nonempty("KMA_PARALLEL_API_KEY", "PARALLEL_API_KEY")
 
 CompilerLlmProvider = Literal["ollama", "openai", "anthropic"]
 EmbedProvider = Literal["ollama", "openai"]

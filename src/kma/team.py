@@ -5,6 +5,11 @@ from kma.agents.settings import agent_db, kma_knowledge, kma_learnings
 from kma.agents.compiler import compiler
 from kma.agents.navigator import navigator
 from kma.agents.researcher import researcher
+from kma.config import (
+    kma_agent_reasoning_enabled,
+    kma_show_team_member_responses_enabled,
+    kma_stream_events_enabled,
+)
 from kma.llm_factory import build_default_llm_model
 
 
@@ -35,4 +40,7 @@ kma_team = Team(
     read_chat_history=True,
     num_history_runs=5,
     markdown=True,
+    reasoning=kma_agent_reasoning_enabled(),
+    stream_events=True if kma_stream_events_enabled() else None,
+    show_members_responses=kma_show_team_member_responses_enabled(),
 )

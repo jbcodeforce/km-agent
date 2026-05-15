@@ -1,0 +1,3 @@
+# Flink SQL DDL Overview
+
+Flink's Data Definition Language (DDL) allows developers to define table metadata and persist it to underlying connectors like Kafka. Using `CREATE TABLE`, users can specify schemas, primary keys for state management, partition distribution, and watermark strategies for event-time processing. This syntax abstracts away physical storage details while enabling powerful stream processing capabilities.

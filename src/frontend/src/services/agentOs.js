@@ -2,6 +2,48 @@ import { parseOneSseBlock, effectiveEventName } from '@/utils/sseParse.js'
 
 const PREFIX = '/agent-os'
 
+/**
+ * One-line trace for tool / reasoning / model events (Agno RunEvent & TeamRunEvent).
+ * @param {string | null} ev
+ * @param {object} payload
+ * @returns {string | null}
+ */
+export function formatTraceLine(ev, payload) {
+  if (!ev || !payload) return null
+  if (ev.includes('ToolCall') && ev.includes('Started')) {
+    const t = payload.tool?.tool_name || payload.tool?.name || payload.tool_name
+    return t ? `tool → ${t}` : 'tool started'
+  }
+  if (ev.includes('ToolCall') && ev.includes('Completed')) {
+    const t = payload.tool?.tool_name || payload.tool?.name || payload.tool_name
+    return t ? `tool ✓ ${t}` : 'tool completed'
+  }
+  if (ev.includes('ToolCall') && ev.includes('Error')) {
+    return `tool error: ${payload.error ?? 'unknown'}`
+  }
+  if (ev.includes('ReasoningStep')) {
+    const c = payload.reasoning_content ?? payload.content
+    if (c != null && String(c).trim()) return `reason: ${String(c).trim().slice(0, 280)}`
+    return 'reasoning step'
+  }
+  if (ev.includes('ReasoningContentDelta')) {
+    const c = payload.reasoning_content
+    if (c) return String(c).slice(0, 160)
+    return null
+  }
+  if (ev.includes('ReasoningStarted')) return 'reasoning…'
+  if (ev.includes('ReasoningCompleted')) return 'reasoning done'
+  if (ev.includes('ModelRequestStarted')) {
+    const m = payload.model
+    return m ? `model → ${m}` : 'model request…'
+  }
+  if (ev.includes('ModelRequestCompleted')) {
+    const tok = payload.total_tokens
+    return tok != null ? `model ✓ tokens=${tok}` : 'model completed'
+  }
+  return null
+}
+
 function url(path) {
   const p = path.startsWith('/') ? path : `/${path}`
   return `${PREFIX}${p}`
@@ -80,6 +122,7 @@ export function chatHistoryToMessages(chatHistory) {
  *   onTextChunk?: (s: string) => void,
  *   onSessionId?: (id: string) => void,
  *   onRunMeta?: (meta: object) => void,
+ *   onTrace?: (s: string) => void,
  *   onError?: (err: Error) => void,
  *   onDone?: () => void
  * }} handlers
@@ -111,22 +154,29 @@ export async function consumeAgentRunSse(body, handlers) {
         if (!payload) continue
         const ev = effectiveEventName(eventType, payload)
 
-        if (ev === 'RunStarted') {
+        if (ev === 'RunStarted' || ev === 'TeamRunStarted') {
           if (payload.session_id) handlers.onSessionId?.(String(payload.session_id))
           handlers.onRunMeta?.(payload)
         }
-        if (ev === 'RunContent' || ev === 'RunIntermediateContent') {
+        if (
+          ev === 'RunContent' ||
+          ev === 'RunIntermediateContent' ||
+          ev === 'TeamRunContent' ||
+          ev === 'TeamRunIntermediateContent'
+        ) {
           const c = payload.content
           if (c != null && c !== '') {
             handlers.onTextChunk?.(typeof c === 'string' ? c : String(c))
           }
         }
-        if (ev === 'RunError') {
-          handlers.onError?.(new Error(String(payload.content ?? 'RunError')))
+        const traceLine = formatTraceLine(ev, payload)
+        if (traceLine) handlers.onTrace?.(traceLine)
+        if (ev === 'RunError' || ev === 'TeamRunError') {
+          handlers.onError?.(new Error(String(payload.content ?? payload.error ?? 'RunError')))
           finish()
           return
         }
-        if (ev === 'RunCompleted') {
+        if (ev === 'RunCompleted' || ev === 'TeamRunCompleted') {
           finish()
           return
         }
@@ -136,10 +186,29 @@ export async function consumeAgentRunSse(body, handlers) {
       const { eventType, payload } = parseOneSseBlock(buffer.trim())
       if (payload) {
         const ev = effectiveEventName(eventType, payload)
-        if (ev === 'RunError') {
-          handlers.onError?.(new Error(String(payload.content ?? 'RunError')))
+        if (ev === 'RunStarted' || ev === 'TeamRunStarted') {
+          if (payload.session_id) handlers.onSessionId?.(String(payload.session_id))
+          handlers.onRunMeta?.(payload)
         }
-        if (ev === 'RunCompleted') {
+        if (
+          ev === 'RunContent' ||
+          ev === 'RunIntermediateContent' ||
+          ev === 'TeamRunContent' ||
+          ev === 'TeamRunIntermediateContent'
+        ) {
+          const c = payload.content
+          if (c != null && c !== '') {
+            handlers.onTextChunk?.(typeof c === 'string' ? c : String(c))
+          }
+        }
+        const traceTail = formatTraceLine(ev, payload)
+        if (traceTail) handlers.onTrace?.(traceTail)
+        if (ev === 'RunError' || ev === 'TeamRunError') {
+          handlers.onError?.(new Error(String(payload.content ?? payload.error ?? 'RunError')))
+          finish()
+          return
+        }
+        if (ev === 'RunCompleted' || ev === 'TeamRunCompleted') {
           finish()
           return
         }
@@ -157,6 +226,7 @@ export async function consumeAgentRunSse(body, handlers) {
  *   onTextChunk?: (s: string) => void,
  *   onSessionId?: (id: string) => void,
  *   onRunMeta?: (meta: object) => void,
+ *   onTrace?: (s: string) => void,
  *   onError?: (err: Error) => void,
  *   onDone?: () => void
  * }} handlers

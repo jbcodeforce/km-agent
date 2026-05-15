@@ -31,6 +31,84 @@ def _write_manifest(raw_dir: Path, manifest: list[dict]) -> None:
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
 
 
+def _parse_frontmatter_lines(block: str) -> dict[str, str]:
+    """Parse a YAML-ish frontmatter block into string keys (values stripped, quotes removed)."""
+    meta: dict[str, str] = {}
+    for line in block.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if ":" not in line:
+            continue
+        key, val = line.split(":", 1)
+        key, val = key.strip(), val.strip()
+        if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
+            val = val[1:-1]
+        meta[key] = val
+    return meta
+
+
+def _normalize_ingested_iso(raw: str) -> str:
+    """Match ingest manifest style ``YYYY-MM-DDTHH:MM:SSZ`` when possible."""
+    raw = raw.strip()
+    if not raw:
+        return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw):
+        return f"{raw}T00:00:00Z"
+    if "T" in raw and raw.endswith("Z"):
+        return raw
+    # best-effort: treat as date prefix
+    m = re.match(r"(\d{4}-\d{2}-\d{2})", raw)
+    if m:
+        return f"{m.group(1)}T00:00:00Z"
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _compiled_bool(val: str) -> bool:
+    return val.strip().lower() in ("true", "1", "yes")
+
+
+def sync_manifest_from_raw_markdown(raw_dir: Path) -> str:
+    """Rebuild ``raw_dir/.manifest.json`` from ``*.md`` files using each file's YAML frontmatter.
+
+    Manifest rows match :func:`_do_ingest_text` / :func:`_do_ingest_url` (``file``, ``title``,
+    ``source``, ``ingested``, ``compiled``). Overwrites any existing manifest.
+    """
+    raw_path = Path(raw_dir).resolve()
+    if not raw_path.is_dir():
+        return f"Not a directory: {raw_path}"
+
+    rows: list[dict] = []
+    for path in sorted(raw_path.glob("*.md")):
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        if not text.startswith("---"):
+            continue
+        rest = text[3:].lstrip("\n")
+        end = rest.find("\n---")
+        if end == -1:
+            continue
+        fm_block = rest[:end]
+        meta = _parse_frontmatter_lines(fm_block)
+        title = meta.get("title", path.stem)
+        source = meta.get("source", "")
+        ingested = _normalize_ingested_iso(meta.get("ingested", ""))
+        compiled = _compiled_bool(meta.get("compiled", "false"))
+        rows.append(
+            {
+                "file": path.name,
+                "title": title,
+                "source": source,
+                "ingested": ingested,
+                "compiled": compiled,
+            }
+        )
+
+    _write_manifest(raw_path, rows)
+    return f"Synced {len(rows)} manifest entries under {raw_path}"
+
+
 def _build_frontmatter(title: str, source: str, tags: list[str], doc_type: str) -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     tag_str = ", ".join(tags) if tags else ""
@@ -204,7 +282,16 @@ def create_ingest_tools(raw_dir: Path) -> list:
                 return f"Marked as compiled: {filename}"
         return f"Not found in manifest: {filename}"
 
-    return [ingest_url, ingest_text, read_manifest, update_manifest_compiled]
+    @tool
+    def sync_raw_manifest_from_disk() -> str:
+        """Rebuild .manifest.json from existing *.md files in raw/ using YAML frontmatter.
+
+        Use when raw markdown was added or restored without going through ingest_url /
+        ingest_text. Overwrites the current manifest.
+        """
+        return sync_manifest_from_raw_markdown(raw_dir)
+
+    return [ingest_url, ingest_text, read_manifest, update_manifest_compiled, sync_raw_manifest_from_disk]
 
 
 def _compiler_uses_labelled_manifest_ids(raw_roots: Sequence[tuple[str, Path]], context_dir: Path) -> bool:

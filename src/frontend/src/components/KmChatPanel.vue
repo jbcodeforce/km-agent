@@ -77,6 +77,11 @@
       </div>
     </div>
 
+    <details v-if="traceLines.length" class="chat-trace">
+      <summary>Activity <span class="trace-count">({{ traceLines.length }})</span></summary>
+      <pre class="chat-trace-pre">{{ traceLines.join('\n') }}</pre>
+    </details>
+
     <div class="chat-input-area">
       <div class="input-row">
         <textarea
@@ -123,6 +128,8 @@ const route = useRoute()
 const router = useRouter()
 
 const messages = ref([])
+const traceLines = ref([])
+const MAX_TRACE_LINES = 200
 const inputMessage = ref('')
 const isLoading = ref(false)
 const error = ref(null)
@@ -204,6 +211,7 @@ async function sendMessage() {
 
   isLoading.value = true
   error.value = null
+  traceLines.value = []
 
   const sid = route.query.session_id || null
 
@@ -227,6 +235,11 @@ async function sendMessage() {
         } else {
           messages.value.push({ role: 'assistant', content: text })
         }
+        scrollToBottom()
+      },
+      onTrace: (line) => {
+        if (traceLines.value.length >= MAX_TRACE_LINES) traceLines.value.shift()
+        traceLines.value.push(line)
         scrollToBottom()
       },
       onError: (err) => {
@@ -454,6 +467,39 @@ function sendSuggested(text) {
   border-top: 1px solid #1e293b;
   background: #0f172a;
   border-radius: 0 0 16px 16px;
+}
+
+.chat-trace {
+  margin: 0 1rem 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: #020617;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.chat-trace summary {
+  cursor: pointer;
+  color: #cbd5e1;
+  user-select: none;
+}
+
+.chat-trace .trace-count {
+  color: #64748b;
+  font-weight: normal;
+}
+
+.chat-trace-pre {
+  margin: 0.5rem 0 0;
+  max-height: 12rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: #a8b8cf;
 }
 
 .input-row {

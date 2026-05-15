@@ -5,15 +5,14 @@ Researcher Agent
 Gathers source material from the web and local files, converts to
 clean markdown, saves to raw/ with YAML frontmatter.
 
-Conditional — only instantiated when PARALLEL_API_KEY is set.
+Conditional — only instantiated when ``KMA_PARALLEL_API_KEY`` or ``PARALLEL_API_KEY`` is set (see ``kma.config``).
 Uses Parallel for web search (parallel_search) and content
 extraction (parallel_extract).
 """
 
-from os import getenv
-
 from agno.agent import Agent
 from agno.learn import LearnedKnowledgeConfig, LearningMachine, LearningMode
+from kma.config import PARALLEL_API_KEY, kma_agent_reasoning_enabled, kma_stream_events_enabled
 from kma.llm_factory import build_default_llm_model
 from kma.agents.settings import agent_db, kma_knowledge, kma_learnings
 from kma.tools.builder import build_researcher_tools
@@ -52,7 +51,7 @@ You are the Researcher, a specialist in gathering and ingesting source material.
 
 researcher: Agent | None = None
 
-if getenv("PARALLEL_API_KEY"):
+if PARALLEL_API_KEY:
     md = build_default_llm_model()
     researcher = Agent(
         id="researcher",
@@ -71,4 +70,6 @@ if getenv("PARALLEL_API_KEY"):
         tools=build_researcher_tools(kma_knowledge),
         add_datetime_to_context=True,
         markdown=True,
+        reasoning=kma_agent_reasoning_enabled(),
+        stream_events=True if kma_stream_events_enabled() else None,
     )

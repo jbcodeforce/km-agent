@@ -1,5 +1,33 @@
 # Developer practices
 
+## Code structure
+
+The code of the solution is under src
+
+```
+src
+├── app
+│   ├── config.yaml
+│   └── main.py      -- Fast API with AgnoOS API
+├── frontend
+│   ├── index.html
+│   ├── src
+│   │   ├── App.vue   -- all the vue components
+└── kma               -- backend and agent
+    ├── agents
+        ├── config.py
+    ├── db.py
+    ├── llm_factory.py
+    ├── team.py
+    └── tools
+```
+
+### Agents
+
+* Compiler agent is used is processing indexing of raw data. It is used by the docs crawler. It can be integrated in tools via the factory function: `build_compiler_agent()`. As an example it is used to index existing docs folder:
+  ![](./images/docs_compiler.drawio.png)
+  
+
 ## Local PostgreSQL (Docker Compose only)
 
 The database service in `compose.yaml` is named `agent-db` (image `agnohq/pgvector:18`). To start **only** that container from the repository root:
@@ -42,6 +70,8 @@ Named volumes **persist until you remove them explicitly**. They are **not** tie
 | `docker compose down -v` | Volume **deleted** (fresh empty DB on next `up`) |
 | `docker volume rm <volume_name>` | Volume **deleted** |
 
+### Cleaning
+
 To wipe the database and start clean:
 
 ```bash
@@ -51,7 +81,8 @@ docker compose up -d agent-db
 
 ## Ollama (native on the host)
 
-**Ollama is not run in Docker Compose.** Models and binaries live in the default Ollama locations on your machine (for example `~/.ollama` on macOS/Linux). The **`km-agent`** service in `compose.yaml` talks to the host via **`OLLAMA_HOST`**, defaulting to `http://host.docker.internal:11434` so the container can reach a server bound on the host.
+* Ollama is not run in Docker Compose Models because it consumer more memory than native. The binaries live in the default Ollama locations on your machine (for example `~/.ollama` on macOS/Linux). 
+* The **`km-agent`** service in `compose.yaml` talks to the host via **`OLLAMA_HOST`**, defaulting to `http://host.docker.internal:11434` so the container can reach a server bound on the host.
 
 ### Bootstrap CLI (`scripts/setup.sh`)
 
@@ -63,6 +94,8 @@ In a **separate terminal**, leave the Ollama API running while you develop or ru
 
 ```bash
 ./scripts/starter.sh
+# or in development mode
+./scripts/starter.sh --dev
 ```
 
 If something is already listening on `http://127.0.0.1:${OLLAMA_PORT:-11434}/api/tags`, the script exits without starting a second server. Override the port with **`OLLAMA_PORT`** (and keep `OLLAMA_HOST` consistent in `.env` / clients).
@@ -70,7 +103,7 @@ If something is already listening on `http://127.0.0.1:${OLLAMA_PORT:-11434}/api
 Pull at least one **chat** model before using the Compiler or integration tests, for example:
 
 ```bash
-ollama pull qwen2.5:3b
+ollama pull qwen3.6:35b-a3b
 ```
 
 **Embeddings:** `kma.db.create_knowledge` uses **`build_default_embedder()`** from `KMA_EMBED_PROVIDER`: **`ollama`** (Agno `OllamaEmbedder` with `KMA_EMBED_MODEL` / `KMA_EMBED_DIMENSIONS`, defaults `nomic-embed-text:latest` / `768`) or **`openai`** (`OpenAIEmbedder`, defaults `text-embedding-3-small` / `1536`, requires `OPENAI_API_KEY`). Pull the Ollama embedding model when using Ollama:
@@ -317,3 +350,12 @@ Failures indicate an unexpected error from the model run (assertions on `RunStat
 2. Add **`@pytest.mark.integration`** to tests that touch external services.
 3. Prefer session-scoped fixtures in `tests/it/conftest.py` for expensive checks (for example API reachability) so one skip short-circuits the whole session consistently.
 4. Keep tests **focused** (one concern per test). The **compiler** integration test runs a full `Agent` with sandbox `context_dir` and dedicated `kma_knowledge_it` tables; enable it only with **`KMA_IT_COMPILER=1`** (see above).
+
+## Sources of information
+
+* [Agno web site](https://www.agno.com/) with [Agent doc](https://docs.agno.com/tutorials/agent-platform/overview)
+* [Agno PAL project](https://github.com/agno-agi/pal)
+* [Agno Scout project](https://github.com/agno-agi/scout)
+* [My own agent studies](https://jbcodeforce.github.io/ML-studies/genAI/agentic/) and [machine learning](https://jbcodeforce.github.io/ML-studies/) 
+* [Exa.ai for search API](https://exa.ai/)
+* [parallel.ai](https://parallel.ai/)
