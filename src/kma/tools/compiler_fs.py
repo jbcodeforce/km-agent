@@ -1,4 +1,7 @@
-"""Split-root filesystem tools for the Compiler when raw/ spans multiple disk locations."""
+"""
+Split-root filesystem tools for the Compiler when raw/ spans 
+multiple disk locations.
+"""
 
 from __future__ import annotations
 

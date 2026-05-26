@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Prepare a studies ``docs/`` tree for the compiler and run the Compiler agent.
+"""Prepare a studies ``docs/`` tree for the compiler and run the Compiler and Linter agents.
 
-Crawls ``**/*.md`` under the given docs directory, ensures km-agent raw YAML
-frontmatter and ``.manifest.json`` entries (paths relative to that docs root).
+Crawls ``**/*.md`` under the given docs directory, ensures raw YAML
+frontmatter and ``.manifest.json`` entries (paths relative to that docs root) are present.
 If ``docs/.manifest.json`` is missing, an empty manifest is created before
 preparing files or invoking the compiler so that raw root always has manifest I/O.
 
@@ -11,6 +11,8 @@ Then runs the Compiler with:
 - ``raw_roots``: your docs folder (e.g. ``--label studies``) plus ``ingested``
   pointing at ``<context>/raw`` (researcher output), so both coexist.
 - ``context_dir``: wiki output under ``<context>/wiki/``.
+
+Finally run linter to ensure quality
 
 Requires Postgres and configured LLM/embeddings (see docs/DEVELOPER_PRACTICES.md).
 
@@ -36,9 +38,9 @@ if str(REPO_ROOT / "src") not in sys.path:
 from agno.run.base import RunStatus  # noqa: E402
 
 from kma.agents.compiler import build_compiler_agent  # noqa: E402
+from kma.agents.linter import build_linter_agent
 from kma.agents.settings import kma_knowledge  # noqa: E402
 from kma.config import get_kma_context_dir  # noqa: E402
-from kma.llm_factory import build_default_compiler_model  # noqa: E402
 from kma.tools.ingest import (  # noqa: E402
     _build_frontmatter,
     _read_manifest,
@@ -74,6 +76,9 @@ def _first_h1_title(body: str) -> str | None:
 
 
 def _should_skip_path(path: Path, root: Path) -> bool:
+    """
+    Some Paths should be processed to avoid injecting obsolete documents
+    """
     try:
         rel = path.relative_to(root)
     except ValueError:
@@ -82,7 +87,9 @@ def _should_skip_path(path: Path, root: Path) -> bool:
 
 
 def _ensure_manifest_exists(raw_dir: Path, *, dry_run: bool) -> None:
-    """Create ``.manifest.json`` with ``[]`` if missing so the compiler root is valid."""
+    """
+    Create ``.manifest.json`` with ``[]`` if missing so the compiler root is valid.
+    """
     if dry_run:
         return
     manifest_path = raw_dir / ".manifest.json"
@@ -115,6 +122,9 @@ def _append_manifest_entry(raw_dir: Path, file_rel: str, title: str, source: str
 
 
 def _iter_markdown_docs(docs_root: Path) -> list[Path]:
+    """
+    build a list of paths to the markdonw files to process
+    """
     out: list[Path] = []
     for p in sorted(docs_root.rglob("*.md")):
         if p.name.startswith("."):
@@ -135,22 +145,27 @@ def _prepare_file(
     force: bool,
     dry_run: bool,
 ) -> tuple[str, str | None]:
-    """Returns (status, error) for the file to process. status one of [updated, skipped, dry_run]"""
+    """
+    Prepare yaml formatter in src file is not present
+    Returns (status, error) for the file to process. 
+    status one of [updated, skipped, dry_run]
+    """
     print(f"processing: {path}")
     rel = path.relative_to(docs_root).as_posix()
     text = path.read_text(encoding="utf-8")
-    if _has_km_raw_frontmatter(text):
+    has_kma_raw_fmt = _has_km_raw_frontmatter(text)
+    if has_kma_raw_fmt:
         title = _first_h1_title(text) or Path(rel).stem.replace("-", " ").title()
         if dry_run:
             return ("dry_run", None)
         _append_manifest_entry(docs_root, rel, title, source)
         return ("updated", None)
-
-    if _has_yaml_frontmatter(text) and not force:
+    has_yaml_fmt=_has_yaml_frontmatter(text)
+    if  has_yaml_fmt and not force:
         return ("skipped", f"has YAML but not km-agent raw block; use --force: {path}")
 
     body = text
-    if force and _has_yaml_frontmatter(text) and not _has_km_raw_frontmatter(text):
+    if force and has_yaml_fmt and not has_kma_raw_fmt:
         end = text.find("\n---\n", 4)
         body = text[end + len("\n---\n") :].lstrip("\n")
 
@@ -164,7 +179,6 @@ def _prepare_file(
         return ("dry_run", None)
     path.write_text(new_text, encoding="utf-8")
     _append_manifest_entry(docs_root, rel, title, source)
-
     return ("updated", None)
 
 
@@ -215,15 +229,14 @@ def main() -> int:
     if not docs.is_dir():
         print(f"error: not a directory: {docs}", file=sys.stderr)
         return 1
-
+    
+    _ensure_manifest_exists(docs, dry_run=args.dry_run)
+    
     ctx = (args.context or get_kma_context_dir()).resolve()
     tags = [t.strip() for t in args.tags.split(",") if t.strip()]
-
     md_files = _iter_markdown_docs(docs)
     if not md_files:
         print(f"warning: no markdown files under {docs}", file=sys.stderr)
-
-    _ensure_manifest_exists(docs, dry_run=args.dry_run)
 
     errors = 0
     for p in md_files:
@@ -254,28 +267,32 @@ def main() -> int:
         print("skip compiler (--dry-run or --skip-compiler)")
         return 0
 
-    model = build_default_compiler_model()
     ingested_root = ctx / "raw"
-    agent = build_compiler_agent(
+    compiler_agent = build_compiler_agent(
         context_dir=ctx,
         raw_roots=[(args.label, docs), ("ingested", ingested_root)],
-        knowledge=kma_knowledge,
-        model=model,
+        knowledge=kma_knowledge
     )
-    prompt = (
-        "You are running an automated batch compile. Use tools only; do not ask the user questions.\n"
+    linter_agent = build_linter_agent()
+    for p in md_files:
+        print(f"process file {p}")
+        SUMMARY_NAME=str(p)[:-3]
+        SOURCE_RAW=str(p)
+        prompt = ("You are running an automated batch compile. Use tools only; do not ask the user questions.\n"
         "1) Call read_manifest and process every entry where compiled is false.\n"
-        "2) For each: read the raw file using the path from read_manifest "
-        "(use raw/<label>/... as returned by your file tools for multi-root layouts).\n"
-        "3) Write wiki/summaries and wiki/concepts as in your system instructions, "
-        "then update_manifest_compiled with the exact file_id from the manifest.\n"
-        "4) When all uncompiled sources are done, update_wiki_index and update_wiki_state (mark_compiled true).\n"
-        "Keep tool calls efficient; complete the workflow."
-    )
-    out = agent.run(prompt)
-    if out.status != RunStatus.completed:
-        print(f"compiler run failed: {out.status} {out.content!r}", file=sys.stderr)
-        return 1
+        f"2) Read {SOURCE_RAW} via read_file.\n"
+         f"3) Write wiki/summaries/{SUMMARY_NAME} with a short markdown summary (heading + at least two sentences).\n"
+        "4) Create one file under wiki/concepts/ with a short slug name (e.g. flink-ddl-overview.md) describing the topic briefly.\n"
+        f"5) Call update_manifest_compiled with filename {SOURCE_RAW}.\n"
+        "6) Call update_wiki_index with a minimal markdown index that lists the new concept under ## Concepts using paths starting with wiki/.\n"
+        "7) Call update_wiki_state with mark_compiled true and article_count at least 1.\n"
+        "Keep responses short; complete the workflow.")
+        out = compiler_agent.run(prompt)
+        if out.status != RunStatus.completed:
+            print(f"compiler run failed: {out.status} {out.content!r}", file=sys.stderr)
+            return 1
+        out = linter_agent.run(prompt_2)
+        print(f"down processing {p}")
     print("compiler run completed")
     return 0
 

@@ -5,6 +5,8 @@ from kma.agents.settings import agent_db, kma_knowledge, kma_learnings
 from kma.agents.compiler import compiler
 from kma.agents.navigator import navigator
 from kma.agents.researcher import researcher
+from kma.agents.linter import linter
+
 from kma.config import (
     kma_agent_reasoning_enabled,
     kma_show_team_member_responses_enabled,
@@ -13,7 +15,7 @@ from kma.config import (
 from kma.llm_factory import build_default_llm_model
 
 
-members: list[Agent | Team] = [m for m in [navigator, researcher, compiler] if m is not None]
+members: list[Agent | Team] = [m for m in [navigator, researcher, compiler, linter] if m is not None]
 
 # ---------------------------------------------------------------------------
 # Create Team

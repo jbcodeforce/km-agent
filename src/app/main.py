@@ -5,11 +5,14 @@ from pathlib import Path
 from agno.os import AgentOS
 from kma.db import get_postgres_db
 from kma.agents.compiler import compiler
+from kma.agents.linter import linter
+from kma.agents.navigator import navigator
+from kma.agents.researcher import researcher
 
 from kma.agents.settings import kma_knowledge, kma_learnings
-from kma.team import kma_team
+from kma.agents.team import kma_team
 
-agents: list = [a for a in [compiler] if a is not None]
+agents: list = [a for a in [compiler, navigator, linter, researcher] if a is not None]
 
 agent_os = AgentOS(
     name="Pal",

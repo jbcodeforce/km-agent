@@ -1,5 +1,7 @@
 # Developer practices
 
+This chapter is for developer willing to work on this code base.
+
 ## Code structure
 
 The code of the solution is under src
@@ -7,26 +9,30 @@ The code of the solution is under src
 ```
 src
 ├── app
-│   ├── config.yaml
+│   ├── config.yaml  -- chat default queries
 │   └── main.py      -- Fast API with AgnoOS API
 ├── frontend
 │   ├── index.html
 │   ├── src
-│   │   ├── App.vue   -- all the vue components
-└── kma               -- backend and agent
+│   │   ├── App.vue   -- all the vuejs components
+└── kma               -- backend and agents
     ├── agents
         ├── config.py
+        ....
     ├── db.py
     ├── llm_factory.py
     ├── team.py
     └── tools
+        ...
 ```
 
 ### Agents
 
-* Compiler agent is used is processing indexing of raw data. It is used by the docs crawler. It can be integrated in tools via the factory function: `build_compiler_agent()`. As an example it is used to index existing docs folder:
+* [Compiler](../src/kma/agents/compiler.py) agent is used to process indexing of raw data. It is used by the docs crawler. It can be integrated in tools via the factory function: `build_compiler_agent()`. As an example it is used to index existing docs folder:
+
   ![](./images/docs_compiler.drawio.png)
-  
+
+ * [Linter](../src/kma/agents/linter.py) to keep integrity within the wiki content and propose researches. 
 
 ## Local PostgreSQL (Docker Compose only)
 

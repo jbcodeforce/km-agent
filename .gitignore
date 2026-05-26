@@ -4,6 +4,7 @@
 /data/ollama/
 .env
 .venv/
+context/
 
 **/__pycache__/*
 # =========================

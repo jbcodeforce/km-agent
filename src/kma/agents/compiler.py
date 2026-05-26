@@ -125,7 +125,7 @@ def build_compiler_agent(
         knowledge: Knowledge base (default: ``kma_knowledge`` from settings).
         model: LLM (default from ``KMA_LLM_PROVIDER``, ``KMA_MODEL_ID``, and provider env).
     """
-    kn: Knowledge = knowledge or kma_knowledge
+    km: Knowledge = knowledge or kma_knowledge
     ctx = Path(context_dir) if context_dir is not None else None
     md = model or build_default_llm_model()
     return Agent(
@@ -135,9 +135,9 @@ def build_compiler_agent(
         model=md,
         db=agent_db,
         instructions=COMPILER_INSTRUCTIONS,
-        knowledge=kn,
+        knowledge=km,
         search_knowledge=True,
-        tools=build_compiler_tools(kn, context_dir=ctx, raw_roots=raw_roots),
+        tools=build_compiler_tools(km, context_dir=ctx, raw_roots=raw_roots),
         add_datetime_to_context=True,
         markdown=True,
         reasoning=kma_agent_reasoning_enabled(),

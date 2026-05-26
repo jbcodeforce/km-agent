@@ -1,10 +1,10 @@
 # KM_Agent Specification
 
-km-agent is a personal knowledge management agent to work on existing studies plus new content discovered by the user.
+`km-agent` is a personal knowledge management agent to work on existing studies plus new content discovered by the user.
 
 It works on an existing studies git repositories like [flink-studies](https://github.com/jbcodeforce/flink-studies) to use as  base knowledge, and web search results.
 
-The approach is to use native query interface, to look at files, slack channel, or web content. When new content from wek or slack is added to the knowledge, it goes to raw folder, from which structured wiki is built of.
+The approach is to use native query interface, to look at files, slack channel, or web content. When new content from web or slack is added to the knowledge, it goes to raw folder, from which structured wiki is built of.
 
 ## Architecture
 
@@ -31,6 +31,16 @@ The approach is to use native query interface, to look at files, slack channel, 
 
 There are two types of raw knowledge: the docs folder of a studies repository, like flink-studies, and new raw data discovered by the researcher agent.
 
+```
+├── docs
+├── wiki
+│   ├── raw
+│   ├── entities
+│   ├── concepts
+│   index.md
+│   SCHEMA.md
+```
+
 Raw data flows through a compilation pipeline into a structured wiki:
 
 ```
@@ -46,9 +56,7 @@ Lint (Linter)           →  wiki/lint-report →  finds gaps, suggests research
 - **Wiki index** lists all articles with 1-line summaries — fits in one LLM read (~5K tokens at 100 articles)
 - **Manifest** tracks compile state per raw file — incremental, never rewrites the whole wiki
 
-When data comes from docs of a studies repository the date of the file, and its content may changed overtime after indexing so compiler may modify wiki concepts, index and summaries. 
-
-
+When articles come from docs of a studies repository the date of the file, and its content may changed overtime after indexing so `compiler` may modify wiki concepts, index and summaries. 
 
 ### 2. Context Navigation
 

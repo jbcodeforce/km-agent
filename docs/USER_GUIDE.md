@@ -4,8 +4,6 @@ This document is for user leveraging km-agent day to day: what to install, how t
 
 We continue to grow the use cases below—each section has a short outline today and a [next block](#where-to-go-next) so contributors know what to add next.
 
----
-
 ## Getting started
 
 ### What you need
@@ -49,7 +47,7 @@ Adjust model names to match `KMA_MODEL_ID` and `KMA_EMBED_MODEL` in `.env`.
 
 ### 2- Start the Knowledge Management Agent components
 
-In a separate terminal, from the repo root:
+In a separate terminal, from the repo root, start Postgresql, km-agent container, ollama server:
 
 ```bash
 ./scripts/starter.sh
@@ -58,7 +56,7 @@ In a separate terminal, from the repo root:
 This script brings up backend, database, frontend for chat interface and starts **Ollama** if nothing is already listening on the configured port. Pull the models you configured (chat + embedding), for example:
 
 ```bash
-ollama pull qwen2.5:3b
+ollama pull qwen3.6:35b-a3b 
 ollama pull nomic-embed-text:latest
 ```
 
@@ -78,15 +76,15 @@ ollama pull nomic-embed-text:latest
 
 ---
 
-## Use cases (living document)
+## Use cases
 
 The following sections are **outlines**. We will keep adding steps, examples, troubleshooting, and screenshots. When you extend a use case, preserve the **Goal / Preconditions / Steps / Success / Next** shape so the guide stays scannable.
 
 ### UC-1 — Attach a studies repository and compile documentation into the wiki
 
-**Goal:** Point km-agent at an existing Markdown tree (for example a `docs/` folder in [flink-studies](https://github.com/jbcodeforce/flink-studies)), normalize front matter and manifest entries, and run the **Compiler** agent so **`context/wiki/`** gains summaries, concept pages, and an updated **`index.md`**.
+**Goal:** Point km-agent at an existing Markdown tree (for example a `docs/` folder of the [flink-studies](https://github.com/jbcodeforce/flink-studies)), normalize front matter and manifest entries, and run the **Compiler** agent so **`context/wiki/`** gains summaries, concept pages, and an updated **`index.md`**.
 
-**Preconditions:**
+#### Preconditions
 
 - Postgres running; LLM and embedder configured (`KMA_LLM_PROVIDER`, `KMA_EMBED_*`).
 - Ollama (or cloud) models pulled for both chat and embeddings.
@@ -96,9 +94,9 @@ The following sections are **outlines**. We will keep adding steps, examples, tr
   ./scripts/verify_agent_env.sh --frontend
   ```
 
-**Steps (outline):**
+#### Steps (outline)
 
-1. Clone or locate the studies repo on disk.
+1. Reference the docs folder on your disk.
 2. From the km-agent repo root, run the crawler and knowledge Compiler agent:
 
    ```bash
@@ -112,19 +110,12 @@ The following sections are **outlines**. We will keep adding steps, examples, tr
 
 **Success:** Uncompiled sources in the manifest move to **compiled**, and the wiki index reflects new or updated articles.
 
-**Next (to expand):**
 
-- Full flag reference for `compile_docs_folder.py` (`--force`, tags, `doc_type`).
-- Combining **studies** raw root with **ingested** `context/raw/` (multi-root) in one compile.
-- Troubleshooting: dimension mismatch, Ollama OOM, empty manifest.
-
-
-
-### UC-1 — Ask questions using the wiki, files, and SQL
+### UC-2 — Ask questions using the wiki, files, and SQL
 
 **Goal:** Use chat to answer a question by combining the wiki index and articles, files under `context/`, structured data in the **`kma`** schema, and vector-backed knowledge where configured.
 
-**Preconditions:**
+#### Preconditions
 
 - AgentOS and (optionally) the Vue UI are running.
 - You have content under `context/wiki/` and/or `context/raw/`, or populated SQL tables, depending on what you want queried.
@@ -145,13 +136,11 @@ The following sections are **outlines**. We will keep adding steps, examples, tr
 
 ---
 
----
-
 ### UC-3 — Ingest new material from the web
 
 **Goal:** Gather sources from the web, normalize them as markdown under **`context/raw/`** with proper front matter, and optionally hand them to the **Compiler** so the wiki stays current.
 
-**Preconditions:**
+#### Preconditions
 
 - **`PARALLEL_API_KEY`** set so the **Researcher** agent is enabled (see `example.env` and `src/kma/agents/researcher.py`).
 - Same database and LLM setup as other use cases.
@@ -176,7 +165,7 @@ The following sections are **outlines**. We will keep adding steps, examples, tr
 
 **Goal:** After you add or edit markdown in **`context/raw/`**, refresh only **uncompiled** entries and avoid rewriting the whole wiki.
 
-**Preconditions:**
+#### Preconditions
 
 - Existing manifest (`.manifest.json` under the relevant raw root) understands your files.
 - Compiler tools and model access unchanged.
@@ -192,28 +181,6 @@ The following sections are **outlines**. We will keep adding steps, examples, tr
 
 - Manifest field reference and `file_id` with labelled roots.
 - How to force a full recompile safely (if ever needed).
-
----
-
-### UC-5 — Run backend only (scripts, CI, or custom clients)
-
-**Goal:** Use AgentOS HTTP APIs without the Vue dev server—for automation, debugging, or a different front end.
-
-**Preconditions:**
-
-- `.env` and `uv sync` as in Getting started.
-
-**Steps (outline):**
-
-1. `SKIP_FRONTEND=1 ./scripts/dev_agent_os.sh` **or** `uv run python -m app.main` with `PYTHONPATH=src` and env loaded.
-2. Call documented AgentOS routes (e.g. agents, sessions, runs) from your tool of choice.
-
-**Success:** Same agents and team behavior as with the UI, without Node.
-
-**Next (to expand):**
-
-- Minimal `curl` examples for listing agents and starting a run.
-- Notes on streaming responses (SSE) for clients.
 
 ---
 

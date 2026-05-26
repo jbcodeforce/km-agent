@@ -38,13 +38,14 @@ def _env_first_nonempty(*keys: str) -> str | None:
 
 PARALLEL_API_KEY = _env_first_nonempty("KMA_PARALLEL_API_KEY", "PARALLEL_API_KEY")
 
-CompilerLlmProvider = Literal["ollama", "openai", "anthropic"]
+CompilerLlmProvider = Literal["ollama", "openai", "anthropic", "cursor"]
 EmbedProvider = Literal["ollama", "openai"]
 
 _DEFAULT_COMPILER_MODEL: dict[CompilerLlmProvider, str] = {
     "ollama": "qwen3.6:35b-a3b",
     "openai": "gpt-4o-mini",
     "anthropic": "claude-sonnet-4-20250514",
+    "cursor": "composer-2.5",
 }
 
 _DEFAULT_EMBED_MODEL_AND_DIMS: dict[EmbedProvider, tuple[str, int]] = {
@@ -61,9 +62,9 @@ def get_kma_context_dir() -> Path:
 def get_llm_provider() -> CompilerLlmProvider:
     """Which backend serves the Compiler chat model."""
     raw = (os.getenv("KMA_LLM_PROVIDER") or "ollama").strip().lower()
-    if raw not in ("ollama", "openai", "anthropic"):
+    if raw not in ("ollama", "openai", "anthropic", "cursor"):
         raise ValueError(
-            f"Invalid KMA_LLM_PROVIDER={raw!r}; expected ollama, openai, or anthropic"
+            f"Invalid KMA_LLM_PROVIDER={raw!r}; expected ollama, openai, anthropic, or cursor"
         )
     return raw  # type: ignore[return-value]
 
@@ -102,6 +103,40 @@ def get_embed_dimensions() -> int:
     if explicit is not None and explicit.strip() != "":
         return int(explicit.strip())
     return _DEFAULT_EMBED_MODEL_AND_DIMS[get_embed_provider()][1]
+
+
+def get_cursor_runtime() -> Literal["local", "cloud"]:
+    """Cursor SDK runtime for ``KMA_LLM_PROVIDER=cursor``."""
+    raw = (os.getenv("KMA_CURSOR_RUNTIME") or "local").strip().lower()
+    if raw not in ("local", "cloud"):
+        raise ValueError(f"Invalid KMA_CURSOR_RUNTIME={raw!r}; expected local or cloud")
+    return raw  # type: ignore[return-value]
+
+
+def get_cursor_cwd() -> str | None:
+    """Workspace directory for local Cursor agents."""
+    raw = os.getenv("KMA_CURSOR_CWD")
+    if raw is not None and raw.strip() != "":
+        return raw.strip()
+    context = os.getenv("KMA_CONTEXT_DIR")
+    if context is not None and context.strip() != "":
+        return str(Path(context).resolve())
+    return None
+
+
+def get_cursor_repo_url() -> str | None:
+    """Git repository URL for cloud Cursor agents."""
+    return _env_first_nonempty("KMA_CURSOR_REPO", "CURSOR_CLOUD_REPO")
+
+
+def get_cursor_repo_ref() -> str:
+    """Starting git ref for cloud Cursor agents."""
+    return _env_first_nonempty("KMA_CURSOR_REPO_REF", "CURSOR_CLOUD_REPO_REF") or "main"
+
+
+def get_cursor_auto_create_pr() -> bool:
+    """When True, cloud Cursor agents open a PR after successful runs."""
+    return _env_truthy("KMA_CURSOR_AUTO_CREATE_PR")
 
 
 def get_ollama_embed_host() -> str | None:

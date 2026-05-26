@@ -19,6 +19,7 @@ dependencies = [
     "fastapi>=0.136.1",
     "parallel-web>=0.6.0",
     "scrapegraph-py>=1.47.0",
+    "cursor-sdk>=0.1.5",
 ]
 
 [project.scripts]

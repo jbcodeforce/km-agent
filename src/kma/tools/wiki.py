@@ -3,8 +3,23 @@
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Tuple
 
 from agno.tools import tool
+
+def get_or_create_wiki_paths(context_dir: Path) -> tuple[Path,Path,Path]:
+    if not context_dir.is_dir():
+        Path.mkdir(context_dir)
+    docs_dir = context_dir / "docs"
+    if not docs_dir.is_dir():
+        Path.mkdir(docs_dir)
+    wiki_dir = context_dir / "wiki"
+    if not wiki_dir.is_dir():
+        Path.mkdir(wiki_dir)
+    raw_dir = wiki_dir / "raw"
+    if not raw_dir.is_dir():
+        Path.mkdir(raw_dir)
+    return (context_dir, docs_dir, wiki_dir)
 
 
 def create_wiki_tools(wiki_dir: Path):

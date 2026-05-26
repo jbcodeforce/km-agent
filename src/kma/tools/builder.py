@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from pathlib import Path
 import os
+from typing import Tuple
 from agno.knowledge import Knowledge
 from agno.tools.file import FileTools
 from agno.tools.sql import SQLTools
@@ -26,16 +27,18 @@ def _get_paths(context_dir: Path | str | None = None, raw_roots: Sequence[tuple[
     wiki_dir = base / "wiki"
     return base, roots, wiki_dir
 
+
 def build_compiler_tools(
     knowledge: Knowledge,
     context_dir: Path | str | None = None,
     raw_roots: Sequence[tuple[str, Path]] | None = None,
 ) -> list:
-    """Tools for the Compiler agent — reads raw/, writes wiki/.
+    """
+    Tools for the Compiler agent — reads docs/ or wiki/raw, writes wiki/.
 
     Args:
         knowledge: Knowledge base for ``update_knowledge``.
-        context_dir: Root containing ``wiki/``; default ``raw/`` is ``context_dir/raw`` unless
+        context_dir: Root containing ``wiki/``; default ``raw/`` is ``context_dir/wiki/raw`` unless
             ``raw_roots`` overrides where raw documents live.
         raw_roots: Optional ``(label, path)`` list. Multiple roots or a single non-default
             raw directory use virtual paths ``raw/<label>/...`` and merged manifests.
@@ -98,4 +101,20 @@ def build_researcher_tools(knowledge: Knowledge) -> list:
         ingest_text,
         read_manifest,
         sync_raw_manifest_from_disk,
+    ]
+
+def build_linter_tools(knowledge: Knowledge) -> list:
+    """
+    Tools for the Linter agent — reads wiki/, writes lint reports, 
+    web search for gaps.
+    """
+    ctx_dir = get_kma_context_dir()
+    wiki_dir = ctx_dir / "wiki"
+    read_wiki_index, _, read_wiki_state, update_wiki_state = create_wiki_tools(wiki_dir)
+    return [
+        FileTools(base_dir=ctx_dir, enable_delete_file=False),
+        create_update_knowledge(knowledge),
+        read_wiki_index,
+        read_wiki_state,
+        update_wiki_state,
     ]

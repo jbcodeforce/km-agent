@@ -8,6 +8,20 @@
 
 Technical notes, knowledge repos (for example my [flink-studies](https://github.com/jbcodeforce/flink-studies)), and ad-hoc web findings usually live in different places: Git folders, bookmarks, Slack threads, and SQL databases. km-agent gives you a **single pipeline and a coordinated team of agents** so that material is **ingested**, **compiled into a wiki**, and **answered against** with context from files, SQL, and vector search—without you manually maintaining a separate “second brain” by hand.
 
+Also tool like NotebookLM has a tendency to forget what was asked before. Vector Store with embeddings has some challenge with the quality of the embeddings: the size of the vector and how the text chunck was build while parsing the documents. Markdown files have the advantage to provide structured sections to help chunking. Wiki approach has the advantage to let the LLM, vias tools to search for indexing then content, so more a tree navigation that pure <vector-text> mapping approach. 
+
+Knowledge management retrieval with Graph may perform better, by adding indexing, concepts, entities, links between concepts and entities. That Wiki LLM tries to address. The next level will be ontology. 
+
+### Why not using existing agent like Hermes and llm-wiki skill
+
+hermes can be used with the llm-wiki SKILL.md to process file by file and it is doing an excellent job. Below is a command that was executed to create the base wiki in the `flink-studies` project.
+
+```
+/llm-wiki start './docs/coding/flink-sql-1.md'
+```
+
+The goal is to get the `km-agent` fully compatible with this structure so user can use both approaches. The `km-agent` should be quicker to perform as it has dedicated agents for different problems. It uses knowledge accumylated from user sessions. Also some tools calling can be done upfront without having the LLM deciding what tool to call, which will be quicker.
+
 ---
 
 ## What you get
@@ -58,3 +72,9 @@ For full architecture, capabilities (intents, memory tiers, context layout), and
 ## License and attribution
 
 This repository is licensed under **[Apache License 2.0](./LICENSE)**. km-agent builds on **Agno** and patterns from **Pal**; see also dependency metadata from `uv` / `pyproject.toml` for third-party terms.
+
+### 🙏 Support my work
+
+Love it? Give it a ⭐️ by clicking below:
+
+<a href="https://github.com/jbcodeforce/km-agent/stargazers"><img src="https://img.shields.io/github/stars/jbcodeforce/km-agent?style=social" style="margin-left:0;box-shadow:none;border-radius:0;height:24px"></a>
