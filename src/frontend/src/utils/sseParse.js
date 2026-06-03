@@ -1,4 +1,8 @@
 /**
+ * Low-level SSE helpers for Agno AgentOS run streams (blocks separated by `\n\n`).
+ */
+
+/**
  * Parse one SSE block (lines between blank lines) into event name and JSON payload.
  * @param {string} block
  * @returns {{ eventType: string | null, payload: object | null }}

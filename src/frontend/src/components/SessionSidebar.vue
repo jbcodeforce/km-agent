@@ -42,6 +42,10 @@
 </template>
 
 <script setup>
+/**
+ * Left sidebar: paginated AgentOS sessions for the current agent + user_id.
+ * Exposes refreshList() for the parent after a new run creates or updates a session.
+ */
 import { ref, watch, onMounted, computed } from 'vue'
 import { listSessions } from '@/services/agentOs.js'
 
@@ -71,6 +75,10 @@ const hasMore = computed(
   () => totalPages.value > 0 && nextPage.value <= totalPages.value
 )
 
+/**
+ * Load one page of sessions from AgentOS.
+ * @param {boolean} append - If true, append to sessions; else replace list
+ */
 async function fetchSessions(append) {
   if (!props.agentId) return
   listError.value = null
@@ -100,6 +108,7 @@ async function fetchSessions(append) {
   }
 }
 
+/** Reset pagination and reload sessions from page 1. */
 function refreshList() {
   sessions.value = []
   nextPage.value = 1
@@ -107,10 +116,12 @@ function refreshList() {
   fetchSessions(false)
 }
 
+/** Fetch the next page when meta.total_pages allows. */
 function loadMore() {
   fetchSessions(true)
 }
 
+/** Emit update:userId when the user edits the User ID field. */
 function onUserIdCommit() {
   const v = localUserId.value.trim() || 'local'
   localUserId.value = v

@@ -1,6 +1,8 @@
 # Knowledge Management Agent (km-agent)
 
-**km-agent** is an agentic workspace that turns your study materials and newly discovered sources into a **structured, queryable knowledge base** you can talk to through chat. It is inspired by the [Karpathy LLM wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) and Agno [Pal](https://github.com/agno-agi/pal) project and built on [Agno](https://github.com/agno-agi/agno) **AgentOS**, PostgreSQL with **pgvector**, and an optional **Vue** chat UI. 
+**km-agent** is an agentic workspace that turns your study materials and newly discovered sources into a **structured, queryable knowledge base** you can talk to through chat. It is inspired by the [Karpathy LLM wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) and the Agno [Pal](https://github.com/agno-agi/pal) project,  built on [Agno](https://github.com/agno-agi/agno) **AgentOS**, PostgreSQL with **pgvector**, and an optional **Vue** chat UI. 
+
+[05/30/2026 new deep research OSS](https://github.com/jordan-gibbs/hyperresearch) was delivered recently and may overlap what km-agent does. Deeper analysis is needed. 
 
 ---
 
@@ -16,15 +18,15 @@ Knowledge management retrieval with Graph may perform better, by adding indexing
 
 hermes can be used with the llm-wiki SKILL.md to process file by file and it is doing an excellent job. Below is a command that was executed to create the base wiki in the `flink-studies` project.
 
-```
+```sh
 /llm-wiki start './docs/coding/flink-sql-1.md'
 ```
 
-The goal is to get the `km-agent` fully compatible with this structure so user can use both approaches. The `km-agent` should be quicker to perform as it has dedicated agents for different problems. It uses knowledge accumylated from user sessions. Also some tools calling can be done upfront without having the LLM deciding what tool to call, which will be quicker.
+The goal is to get the `km-agent` fully compatible with this structure so user can use both approaches. The `km-agent` should be quicker to perform as it has dedicated agents for different problems. It uses knowledge, and history accumulated from user's sessions. Also some tools calling can be done upfront without having the LLM deciding what tool to call, which will be quicker and may lead to better result.
 
 ---
 
-## What you get
+## What is built
 
 The high level architectrure view looks like:
 
@@ -45,10 +47,10 @@ You keep ownership of the **`context/`** tree and your database; the repo is the
 
 ---
 
-## How it fits together (short)
+## How it fits together
 
 1. **AgentOS** (`src/app/main.py`) serves the FastAPI app and wires **teams**, **agents**, **Postgres**, and **Knowledge** bases.  
-2. **`kma` team** (`src/kma/team.py`) coordinates **Navigator**, **Compiler**, and optionally **Researcher** members.  
+2. **`kma` team** (`src/kma/agents/team.py`) coordinates **Navigator**, **Compiler**, and optionally **Researcher** members.  
 3. **Tools** under `src/kma/tools/` connect SQL, filesystem, wiki/manifest operations, and ingestion to that team.
 
 For full architecture, capabilities (intents, memory tiers, context layout), and roadmap-level detail, see **[`docs/SPEC.md`](./docs/SPEC.md)**.
@@ -58,14 +60,11 @@ For full architecture, capabilities (intents, memory tiers, context layout), and
 ## Specifications
 
 - [`SPEC.md`](./docs/SPEC.md)— product and system specification (agents, pipeline, knowledge model, context directory).  
-- [`DEVELOPER_PRACTICES.md`](./docs/DEVELOPER_PRACTICES.md) — Postgres and Docker, Ollama, frontend layout and env, tests, integration gates.
-- [`USER_GUIDE.md`](./docs/USER_GUIDE.md) - User use cases and how tos. 
----
 
 ## Getting started
 
-1. **Clone** the repository and copy environment defaults:  
-   `cp example.env .env` then edit **database**, **LLM**, and optional **Parallel** / **OpenAI** / **Anthropic** variables to match your machine.
+* For developers [see the developer's guide](./docs/DEVELOPER_PRACTICES.md)
+* For end user [see user's guide](./docs/USER_GUIDE.md)
 
 ---
 

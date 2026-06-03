@@ -1,3 +1,7 @@
+/**
+ * AgentOS HTTP client: JSON session APIs and streaming agent runs (SSE).
+ * Dev traffic uses the `/agent-os` prefix (Vite proxy → `VITE_AGENT_OS_ORIGIN`).
+ */
 import { parseOneSseBlock, effectiveEventName } from '@/utils/sseParse.js'
 
 const PREFIX = '/agent-os'
@@ -44,11 +48,22 @@ export function formatTraceLine(ev, payload) {
   return null
 }
 
+/**
+ * Build a browser-relative AgentOS URL under the dev proxy prefix.
+ * @param {string} path - API path (with or without leading slash)
+ * @returns {string}
+ */
 function url(path) {
   const p = path.startsWith('/') ? path : `/${path}`
   return `${PREFIX}${p}`
 }
 
+/**
+ * GET/POST JSON against AgentOS; throws with server `detail` when status is not ok.
+ * @param {string} path
+ * @param {RequestInit} [options]
+ * @returns {Promise<unknown>}
+ */
 async function jsonFetch(path, options = {}) {
   const res = await fetch(url(path), {
     headers: { Accept: 'application/json', ...options.headers },
@@ -68,6 +83,7 @@ async function jsonFetch(path, options = {}) {
   return text ? JSON.parse(text) : null
 }
 
+/** @returns {Promise<unknown>} Agent list from AgentOS. */
 export async function listAgents() {
   return jsonFetch('/agents')
 }
@@ -98,6 +114,18 @@ export async function getSession(sessionId, opts = {}) {
 }
 
 /**
+ * Cancel an in-flight agent run (AgentOS marks it cancelled; streaming emits RunCancelled).
+ * @param {string} agentId
+ * @param {string} runId
+ */
+export async function cancelAgentRun(agentId, runId) {
+  return jsonFetch(
+    `/agents/${encodeURIComponent(agentId)}/runs/${encodeURIComponent(runId)}/cancel`,
+    { method: 'POST' }
+  )
+}
+
+/**
  * Map AgentOS chat_history entries to UI messages (skip system).
  * @param {Array<{ role?: string, content?: unknown }>} chatHistory
  */
@@ -122,6 +150,7 @@ export function chatHistoryToMessages(chatHistory) {
  *   onTextChunk?: (s: string) => void,
  *   onSessionId?: (id: string) => void,
  *   onRunMeta?: (meta: object) => void,
+ *   onRunId?: (id: string) => void,
  *   onTrace?: (s: string) => void,
  *   onError?: (err: Error) => void,
  *   onDone?: () => void
@@ -140,6 +169,46 @@ export async function consumeAgentRunSse(body, handlers) {
     }
   }
 
+  const handleBlock = (trimmed) => {
+    if (!trimmed) return false
+    const { eventType, payload } = parseOneSseBlock(trimmed)
+    if (!payload) return false
+    const ev = effectiveEventName(eventType, payload)
+
+    if (ev === 'RunStarted' || ev === 'TeamRunStarted') {
+      if (payload.session_id) handlers.onSessionId?.(String(payload.session_id))
+      if (payload.run_id) handlers.onRunId?.(String(payload.run_id))
+      handlers.onRunMeta?.(payload)
+    }
+    if (
+      ev === 'RunContent' ||
+      ev === 'RunIntermediateContent' ||
+      ev === 'TeamRunContent' ||
+      ev === 'TeamRunIntermediateContent'
+    ) {
+      const c = payload.content
+      if (c != null && c !== '') {
+        handlers.onTextChunk?.(typeof c === 'string' ? c : String(c))
+      }
+    }
+    const traceLine = formatTraceLine(ev, payload)
+    if (traceLine) handlers.onTrace?.(traceLine)
+    if (ev === 'RunError' || ev === 'TeamRunError') {
+      handlers.onError?.(new Error(String(payload.content ?? payload.error ?? 'RunError')))
+      finish()
+      return true
+    }
+    if (ev === 'RunCancelled' || ev === 'TeamRunCancelled') {
+      finish()
+      return true
+    }
+    if (ev === 'RunCompleted' || ev === 'TeamRunCompleted') {
+      finish()
+      return true
+    }
+    return false
+  }
+
   try {
     while (true) {
       const { done, value } = await reader.read()
@@ -148,72 +217,13 @@ export async function consumeAgentRunSse(body, handlers) {
       const parts = buffer.split('\n\n')
       buffer = parts.pop() ?? ''
       for (const block of parts) {
-        const trimmed = block.trim()
-        if (!trimmed) continue
-        const { eventType, payload } = parseOneSseBlock(trimmed)
-        if (!payload) continue
-        const ev = effectiveEventName(eventType, payload)
-
-        if (ev === 'RunStarted' || ev === 'TeamRunStarted') {
-          if (payload.session_id) handlers.onSessionId?.(String(payload.session_id))
-          handlers.onRunMeta?.(payload)
-        }
-        if (
-          ev === 'RunContent' ||
-          ev === 'RunIntermediateContent' ||
-          ev === 'TeamRunContent' ||
-          ev === 'TeamRunIntermediateContent'
-        ) {
-          const c = payload.content
-          if (c != null && c !== '') {
-            handlers.onTextChunk?.(typeof c === 'string' ? c : String(c))
-          }
-        }
-        const traceLine = formatTraceLine(ev, payload)
-        if (traceLine) handlers.onTrace?.(traceLine)
-        if (ev === 'RunError' || ev === 'TeamRunError') {
-          handlers.onError?.(new Error(String(payload.content ?? payload.error ?? 'RunError')))
-          finish()
-          return
-        }
-        if (ev === 'RunCompleted' || ev === 'TeamRunCompleted') {
-          finish()
-          return
-        }
+        if (handleBlock(block.trim())) return
       }
     }
-    if (buffer.trim()) {
-      const { eventType, payload } = parseOneSseBlock(buffer.trim())
-      if (payload) {
-        const ev = effectiveEventName(eventType, payload)
-        if (ev === 'RunStarted' || ev === 'TeamRunStarted') {
-          if (payload.session_id) handlers.onSessionId?.(String(payload.session_id))
-          handlers.onRunMeta?.(payload)
-        }
-        if (
-          ev === 'RunContent' ||
-          ev === 'RunIntermediateContent' ||
-          ev === 'TeamRunContent' ||
-          ev === 'TeamRunIntermediateContent'
-        ) {
-          const c = payload.content
-          if (c != null && c !== '') {
-            handlers.onTextChunk?.(typeof c === 'string' ? c : String(c))
-          }
-        }
-        const traceTail = formatTraceLine(ev, payload)
-        if (traceTail) handlers.onTrace?.(traceTail)
-        if (ev === 'RunError' || ev === 'TeamRunError') {
-          handlers.onError?.(new Error(String(payload.content ?? payload.error ?? 'RunError')))
-          finish()
-          return
-        }
-        if (ev === 'RunCompleted' || ev === 'TeamRunCompleted') {
-          finish()
-          return
-        }
-      }
-    }
+    if (buffer.trim() && handleBlock(buffer.trim())) return
+  } catch (e) {
+    if (e?.name === 'AbortError') return
+    throw e
   } finally {
     finish()
   }
@@ -225,47 +235,89 @@ export async function consumeAgentRunSse(body, handlers) {
  * @param {{
  *   onTextChunk?: (s: string) => void,
  *   onSessionId?: (id: string) => void,
+ *   onRunId?: (id: string) => void,
  *   onRunMeta?: (meta: object) => void,
  *   onTrace?: (s: string) => void,
  *   onError?: (err: Error) => void,
  *   onDone?: () => void
  * }} handlers
+ * @returns {{ promise: Promise<void>, stop: () => Promise<void> }}
  */
-export async function createAgentRunStream(agentId, input, handlers) {
-  const form = new FormData()
-  form.set('message', input.message)
-  form.set('stream', 'true')
-  if (input.sessionId) form.set('session_id', input.sessionId)
-  if (input.userId) form.set('user_id', input.userId)
+export function createAgentRunStream(agentId, input, handlers) {
+  const abortController = new AbortController()
+  let runId = null
 
-  const res = await fetch(url(`/agents/${encodeURIComponent(agentId)}/runs`), {
-    method: 'POST',
-    body: form
-  })
+  const promise = (async () => {
+    const form = new FormData()
+    form.set('message', input.message)
+    form.set('stream', 'true')
+    if (input.sessionId) form.set('session_id', input.sessionId)
+    if (input.userId) form.set('user_id', input.userId)
 
-  if (!res.ok) {
-    const text = await res.text()
-    let detail = res.statusText
+    let res
     try {
-      const j = JSON.parse(text)
-      if (j.detail != null) detail = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail)
-    } catch {
-      if (text) detail = text.slice(0, 500)
+      res = await fetch(url(`/agents/${encodeURIComponent(agentId)}/runs`), {
+        method: 'POST',
+        body: form,
+        signal: abortController.signal
+      })
+    } catch (e) {
+      if (e?.name === 'AbortError') return
+      handlers.onError?.(e instanceof Error ? e : new Error(String(e)))
+      handlers.onDone?.()
+      return
     }
-    handlers.onError?.(new Error(detail))
-    handlers.onDone?.()
-    return
-  }
 
-  if (!res.body) {
-    handlers.onError?.(new Error('Empty response body'))
-    handlers.onDone?.()
-    return
-  }
+    if (!res.ok) {
+      const text = await res.text()
+      let detail = res.statusText
+      try {
+        const j = JSON.parse(text)
+        if (j.detail != null) detail = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail)
+      } catch {
+        if (text) detail = text.slice(0, 500)
+      }
+      handlers.onError?.(new Error(detail))
+      handlers.onDone?.()
+      return
+    }
 
-  await consumeAgentRunSse(res.body, handlers)
+    if (!res.body) {
+      handlers.onError?.(new Error('Empty response body'))
+      handlers.onDone?.()
+      return
+    }
+
+    await consumeAgentRunSse(res.body, {
+      ...handlers,
+      onRunId: (id) => {
+        runId = id
+        handlers.onRunId?.(id)
+      }
+    })
+  })()
+
+  return {
+    promise,
+    stop: async () => {
+      if (runId) {
+        try {
+          await cancelAgentRun(agentId, runId)
+        } catch {
+          /* run may have already finished */
+        }
+      }
+      abortController.abort()
+    }
+  }
 }
 
+/**
+ * Choose agent id from AgentOS list response, preferring `fallback` when present.
+ * @param {unknown} agentsResponse - Array or `{ agents: [...] }`
+ * @param {string} [fallback]
+ * @returns {string}
+ */
 export function pickAgentId(agentsResponse, fallback = 'expert-agent') {
   if (!agentsResponse) return fallback
   const list = Array.isArray(agentsResponse) ? agentsResponse : agentsResponse.agents

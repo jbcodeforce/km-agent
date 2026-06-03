@@ -109,6 +109,10 @@
 </template>
 
 <script setup>
+/**
+ * Chat UI: message list, streaming assistant replies, optional Agno activity trace.
+ * Hydrates from session chat_history when route.session_id is set.
+ */
 import { ref, watch, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -135,6 +139,7 @@ const isLoading = ref(false)
 const error = ref(null)
 const messagesContainer = ref(null)
 const inputField = ref(null)
+/** Scroll the message container after DOM updates. */
 function scrollToBottom() {
   nextTick(() => {
     if (messagesContainer.value) {
@@ -143,6 +148,11 @@ function scrollToBottom() {
   })
 }
 
+/**
+ * Lightweight markdown-ish HTML for assistant/user bubbles (not a full MD parser).
+ * @param {string} content
+ * @returns {string}
+ */
 function formatMessage(content) {
   let formatted = String(content || '')
     .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
@@ -155,6 +165,7 @@ function formatMessage(content) {
   return formatted
 }
 
+/** Merge keys into the current route query (e.g. new session_id after first run). */
 function mergeQuery(updates) {
   router.replace({
     query: {
@@ -164,6 +175,10 @@ function mergeQuery(updates) {
   })
 }
 
+/**
+ * Load prior messages from AgentOS session chat_history.
+ * @param {string | null | undefined} sessionId
+ */
 async function hydrateFromSession(sessionId) {
   if (!sessionId) {
     messages.value = []
@@ -201,6 +216,7 @@ onMounted(() => {
   inputField.value?.focus()
 })
 
+/** POST a streaming agent run; append assistant chunks and emit run-complete on done. */
 async function sendMessage() {
   const message = inputMessage.value.trim()
   if (!message || isLoading.value || !props.agentId) return
@@ -257,6 +273,7 @@ async function sendMessage() {
   )
 }
 
+/** @param {string} text */
 function sendSuggested(text) {
   inputMessage.value = text
   sendMessage()

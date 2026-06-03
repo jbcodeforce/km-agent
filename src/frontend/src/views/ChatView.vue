@@ -27,6 +27,10 @@
 </template>
 
 <script setup>
+/**
+ * Main layout: optional static-site link, session sidebar, and chat panel.
+ * Resolves agent id from AgentOS on mount; keeps user_id in route + localStorage.
+ */
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SessionSidebar from '@/components/SessionSidebar.vue'
@@ -59,6 +63,7 @@ const selectedSessionId = computed(() => {
   return s != null && String(s).trim() !== '' ? String(s).trim() : ''
 })
 
+/** Read user_id from route or localStorage; write back to route when missing. */
 function syncUserFromRouteAndStorage() {
   const q = route.query.user_id
   if (q != null && String(q).trim() !== '') {
@@ -86,6 +91,7 @@ function syncUserFromRouteAndStorage() {
   })
 }
 
+/** @param {string} v */
 function onUserId(v) {
   userId.value = v && v.trim() !== '' ? v.trim() : 'local'
   try {
@@ -101,6 +107,7 @@ function onUserId(v) {
   })
 }
 
+/** @param {string} sessionId */
 function onSelectSession(sessionId) {
   router.replace({
     query: {
@@ -110,6 +117,7 @@ function onSelectSession(sessionId) {
   })
 }
 
+/** Clear session_id in the URL to start a fresh conversation. */
 function onNewChat() {
   router.replace({
     query: {
@@ -118,6 +126,7 @@ function onNewChat() {
   })
 }
 
+/** After a streamed run finishes, refresh the sidebar session list. */
 function onRunComplete() {
   sidebarRef.value?.refreshList?.()
 }

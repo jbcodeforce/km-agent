@@ -1,3 +1,6 @@
+/**
+ * Vite config: Vue plugin, `@` alias, dev server port, and `/agent-os` proxy to AgentOS.
+ */
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'

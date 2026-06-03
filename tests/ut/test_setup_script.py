@@ -48,6 +48,7 @@ def test_starter_script_exists_and_shell_syntax() -> None:
     assert "docker compose" in text
     assert "km-agent" in text
     assert "--dev" in text
+    assert "--frontend" in text
     assert "uv sync" in text
     assert ".venv/bin/python" in text
     assert "uv run" in text

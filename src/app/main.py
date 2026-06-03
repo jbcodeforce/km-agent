@@ -15,7 +15,7 @@ from kma.agents.team import kma_team
 agents: list = [a for a in [compiler, navigator, linter, researcher] if a is not None]
 
 agent_os = AgentOS(
-    name="Pal",
+    name="KM-Agent",
     tracing=True,
     db=get_postgres_db(),
     teams=[kma_team],

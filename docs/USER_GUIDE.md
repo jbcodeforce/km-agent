@@ -147,7 +147,7 @@ The following sections are **outlines**. We will keep adding steps, examples, tr
 
 **Steps (outline):**
 
-1. Start the stack (`./scripts/dev_agent_os.sh`).
+1. Start the stack (`./scripts/starter.sh --dev --frontend`).
 2. In chat, issue a **research / ingest** style request aligned with your team instructions (gather sources on topic X, save to raw with tags, etc.).
 3. Run compilation (via team instruction to the Compiler, or **`compile_docs_folder.py`**, or a dedicated compile workflow) so new raw files become wiki content.
 
