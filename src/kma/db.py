@@ -10,9 +10,12 @@ from os import getenv
 from urllib.parse import quote
 
 from kma.config import (
+    get_embed_base_url,
     get_embed_dimensions,
     get_embed_model_id,
     get_embed_provider,
+    get_mlx_api_key,
+    get_mlx_embed_base_url,
     get_ollama_embed_host,
 )
 
@@ -62,25 +65,32 @@ def get_postgres_db(contents_table: str | None = None) -> PostgresDb:
 
 def build_default_embedder() -> Embedder:
     """Embedder for Knowledge bases from ``KMA_EMBED_PROVIDER``."""
-    if get_embed_provider() == "ollama":
+    provider = get_embed_provider()
+    if provider == "ollama":
         return OllamaEmbedder(
             id=get_embed_model_id(),
             host=get_ollama_embed_host(),
             dimensions=get_embed_dimensions(),
         )
+    if provider == "mlx":
+        return OpenAIEmbedder(
+            id=get_embed_model_id(),
+            dimensions=get_embed_dimensions(),
+            api_key=get_mlx_api_key(),
+            base_url=get_mlx_embed_base_url(),
+        )
+    # openai
     api_key = getenv("OPENAI_API_KEY")
     if not api_key or not api_key.strip():
         raise ValueError(
             "OPENAI_API_KEY is required when KMA_EMBED_PROVIDER=openai "
             "(set the key in the environment or .env)"
         )
-    base = getenv("OPENAI_BASE_URL")
-    base_url = base.strip() if base and base.strip() else None
     return OpenAIEmbedder(
         id=get_embed_model_id(),
         dimensions=get_embed_dimensions(),
         api_key=api_key.strip(),
-        base_url=base_url,
+        base_url=get_embed_base_url(),
     )
 
 
