@@ -1,4 +1,4 @@
-"""Shared fixtures for integration tests (Postgres, Ollama, optional OpenAI embeddings)."""
+"""Shared fixtures for integration tests (Postgres, Ollama, OMLX, optional OpenAI embeddings)."""
 
 from __future__ import annotations
 

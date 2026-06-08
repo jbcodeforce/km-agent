@@ -71,5 +71,7 @@ def test_researcher_ingests_text_to_raw(
     manifest_path = raw_dir / ".manifest.json"
     assert manifest_path.is_file(), "researcher did not create a manifest"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    assert any("research" in (e.get("title", "").lower()) or e.get("file") for e in manifest)
+    assert any("research" in e.get("title", "").lower() for e in manifest), (
+        f"expected an ingested 'research' note in manifest: {manifest!r}"
+    )
     assert list(raw_dir.glob("*.md")), "researcher did not write any raw markdown"
