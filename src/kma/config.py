@@ -38,14 +38,15 @@ def _env_first_nonempty(*keys: str) -> str | None:
 
 PARALLEL_API_KEY = _env_first_nonempty("KMA_PARALLEL_API_KEY", "PARALLEL_API_KEY")
 
-CompilerLlmProvider = Literal["ollama", "openai", "anthropic", "cursor"]
-EmbedProvider = Literal["ollama", "openai"]
+CompilerLlmProvider = Literal["ollama", "openai", "anthropic", "cursor", "mlx"]
+EmbedProvider = Literal["ollama", "openai", "mlx"]
 
 _DEFAULT_COMPILER_MODEL: dict[CompilerLlmProvider, str] = {
     "ollama": "qwen3.6:35b-a3b",
     "openai": "gpt-4o-mini",
     "anthropic": "claude-sonnet-4-20250514",
     "cursor": "composer-2.5",
+    "mlx": "Qwen3.6-35B-A3B-UD-MLX-4bit",
 }
 
 _DEFAULT_EMBED_MODEL_AND_DIMS: dict[EmbedProvider, tuple[str, int]] = {
@@ -62,9 +63,9 @@ def get_kma_context_dir() -> Path:
 def get_llm_provider() -> CompilerLlmProvider:
     """Which backend serves the Compiler chat model."""
     raw = (os.getenv("KMA_LLM_PROVIDER") or "ollama").strip().lower()
-    if raw not in ("ollama", "openai", "anthropic", "cursor"):
+    if raw not in ("ollama", "openai", "anthropic", "cursor", "mlx"):
         raise ValueError(
-            f"Invalid KMA_LLM_PROVIDER={raw!r}; expected ollama, openai, anthropic, or cursor"
+            f"Invalid KMA_LLM_PROVIDER={raw!r}; expected ollama, openai, anthropic, cursor, or mlx"
         )
     return raw  # type: ignore[return-value]
 
@@ -84,8 +85,8 @@ def get_llm_model_id() -> str:
 def get_embed_provider() -> EmbedProvider:
     """Which backend generates Knowledge / PgVector embeddings."""
     raw = (os.getenv("KMA_EMBED_PROVIDER") or "ollama").strip().lower()
-    if raw not in ("ollama", "openai"):
-        raise ValueError(f"Invalid KMA_EMBED_PROVIDER={raw!r}; expected ollama or openai")
+    if raw not in ("ollama", "openai", "mlx"):
+        raise ValueError(f"Invalid KMA_EMBED_PROVIDER={raw!r}; expected ollama, openai, or mlx")
     return raw  # type: ignore[return-value]
 
 
@@ -94,7 +95,13 @@ def get_embed_model_id() -> str:
     explicit = os.getenv("KMA_EMBED_MODEL")
     if explicit is not None and explicit.strip() != "":
         return explicit.strip()
-    return _DEFAULT_EMBED_MODEL_AND_DIMS[get_embed_provider()][0]
+    provider = get_embed_provider()
+    if provider == "mlx":
+        raise ValueError(
+            "KMA_EMBED_MODEL is required when KMA_EMBED_PROVIDER=mlx "
+            "(OMLX has no default embedding model; set it to the model you loaded)"
+        )
+    return _DEFAULT_EMBED_MODEL_AND_DIMS[provider][0]
 
 
 def get_embed_dimensions() -> int:
@@ -102,7 +109,50 @@ def get_embed_dimensions() -> int:
     explicit = os.getenv("KMA_EMBED_DIMENSIONS")
     if explicit is not None and explicit.strip() != "":
         return int(explicit.strip())
-    return _DEFAULT_EMBED_MODEL_AND_DIMS[get_embed_provider()][1]
+    provider = get_embed_provider()
+    if provider == "mlx":
+        raise ValueError(
+            "KMA_EMBED_DIMENSIONS is required when KMA_EMBED_PROVIDER=mlx "
+            "(set it to match the embedding model you loaded into OMLX)"
+        )
+    return _DEFAULT_EMBED_MODEL_AND_DIMS[provider][1]
+
+
+def get_mlx_base_url() -> str:
+    """Base URL for the OMLX OpenAI-compatible chat endpoint."""
+    raw = os.getenv("KMA_MLX_BASE_URL")
+    if raw is not None and raw.strip() != "":
+        return raw.strip()
+    return "http://127.0.0.1:7999/v1"
+
+
+def get_mlx_api_key() -> str:
+    """API key string for OMLX. OpenAILike requires a non-empty key; OMLX ignores it."""
+    raw = os.getenv("KMA_MLX_API_KEY")
+    if raw is not None and raw.strip() != "":
+        return raw.strip()
+    return "not-needed"
+
+
+def get_mlx_embed_base_url() -> str:
+    """Base URL for OMLX embeddings; falls back to the chat base URL (same server)."""
+    raw = os.getenv("KMA_MLX_EMBED_BASE_URL")
+    if raw is not None and raw.strip() != "":
+        return raw.strip()
+    return get_mlx_base_url()
+
+
+def get_embed_base_url() -> str | None:
+    """Base URL for the OpenAI-compatible embedder (decoupled from chat).
+
+    Prefers ``KMA_EMBED_BASE_URL`` then ``OPENAI_BASE_URL``; ``None`` means the
+    OpenAI client default.
+    """
+    for key in ("KMA_EMBED_BASE_URL", "OPENAI_BASE_URL"):
+        raw = os.getenv(key)
+        if raw is not None and raw.strip() != "":
+            return raw.strip()
+    return None
 
 
 def get_cursor_runtime() -> Literal["local", "cloud"]:
