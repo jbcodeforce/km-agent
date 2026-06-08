@@ -49,6 +49,7 @@ _DEFAULT_COMPILER_MODEL: dict[CompilerLlmProvider, str] = {
     "mlx": "Qwen3.6-35B-A3B-UD-MLX-4bit",
 }
 
+# mlx has no default embedding model; KMA_EMBED_MODEL is required (enforced in get_embed_model_id).
 _DEFAULT_EMBED_MODEL_AND_DIMS: dict[Literal["ollama", "openai"], tuple[str, int]] = {
     "ollama": ("nomic-embed-text:latest", 768),
     "openai": ("text-embedding-3-small", 1536),

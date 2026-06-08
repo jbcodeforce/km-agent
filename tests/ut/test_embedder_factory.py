@@ -42,6 +42,7 @@ def test_build_default_embedder_mlx(monkeypatch) -> None:
     assert emb.id == "some-embed-model"
     assert emb.dimensions == 1024
     assert emb.base_url == "http://127.0.0.1:7999/v1"
+    assert emb.api_key == "not-needed"
 
 
 def test_build_default_embedder_mlx_requires_model(monkeypatch) -> None:
