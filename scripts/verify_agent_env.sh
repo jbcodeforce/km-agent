@@ -284,7 +284,7 @@ check_omlx() {
   echo "  GET ${base}/models → HTTP 200"
   if [[ "${KMA_LLM_PROVIDER:-}" == "mlx" ]]; then
     local chat_id="${KMA_COMPILER_MODEL_ID:-${KMA_MODEL_ID:-Qwen3.6-35B-A3B-UD-MLX-4bit}}"
-    if echo "$body" | grep -q "\"${chat_id}\""; then
+    if echo "$body" | grep -qF "\"${chat_id}\""; then
       echo "  chat model present: ${chat_id}"
     else
       echo "  chat model NOT found in /models: ${chat_id}" >&2
@@ -297,7 +297,7 @@ check_omlx() {
       echo "  embed model: KMA_EMBED_MODEL unset (required for KMA_EMBED_PROVIDER=mlx)." >&2
       return 1
     fi
-    if echo "$body" | grep -q "\"${embed_id}\""; then
+    if echo "$body" | grep -qF "\"${embed_id}\""; then
       echo "  embed model present: ${embed_id}"
     else
       echo "  WARNING: embed model not in /models yet: ${embed_id} (load it into OMLX)." >&2
