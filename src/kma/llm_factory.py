@@ -17,6 +17,8 @@ from kma.config import (
     get_cursor_runtime,
     get_llm_model_id,
     get_llm_provider,
+    get_mlx_api_key,
+    get_mlx_base_url,
 )
 from kma.models.cursor_agent import CursorAgentModel, build_cursor_agent_options
 
@@ -89,8 +91,6 @@ def build_default_llm_model() -> Model:
         return OpenAIResponses(id=mid, api_key=api_key.strip(), base_url=base_url)
 
     if provider == "mlx":
-        from kma.config import get_mlx_api_key, get_mlx_base_url
-
         return OpenAILike(
             id=mid,
             base_url=get_mlx_base_url(),
