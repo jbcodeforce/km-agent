@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from agno.models.base import Model
 from agno.models.ollama import OllamaResponses
-from agno.models.openai import OpenAIResponses
+from agno.models.openai import OpenAIResponses, OpenAILike
 
 from kma.config import (
     get_cursor_auto_create_pr,
@@ -87,6 +87,15 @@ def build_default_llm_model() -> Model:
         base_url = os.getenv("OPENAI_BASE_URL")
         base_url = base_url.strip() if base_url and base_url.strip() else None
         return OpenAIResponses(id=mid, api_key=api_key.strip(), base_url=base_url)
+
+    if provider == "mlx":
+        from kma.config import get_mlx_api_key, get_mlx_base_url
+
+        return OpenAILike(
+            id=mid,
+            base_url=get_mlx_base_url(),
+            api_key=get_mlx_api_key(),
+        )
 
     if provider == "cursor":
         return CursorAgentModel(
