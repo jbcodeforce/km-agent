@@ -1,0 +1,37 @@
+[
+  {
+    "file": "kafka.md",
+    "title": "Kafka for Flink",
+    "source": "flink-studies",
+    "ingested": "2026-06-08T23:08:39Z",
+    "compiled": false
+  },
+  {
+    "file": "fitforpurpose.md",
+    "title": "Fit For Purpose",
+    "source": "flink-studies",
+    "ingested": "2026-06-08T23:08:40Z",
+    "compiled": false
+  },
+  {
+    "file": "job_lifecycle.md",
+    "title": "Flink Job Lifecycle",
+    "source": "flink-studies",
+    "ingested": "2026-06-08T23:08:40Z",
+    "compiled": false
+  },
+  {
+    "file": "governance.md",
+    "title": "Data Governance",
+    "source": "flink-studies",
+    "ingested": "2026-06-08T23:08:40Z",
+    "compiled": false
+  },
+  {
+    "file": "data_as_a_product.md",
+    "title": "Data as a Product",
+    "source": "flink-studies",
+    "ingested": "2026-06-08T23:08:40Z",
+    "compiled": false
+  }
+]
