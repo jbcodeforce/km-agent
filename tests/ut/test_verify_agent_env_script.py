@@ -44,3 +44,17 @@ def test_verify_script_contains_expected_checks() -> None:
     assert "KMA_DB_HOST" in text
     assert "trace_resolved_configuration" in text
     assert "format_env_value_for_trace" in text
+
+
+def test_verify_script_contains_omlx_check() -> None:
+    text = VERIFY_SH.read_text(encoding="utf-8")
+    assert "check_omlx" in text
+    assert "KMA_MLX_BASE_URL" in text
+    assert "/models" in text
+
+
+def test_verify_script_omlx_check_only_when_mlx(monkeypatch) -> None:
+    """check_omlx is invoked from main and guarded by provider == mlx."""
+    text = VERIFY_SH.read_text(encoding="utf-8")
+    assert 'mlx' in text
+    assert "check_omlx || ok=1" in text

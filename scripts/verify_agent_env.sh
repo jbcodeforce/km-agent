@@ -140,6 +140,7 @@ trace_resolved_configuration() {
   echo "  frontend_check=${CHECK_FRONTEND}  (1 = --frontend was passed)"
   echo "  KMA_LLM_PROVIDER=${KMA_LLM_PROVIDER:-<unset>}  KMA_EMBED_PROVIDER=${KMA_EMBED_PROVIDER:-<unset>}"
   echo "  OLLAMA_HOST=${OLLAMA_HOST:-<unset>}"
+  echo "  KMA_MLX_BASE_URL=${KMA_MLX_BASE_URL:-<unset>}  KMA_EMBED_MODEL=${KMA_EMBED_MODEL:-<unset>}  KMA_EMBED_DIMENSIONS=${KMA_EMBED_DIMENSIONS:-<unset>}"
 }
 
 # Optional: dump every process variable whose name starts with KMA_ (values masked when sensitive).
@@ -265,6 +266,45 @@ check_frontend() {
   fi
 }
 
+check_omlx() {
+  # Only runs when chat or embeddings use the OMLX (mlx) provider.
+  if [[ "${KMA_LLM_PROVIDER:-}" != "mlx" && "${KMA_EMBED_PROVIDER:-}" != "mlx" ]]; then
+    return 0
+  fi
+  local base="${KMA_MLX_BASE_URL:-http://127.0.0.1:7999/v1}"
+  echo "== OMLX (${base}) =="
+  have_cmd curl || die "curl not found (needed for HTTP checks)."
+  local body code
+  body=$(curl -sS --max-time 10 "${base}/models" 2>/dev/null) || body=""
+  code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "${base}/models" 2>/dev/null) || code="000"
+  if [[ "$code" != "200" ]]; then
+    echo "  GET ${base}/models → HTTP ${code} (is OMLX running?)." >&2
+    return 1
+  fi
+  echo "  GET ${base}/models → HTTP 200"
+  if [[ "${KMA_LLM_PROVIDER:-}" == "mlx" ]]; then
+    local chat_id="${KMA_COMPILER_MODEL_ID:-${KMA_MODEL_ID:-Qwen3.6-35B-A3B-UD-MLX-4bit}}"
+    if echo "$body" | grep -q "\"${chat_id}\""; then
+      echo "  chat model present: ${chat_id}"
+    else
+      echo "  chat model NOT found in /models: ${chat_id}" >&2
+      return 1
+    fi
+  fi
+  if [[ "${KMA_EMBED_PROVIDER:-}" == "mlx" ]]; then
+    local embed_id="${KMA_EMBED_MODEL:-}"
+    if [[ -z "$embed_id" ]]; then
+      echo "  embed model: KMA_EMBED_MODEL unset (required for KMA_EMBED_PROVIDER=mlx)." >&2
+      return 1
+    fi
+    if echo "$body" | grep -q "\"${embed_id}\""; then
+      echo "  embed model present: ${embed_id}"
+    else
+      echo "  WARNING: embed model not in /models yet: ${embed_id} (load it into OMLX)." >&2
+    fi
+  fi
+}
+
 main() {
   trace_environment
   local ok=0
@@ -272,6 +312,7 @@ main() {
   check_db_tcp || ok=1
   pg_ready_if_available || ok=1
   check_backend || ok=1
+  check_omlx || ok=1
   if [[ "$CHECK_FRONTEND" -eq 1 ]]; then
     check_frontend || ok=1
   fi
