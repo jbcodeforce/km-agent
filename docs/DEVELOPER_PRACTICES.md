@@ -333,6 +333,35 @@ Running `uv run pytest tests` also collects `tests/it/`; those tests may skip (O
 
 Model selection order for Ollama chat in `tests/it/conftest.py` (`ollama_model_id_for_integration`): `KMA_IT_OLLAMA_MODEL` (if listed) → `get_compiler_model_id()` when `KMA_LLM_PROVIDER=ollama` and that id is listed → first pulled model name (lexicographic).
 
+### OMLX (mlx) provider and integration suite
+
+km-agent can run chat (and optionally embeddings) on a local OMLX server, reached as an
+OpenAI-compatible endpoint at `KMA_MLX_BASE_URL` (default `http://127.0.0.1:7999/v1`).
+Chat uses the chat-completions API (Agno `OpenAILike`); OMLX serves no embedding model
+by default, so embeddings on `mlx` require `KMA_EMBED_MODEL` + `KMA_EMBED_DIMENSIONS` set to
+match a model you have loaded (alternatively keep `KMA_EMBED_PROVIDER=ollama`).
+
+The OMLX-backed integration suite is gated by `KMA_IT_MLX=1` and skips cleanly when OMLX,
+Postgres, or the embedding model are unavailable. It covers Compiler (compile/ingest),
+Navigator (retrieve/connect/file_read), SQL (capture/retrieve/organize), Researcher
+(research/ingest — additionally needs `KMA_PARALLEL_API_KEY`), and Linter (lint).
+
+| Variable | Role |
+|----------|------|
+| `KMA_IT_MLX` | Set to `1` to enable the OMLX integration modules (`tests/it/test_*_omlx_integration.py`). |
+| `KMA_IT_MLX_MODEL` | Optional chat model id from `GET ${KMA_MLX_BASE_URL}/models`; default `mlx-community--Qwen3-4B-Instruct-2507-4bit` when present. |
+| `KMA_MLX_BASE_URL` | OMLX chat endpoint base URL (default `http://127.0.0.1:7999/v1`). |
+| `KMA_MLX_EMBED_BASE_URL` | OMLX embeddings base URL; defaults to `KMA_MLX_BASE_URL`. |
+| `KMA_EMBED_MODEL` / `KMA_EMBED_DIMENSIONS` | Required when `KMA_EMBED_PROVIDER=mlx`; must match the loaded model. |
+
+Run the whole OMLX suite:
+
+```bash
+KMA_IT_MLX=1 KMA_LLM_PROVIDER=mlx KMA_EMBED_PROVIDER=mlx \
+  KMA_EMBED_MODEL=<id> KMA_EMBED_DIMENSIONS=<n> \
+  uv run pytest tests/it -m integration -k omlx -v
+```
+
 ### Compiler agent integration test
 
 - **Module:** [`tests/it/test_compiler_agent_integration.py`](file:///Users/jerome/Documents/Code/km-agent/tests/it/test_compiler_agent_integration.py) (gated with `KMA_IT_COMPILER=1`).
