@@ -69,3 +69,10 @@ def test_mlx_embed_with_explicit_values(monkeypatch) -> None:
     monkeypatch.setenv("KMA_EMBED_DIMENSIONS", "1024")
     assert get_embed_model_id() == "some-embed-model"
     assert get_embed_dimensions() == 1024
+
+
+def test_embed_dimensions_non_integer_raises(monkeypatch) -> None:
+    monkeypatch.setenv("KMA_EMBED_PROVIDER", "ollama")
+    monkeypatch.setenv("KMA_EMBED_DIMENSIONS", "not-a-number")
+    with pytest.raises(ValueError, match="not a valid integer"):
+        get_embed_dimensions()

@@ -49,7 +49,7 @@ _DEFAULT_COMPILER_MODEL: dict[CompilerLlmProvider, str] = {
     "mlx": "Qwen3.6-35B-A3B-UD-MLX-4bit",
 }
 
-_DEFAULT_EMBED_MODEL_AND_DIMS: dict[EmbedProvider, tuple[str, int]] = {
+_DEFAULT_EMBED_MODEL_AND_DIMS: dict[Literal["ollama", "openai"], tuple[str, int]] = {
     "ollama": ("nomic-embed-text:latest", 768),
     "openai": ("text-embedding-3-small", 1536),
 }
@@ -108,7 +108,12 @@ def get_embed_dimensions() -> int:
     """Vector size for the embedding model; must match the chosen model."""
     explicit = os.getenv("KMA_EMBED_DIMENSIONS")
     if explicit is not None and explicit.strip() != "":
-        return int(explicit.strip())
+        try:
+            return int(explicit.strip())
+        except ValueError:
+            raise ValueError(
+                f"KMA_EMBED_DIMENSIONS={explicit.strip()!r} is not a valid integer"
+            )
     provider = get_embed_provider()
     if provider == "mlx":
         raise ValueError(
