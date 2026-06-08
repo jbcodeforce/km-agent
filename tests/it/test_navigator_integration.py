@@ -23,8 +23,6 @@ import pytest
 from agno.models.ollama import OllamaResponses
 from agno.run.base import RunStatus
 
-from kma.agents.navigator import build_navigator_agent
-
 pytestmark = [
     pytest.mark.integration,
     pytest.mark.skipif(
@@ -67,6 +65,8 @@ def test_navigator_reads_wiki_and_manifest(
     kma_learnings_it,
     tmp_path: Path,
 ) -> None:
+    from kma.agents.navigator import build_navigator_agent
+
     sandbox = tmp_path / "ctx"
     _write_navigator_sandbox(sandbox)
 

@@ -13,7 +13,6 @@ from agno.run.base import RunStatus
 from agno.run.agent import RunCompletedEvent, RunOutput
 from agno.run.base import RunStatus
 
-from kma.agents.compiler import build_compiler_agent
 from kma.tools.ingest import sync_manifest_from_raw_markdown
 
 pytestmark = [
@@ -36,6 +35,8 @@ def test_compiler_processes_sandbox_raw(
     kma_knowledge_it,
     tmp_path: Path,
 ) -> None:
+    from kma.agents.compiler import build_compiler_agent
+
     sandbox = tmp_path / "ctx"
     shutil.copytree(IT_CONTEXT, sandbox)
     manifest_path = sandbox / "raw" / ".manifest.json"
