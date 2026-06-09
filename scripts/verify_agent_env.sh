@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verify local agent stack: Postgres (Docker + TCP), DB endpoint, AgentOS backend,
+# Verify local agent stack: Postgres (Docker + TCP), DB endpoint, AgentOS backend, th LLM local server
 # and optionally the Vite frontend.
 #
 # From repository root (loads .env when present):
@@ -15,7 +15,11 @@
 #   KMA_FRONTEND_URL  Full URL for frontend check (overrides default origin from KMA_VITE_PORT)
 #   KMA_VERIFY_AGENT_DB_CONTAINER  Set to 0 to skip the docker compose agent-db check (legacy: VERIFY_AGENT_DB_CONTAINER).
 #   KMA_VERIFY_TRACE_ENV           Set to 1 to dump all KMA_* process env (legacy: VERIFY_TRACE_ENV).
-
+#   KMA_LLM_HOST                   The host of the LLM local server (default: http://127.0.0.1:7999)
+#   KMA_LLM_PORT                   The port of the LLM local server (default: 7999)
+#   KMA_LLM_MODEL
+#   KMA_LLM_EMBED_MODEL
+# OMLX_PORT         Host port for `omlx serve` when not already running (default: 7999)
 set -euo pipefail
 
 usage() {
@@ -93,6 +97,11 @@ else
   FRONTEND_BASE="http://127.0.0.1:${FRONTEND_PORT}"
 fi
 
+LLM_HOST="${KMA_LLM_HOST:-${LLM_HOST:-127.0.0.1}}"
+LLM_PORT="${KMA_LLM_PORT:-${LLM_PORT:-7999}}"
+LLM_MODEL="${KMA_LLM_MODEL:-${LLM_MODEL:-qwen3.6:27b-4bit}}"
+LLM_EMBED_MODEL="${KMA_LLM_EMBED_MODEL:-${LLM_EMBED_MODEL:-embeddinggemma-300m-6bit}}"
+
 mask_db_url() {
   echo "postgresql+psycopg://${DB_USER}:***@${DB_HOST}:${DB_PORT}/${DB_DATABASE}"
 }
@@ -139,7 +148,7 @@ trace_resolved_configuration() {
   echo "  KMA_FRONTEND_URL=${KMA_FRONTEND_URL:-<unset>}  effective FRONTEND_BASE=${FRONTEND_BASE}  KMA_VITE_PORT=${FRONTEND_PORT}"
   echo "  frontend_check=${CHECK_FRONTEND}  (1 = --frontend was passed)"
   echo "  KMA_LLM_PROVIDER=${KMA_LLM_PROVIDER:-<unset>}  KMA_EMBED_PROVIDER=${KMA_EMBED_PROVIDER:-<unset>}"
-  echo "  OLLAMA_HOST=${OLLAMA_HOST:-<unset>}"
+  echo "  LLM_HOST=${LLM_HOST:-<unset>}"
   echo "  KMA_MLX_BASE_URL=${KMA_MLX_BASE_URL:-<unset>}  KMA_EMBED_MODEL=${KMA_EMBED_MODEL:-<unset>}  KMA_EMBED_DIMENSIONS=${KMA_EMBED_DIMENSIONS:-<unset>}"
 }
 

@@ -11,7 +11,7 @@
 #   KMA_RAW_BASE   Root for raw.githubusercontent.com files (no trailing slash).
 #                  Example: https://raw.githubusercontent.com/OWNER/REPO/refs/heads/main
 #   KMA_TARGET_DIR Directory for compose.yaml (default: current directory).
-#   SKIP_OLLAMA_INSTALL  If set to 1, do not run the Ollama CLI installer (curl | sh).
+#   SKIP_OMLX_CHECK  If set to 1, do not require the omlx CLI on PATH (e.g. CI that only refreshes Compose).
 
 set -euo pipefail
 
@@ -39,22 +39,18 @@ require_curl() {
   have_cmd curl || die "curl not found. Install curl or use a system that provides it."
 }
 
-# Install Ollama CLI via official script when missing (macOS / Linux).
-# Set SKIP_OLLAMA_INSTALL=1 to skip (e.g. CI that only needs compose).
-ensure_ollama_cli() {
-  if [[ "${SKIP_OLLAMA_INSTALL:-}" == "1" ]]; then
-    echo "Skipping Ollama CLI install (SKIP_OLLAMA_INSTALL=1)."
+# Require the oMLX CLI on PATH (install via Homebrew or https://github.com/jundot/omlx).
+# Set SKIP_OMLX_CHECK=1 to skip (e.g. CI that only needs compose).
+ensure_omlx_cli() {
+  if [[ "${SKIP_OMLX_CHECK:-}" == "1" ]]; then
+    echo "Skipping oMLX CLI check (SKIP_OMLX_CHECK=1)."
     return 0
   fi
-  if have_cmd ollama; then
-    echo "Ollama CLI already present: $(command -v ollama)"
+  if have_cmd omlx; then
+    echo "oMLX CLI present: $(command -v omlx)"
     return 0
   fi
-  require_curl
-  echo "Installing Ollama CLI from https://ollama.com/install.sh ..."
-  curl -fsSL https://ollama.com/install.sh | sh
-  have_cmd ollama || die "Ollama install finished but 'ollama' is not on PATH. Open a new shell or add it to PATH."
-  echo "Ollama CLI installed: $(command -v ollama)"
+  die "omlx CLI not found. Install oMLX (https://github.com/jundot/omlx), then retry."
 }
 
 # github.com/org/repo[.git] or git@github.com:org/repo[.git] -> org repo
@@ -109,12 +105,12 @@ download_compose() {
 
 main() {
   require_curl
-  ensure_ollama_cli
+  ensure_omlx_cli
   require_docker_cli
   require_docker_compose
   download_compose
   echo "Next:"
-  echo "  1. Start Ollama on the host (native): ./scripts/starter.sh"
+  echo "  1. Start OMLX on the host (native): ./scripts/starter.sh"
   echo "  2. Copy example.env to .env, adjust variables, then from this directory run:"
   echo "     docker compose up -d agent-db"
 }

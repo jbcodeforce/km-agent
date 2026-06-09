@@ -9,7 +9,7 @@ Requires Postgres (same as other IT), Ollama with a chat model, and embeddings p
 Environment:
 
 - ``KMA_IT_NAVIGATOR`` — set to ``1`` to enable this module (otherwise skipped).
-- ``OLLAMA_HOST`` — Ollama base URL (default ``http://127.0.0.1:11434``).
+- ``LLM_HOST`` — Ollama base URL (default ``http://127.0.0.1:11434``).
 - ``KMA_IT_OLLAMA_MODEL`` — optional; force a pulled model id for this suite.
 """
 

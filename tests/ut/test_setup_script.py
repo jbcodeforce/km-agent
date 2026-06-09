@@ -33,11 +33,11 @@ def test_setup_script_checks_docker_and_compose() -> None:
     assert "require_docker_compose" in text
 
 
-def test_setup_script_installs_ollama_when_missing() -> None:
+def test_setup_script_verifies_omlx_cli() -> None:
     text = SETUP_SH.read_text(encoding="utf-8")
-    assert "ensure_ollama_cli" in text
-    assert "ollama.com/install.sh" in text
-    assert "SKIP_OLLAMA_INSTALL" in text
+    assert "ensure_omlx_cli" in text
+    assert "github.com/jundot/omlx" in text
+    assert "SKIP_OMLX_CHECK" in text
 
 
 def test_starter_script_exists_and_shell_syntax() -> None:
@@ -107,7 +107,7 @@ def test_setup_download_compose_to_tmp(tmp_path: Path) -> None:
     """Optional: verifies curl + raw URL (uses same default raw base as the script)."""
     env = os.environ.copy()
     env["KMA_TARGET_DIR"] = str(tmp_path)
-    env["SKIP_OLLAMA_INSTALL"] = "1"
+    env["SKIP_OMLX_CHECK"] = "1"
     env["KMA_RAW_BASE"] = (
         "https://raw.githubusercontent.com/jbcodeforce/km-agent/refs/heads/main"
     )

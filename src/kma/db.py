@@ -10,6 +10,7 @@ from os import getenv
 from urllib.parse import quote
 
 from kma.config import (
+    Env,
     get_embed_base_url,
     get_embed_dimensions,
     get_embed_model_id,
@@ -36,12 +37,12 @@ def build_db_url() -> str:
 
     Reads ``KMA_DB_*`` first, then ``DB_*`` (legacy), then defaults.
     """
-    driver = _env_db("KMA_DB_DRIVER", "DB_DRIVER", "postgresql+psycopg")
-    user = _env_db("KMA_DB_USER", "DB_USER", "ai")
-    password = quote(_env_db("KMA_DB_PASS", "DB_PASS", "ai"), safe="")
-    host = _env_db("KMA_DB_HOST", "DB_HOST", "localhost")
-    port = _env_db("KMA_DB_PORT", "DB_PORT", "5432")
-    database = _env_db("KMA_DB_DATABASE", "DB_DATABASE", "ai")
+    driver = _env_db(Env.KMA_DB_DRIVER, Env.DB_DRIVER, "postgresql+psycopg")
+    user = _env_db(Env.KMA_DB_USER, Env.DB_USER, "ai")
+    password = quote(_env_db(Env.KMA_DB_PASS, Env.DB_PASS, "ai"), safe="")
+    host = _env_db(Env.KMA_DB_HOST, Env.DB_HOST, "localhost")
+    port = _env_db(Env.KMA_DB_PORT, Env.DB_PORT, "5432")
+    database = _env_db(Env.KMA_DB_DATABASE, Env.DB_DATABASE, "ai")
 
     return f"{driver}://{user}:{password}@{host}:{port}/{database}"
 
@@ -80,10 +81,10 @@ def build_default_embedder() -> Embedder:
             base_url=get_mlx_embed_base_url(),
         )
     # openai
-    api_key = getenv("OPENAI_API_KEY")
+    api_key = getenv(Env.OPENAI_API_KEY)
     if not api_key or not api_key.strip():
         raise ValueError(
-            "OPENAI_API_KEY is required when KMA_EMBED_PROVIDER=openai "
+            f"{Env.OPENAI_API_KEY} is required when {Env.KMA_EMBED_PROVIDER}=openai "
             "(set the key in the environment or .env)"
         )
     return OpenAIEmbedder(

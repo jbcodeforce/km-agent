@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
 # Start local stack: Postgres + km-agent (Docker by default), or Postgres + AgentOS via uv (--dev).
-# Ollama stays on the host (not in Compose); this script can foreground `ollama serve` when needed.
+# OMLX stays on the host (not in Compose); this script can foreground `omlx serve` when needed.
 #
 # From the repository root:
-#   ./scripts/starter.sh                    # docker compose up -d km-agent (and deps), then Ollama if needed
+#   ./scripts/starter.sh                    # docker compose up -d km-agent (and deps), then OMLX if needed
 #   ./scripts/starter.sh --dev              # Postgres only + uv backend (stop Docker km-agent first if it uses :8000)
 #   ./scripts/starter.sh --dev --frontend   # same as --dev, then Vite chat UI (backend in background)
 #
 # Options:
-#   --dev        Run `uv sync` then AgentOS with `uv run` using `.venv`. Requires uv; Ollama must already respond.
+#   --dev        Run `uv sync` then AgentOS with `uv run` using `.venv`. Requires uv; OMLX must already respond.
 #   --frontend   With --dev: start AgentOS in the background, wait for GET /agents, then `npm run dev`.
 #   -h, --help
 #
 # Environment:
-#   OLLAMA_PORT  Host port for the Ollama HTTP API (default: 11434). Bound via OLLAMA_HOST for ollama serve.
+#   KMA_MLX_BASE_URL  OMLX OpenAI-compatible base URL (default: http://127.0.0.1:7999/v1).
+#   OMLX_PORT         Host port for `omlx serve` when not already running (default: 7999).
+#   OMLX_MODEL_DIR    Model directory for `omlx serve` (default: $HOME/.lmstudio/models).
 #   KMA_AGENT_OS_HOST (AGENT_OS_HOST)  Bind address for AgentOS (default: 127.0.0.1)
 #   KMA_AGENT_OS_PORT (AGENT_OS_PORT, PORT)  AgentOS port (default: 8000)
 #   KMA_VITE_PORT (VITE_PORT)  Vite dev port (default: 5174; read from src/frontend/.env if set)
@@ -23,21 +25,21 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Start Postgres + km-agent (Docker) and optionally foreground Ollama, or run the backend with uv.
+Start Postgres + km-agent (Docker) and optionally foreground OMLX, or run the backend with uv.
 
 Usage:
   ./scripts/starter.sh [--dev] [--frontend]
 
-  (no flags)     docker compose up -d km-agent (starts agent-db if needed). If Ollama is down and the
-                 ollama CLI exists, runs `ollama serve` in the foreground on OLLAMA_PORT.
+  (no flags)     docker compose up -d km-agent (starts agent-db if needed). If OMLX is down and the
+                 omlx CLI exists, runs `omlx serve` in the foreground.
   --dev          Starts only Postgres via Compose, then runs `uv sync` and execs AgentOS (requires uv).
-                 Docker service km-agent must not be running (port 8000). Ollama must already respond.
+                 Docker service km-agent must not be running (port 8000). OMLX must already respond.
   --dev --frontend
                  Same as --dev but AgentOS runs in the background; sets VITE_AGENT_OS_ORIGIN from
                  AGENT_OS_PORT, waits for GET /agents, then runs `npm run dev` in src/frontend.
 
 Environment:
-  OLLAMA_PORT   Host port for Ollama HTTP API (default: 11434).
+  KMA_MLX_BASE_URL, OMLX_PORT, OMLX_MODEL_DIR  See script header comments.
   KMA_AGENT_OS_HOST, KMA_AGENT_OS_PORT, KMA_VITE_PORT  See script header comments.
 EOF
 }
@@ -52,7 +54,7 @@ have_cmd() {
 }
 
 require_curl() {
-  have_cmd curl || die "curl not found (needed to probe the Ollama port)."
+  have_cmd curl || die "curl not found (needed to probe the OMLX endpoint)."
 }
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -80,8 +82,9 @@ fi
 
 FRONTEND_DIR="${REPO_ROOT}/src/frontend"
 
-port="${OLLAMA_PORT:-11434}"
-base="http://127.0.0.1:${port}"
+mlx_base="${KMA_MLX_BASE_URL:-http://127.0.0.1:7999/v1}"
+mlx_base="${mlx_base%/}"
+mlx_models_url="${mlx_base}/models"
 
 require_docker_for_compose() {
   have_cmd docker || die "Docker CLI not found. Install Docker or use --dev with Postgres reachable."
@@ -128,8 +131,8 @@ prepare_dev_backend() {
   fi
   have_cmd uv || die "uv not found; install uv and run 'uv sync' from the repo root."
   require_curl
-  if ! curl -fsS "${base}/api/tags" >/dev/null 2>&1; then
-    die "Ollama is not responding at ${base}. Start it first (e.g. ollama serve in another terminal), then retry --dev."
+  if ! curl -fsS "${mlx_models_url}" >/dev/null 2>&1; then
+    die "OMLX is not responding at ${mlx_base}. Start it first (e.g. ./scripts/starter.sh in another terminal), then retry --dev."
   fi
   cd "${REPO_ROOT}" || die "cannot cd to ${REPO_ROOT}"
   echo "starter.sh: uv sync (ensure ${REPO_ROOT}/.venv matches the project)..."
@@ -214,18 +217,22 @@ fi
 # --- Docker stack (default) ---
 ensure_km_agent_docker
 
-if ! have_cmd ollama; then
-  echo "starter.sh: ollama CLI not found. Run ./scripts/setup.sh to install it if you need local models." >&2
-  echo "Docker services are up; start Ollama separately when ready."
+if ! have_cmd omlx; then
+  echo "starter.sh: omlx CLI not found. Install oMLX (https://github.com/jundot/omlx) if you need local models." >&2
+  echo "Docker services are up; start OMLX separately when ready."
   exit 0
 fi
 
 require_curl
-if curl -fsS "${base}/api/tags" >/dev/null 2>&1; then
-  echo "Ollama is already responding at ${base}. Docker stack is up; nothing else to start."
+if curl -fsS "${mlx_models_url}" >/dev/null 2>&1; then
+  echo "OMLX is already responding at ${mlx_base}. Docker stack is up; nothing else to start."
   exit 0
 fi
 
-echo "Starting Ollama at ${base} (foreground; Ctrl+C to stop)..."
-export OLLAMA_HOST="127.0.0.1:${port}"
-exec ollama serve
+export OMLX_PORT="${OMLX_PORT:-7999}"
+export OMLX_MODEL_DIR="${OMLX_MODEL_DIR:-$HOME/.lmstudio/models}"
+export OMLX_API_KEY="${OMLX_API_KEY:-localkey}"
+
+echo "Starting OMLX at ${mlx_base} (foreground; Ctrl+C to stop)..."
+echo "Model dir: ${OMLX_MODEL_DIR}"
+exec omlx serve --model-dir="${OMLX_MODEL_DIR}"

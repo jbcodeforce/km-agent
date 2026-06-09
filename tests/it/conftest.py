@@ -9,11 +9,11 @@ import urllib.request
 
 import pytest
 
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/")
+LLM_HOST = os.environ.get("LLM_HOST", "http://127.0.0.1:11434").rstrip("/")
 
 
 def _fetch_ollama_tags() -> dict | None:
-    url = f"{OLLAMA_HOST}/api/tags"
+    url = f"{LLM_HOST}/api/tags"
     try:
         with urllib.request.urlopen(url, timeout=5) as resp:  # noqa: S310
             return json.loads(resp.read().decode())
@@ -26,15 +26,15 @@ def ollama_tags() -> dict:
     data = _fetch_ollama_tags()
     if data is None:
         pytest.skip(
-            f"Ollama not reachable at {OLLAMA_HOST} "
-            "(set OLLAMA_HOST if needed; start the server with ./scripts/starter.sh or `ollama serve`)"
+            f"Ollama not reachable at {LLM_HOST} "
+            "(set LLM_HOST if needed; start the server with ./scripts/starter.sh or `ollama serve`)"
         )
     return data
 
 
 @pytest.fixture(scope="session")
 def ollama_host() -> str:
-    return OLLAMA_HOST
+    return LLM_HOST
 
 
 @pytest.fixture(scope="session")
@@ -77,8 +77,8 @@ def ollama_embed_model_available() -> str:
     data = _fetch_ollama_tags()
     if data is None:
         pytest.skip(
-            f"Ollama not reachable at {OLLAMA_HOST} "
-            "(set OLLAMA_HOST if needed; start the server with ./scripts/starter.sh or `ollama serve`)"
+            f"Ollama not reachable at {LLM_HOST} "
+            "(set LLM_HOST if needed; start the server with ./scripts/starter.sh or `ollama serve`)"
         )
     mid = get_embed_model_id()
     names = {m.get("name") for m in data.get("models", []) if m.get("name")}

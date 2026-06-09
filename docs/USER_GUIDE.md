@@ -29,7 +29,7 @@ Edit **`.env`** at minimum for:
 | Area | Variables (examples) | Notes |
 |------|------------------------|--------|
 | Context on disk | `KMA_CONTEXT_DIR` | Default `./context` — here live `raw/`, `wiki/`, and other files agents read and write. You can have different contexts |
-| Database | `KMA_DB_HOST`, `KMA_DB_PORT`, `KMA_DB_USER`, `KMA_DB_PASS`, `KMA_DB_DATABASE` | On the **host**, use `localhost` and the **published** Postgres port (often same as `POSTGRES_PUBLISH_PORT` in Compose). See [DEVELOPER_PRACTICES — Postgres](DEVELOPER_PRACTICES.md#local-postgresql-docker-compose-only). |
+| Database | `KMA_DB_HOST`, `KMA_DB_PORT`, `KMA_DB_USER`, `KMA_DB_PASS`, `KMA_DB_DATABASE` | On the **host**, use `localhost`). See [DEVELOPER_PRACTICES — Postgres](DEVELOPER_PRACTICES.md#local-postgresql-docker-compose-only). |
 | Chat model | `KMA_LLM_PROVIDER`, `KMA_MODEL_ID` (or provider-specific keys) | Pull the Ollama model you reference before first chat. |
 | Embeddings | `KMA_EMBED_PROVIDER`, `KMA_EMBED_MODEL`, `KMA_EMBED_DIMENSIONS` | Vector size must match the model; do not change dimensions on an existing DB without a plan (see developer practices). |
 

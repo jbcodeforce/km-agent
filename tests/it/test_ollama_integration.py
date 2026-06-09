@@ -7,7 +7,7 @@ Start Ollama on the host first: ``./scripts/starter.sh`` (see ``docs/DEVELOPER_P
 
 Environment:
 
-- ``OLLAMA_HOST`` — Ollama base URL (default ``http://127.0.0.1:11434``).
+- ``LLM_HOST`` — Ollama base URL (default ``http://127.0.0.1:11434``).
 - ``KMA_IT_OLLAMA_MODEL`` — optional; force a pulled model id for this suite (e.g. a
   small model) when the compiler default is present but cannot run on this machine.
 """

@@ -58,9 +58,7 @@ The database service in `compose.yaml` is named `agent-db` (image `agnohq/pgvect
 docker compose up -d agent-db
 ```
 
-Compose reads `.env` when present. Postgres is published on the host as `POSTGRES_PUBLISH_PORT` → `5432` inside the container. See `compose.yaml` under `agent-db.ports`. This is separate from `DB_PORT`, which `kma.db.build_db_url()` uses when the app or pytest connects to the database. Keep `DB_PORT` equal to `POSTGRES_PUBLISH_PORT` when you run tests on the host against the Compose database.
-
-If port `5432` is already in use on your machine, set for example `POSTGRES_PUBLISH_PORT=5433` in `.env` and set `DB_HOST=localhost` and `DB_PORT=5433` for local runs and unit tests.
+Compose reads `.env` when present. Postgres is published on the host as `KMA_DB_POST` → `5432` inside the container. See `compose.yaml` under `agent-db.ports`. 
 
 To stop just that service:
 
@@ -101,10 +99,13 @@ docker compose down -v
 docker compose up -d agent-db
 ```
 
-## Ollama (native on the host)
+## LLM local server (native on the host)
 
+when using ollama:
 * Ollama does not run in Docker Compose Models because it consumes more memory than native. The binaries live in the default Ollama locations on your machine (for example `~/.ollama` on macOS/Linux). 
-* The `km-agent` service in `compose.yaml` talks to the host via `OLLAMA_HOST`, defaulting to `http://host.docker.internal:11434` so the container can reach a server bound on the host.
+* The `km-agent` service in `compose.yaml` talks to the host via `LLM_HOST`, defaulting to `http://host.docker.internal:11434` so the container can reach a server bound on the host.
+
+For oMLX the server is on port 7999
 
 ### Bootstrap CLI (`scripts/setup.sh`)
 
@@ -120,13 +121,15 @@ In a separate terminal, leave the Ollama API running while you develop or run in
 ./scripts/starter.sh --dev
 ```
 
-If something is already listening on `http://127.0.0.1:${OLLAMA_PORT:-11434}/api/tags`, the script exits without starting a second server. Override the port with `OLLAMA_PORT` (and keep `OLLAMA_HOST` consistent in `.env` / clients).
+If something is already listening on `http://127.0.0.1:${LLM_PORT:-11434}/api/tags`, the script exits without starting a second server. Override the port with `LLM_PORT` (and keep `LLM_HOST` consistent in `.env` / clients).
 
-Pull at least one chat model before using the Compiler or integration tests, for example:
+Pull at least one chat model before using the Compiler or integration tests, for example with ollama:
 
 ```bash
 ollama pull qwen3.6:35b-a3b
 ```
+
+for OMLX uses the user interface.
 
 Embeddings: `kma.db.create_knowledge` uses `build_default_embedder()` from `KMA_EMBED_PROVIDER`: `ollama` (Agno `OllamaEmbedder` with `KMA_EMBED_MODEL` / `KMA_EMBED_DIMENSIONS`, defaults `nomic-embed-text:latest` / `768`) or `openai` (`OpenAIEmbedder`, defaults `text-embedding-3-small` / `1536`, requires `OPENAI_API_KEY`). Pull the Ollama embedding model when using Ollama:
 
@@ -294,7 +297,7 @@ Run only unit tests under `tests/ut/`:
 uv run pytest tests/ut -v
 ```
 
-Tests that talk to PostgreSQL (for example `tests/ut/test_db_public_schema.py`) use the same URL as `kma.db`. Run them on the host with `DB_HOST=localhost` (or `127.0.0.1`) — not `agent-db`, which only resolves inside the Compose network. Set `DB_PORT` to the same value as `POSTGRES_PUBLISH_PORT` from `compose.yaml` (default `5432`). Confirm the mapping with `docker compose ps` or `docker port agent-db`. If the server is not reachable, those tests skip instead of failing.
+Tests that talk to PostgreSQL (for example `tests/ut/test_db_public_schema.py`) use the same URL as `kma.db`. Run them on the host with `DB_HOST=localhost` (or `127.0.0.1`) — not `agent-db`, which only resolves inside the Compose network. Set `KMA_DB_PORT` default `5432`. Confirm the mapping with `docker compose ps` or `docker port agent-db`. If the server is not reachable, those tests skip instead of failing.
 
 ## Integration tests
 
@@ -320,15 +323,15 @@ Running `uv run pytest tests` also collects `tests/it/`; those tests may skip (O
 |----------|------|
 | `KMA_LLM_PROVIDER` | Compiler chat backend: `ollama` (default), `openai`, or `anthropic`. |
 | `KMA_MODEL_ID` | Model id for the active compiler provider (optional; defaults per provider in `kma/config.py`). |
-| `OLLAMA_HOST` | Base URL for Ollama when the compiler or embeddings use Ollama (default `http://127.0.0.1:11434`). |
+| `LLM_HOST` | Base URL for Ollama when the compiler or embeddings use Ollama (default `http://127.0.0.1:11434`). |
 | `OPENAI_API_KEY` | Required when `KMA_LLM_PROVIDER=openai` or `KMA_EMBED_PROVIDER=openai`. |
 | `OPENAI_BASE_URL` | Optional; forwarded to OpenAI chat and OpenAI embed clients when set. |
 | `ANTHROPIC_API_KEY` | Required when `KMA_LLM_PROVIDER=anthropic`. |
 | `KMA_EMBED_PROVIDER` | Embeddings: `ollama` (default) or `openai`. |
 | `KMA_EMBED_MODEL` | Embedding model id (Ollama) or name (OpenAI); defaults depend on `KMA_EMBED_PROVIDER`. |
 | `KMA_EMBED_DIMENSIONS` | Vector length; must match the model (defaults per provider in `kma/config.py`). |
-| `KMA_IT_OLLAMA_MODEL` | Optional override for which pulled Ollama model the compiler integration test uses for chat (`OllamaResponses`). If unset, the suite prefers `get_compiler_model_id()` when that id appears in `GET {OLLAMA_HOST}/api/tags` and `KMA_LLM_PROVIDER=ollama`; otherwise the first pulled model name (lexicographic). Use a small model if your default is too large for RAM. |
-| `OLLAMA_EMBED_HOST` | Optional; Ollama embed host when `KMA_EMBED_PROVIDER=ollama`. If unset, `OLLAMA_HOST` is used (`/v1` stripped when present). |
+| `KMA_IT_OLLAMA_MODEL` | Optional override for which pulled Ollama model the compiler integration test uses for chat (`OllamaResponses`). If unset, the suite prefers `get_compiler_model_id()` when that id appears in `GET {LLM_HOST}/api/tags` and `KMA_LLM_PROVIDER=ollama`; otherwise the first pulled model name (lexicographic). Use a small model if your default is too large for RAM. |
+| `OLLAMA_EMBED_HOST` | Optional; Ollama embed host when `KMA_EMBED_PROVIDER=ollama`. If unset, `LLM_HOST` is used (`/v1` stripped when present). |
 | `KMA_IT_COMPILER` | Set to `1` to enable the compiler agent integration test (`tests/it/test_compiler_agent_integration.py`). Without it, that test is skipped so default `pytest tests` stays lighter. |
 
 Model selection order for Ollama chat in `tests/it/conftest.py` (`ollama_model_id_for_integration`): `KMA_IT_OLLAMA_MODEL` (if listed) → `get_compiler_model_id()` when `KMA_LLM_PROVIDER=ollama` and that id is listed → first pulled model name (lexicographic).
@@ -388,7 +391,7 @@ Use `--dry-run` or `--skip-compiler` to only refresh manifests and frontmatter. 
 
 ### Skip vs failure
 
-- **Skip** if Ollama is not reachable at `OLLAMA_HOST` when an integration check needs it (for example `ollama_tags` or Ollama embeddings). Start the server with `./scripts/starter.sh` or `ollama serve`.
+- **Skip** if Ollama is not reachable at `LLM_HOST` when an integration check needs it (for example `ollama_tags` or Ollama embeddings). Start the server with `./scripts/starter.sh` or `ollama serve`.
 - **Skip** if `KMA_EMBED_PROVIDER=openai` and `OPENAI_API_KEY` is unset (compiler integration embed gate).
 - **Skip** if no Ollama models are returned when the test needs a pulled Ollama chat or embed model.
 - **Skip** after a run if Ollama returns an error that looks like missing model or insufficient system memory for the chosen id; the skip message suggests setting `KMA_IT_OLLAMA_MODEL` to a smaller pulled model.

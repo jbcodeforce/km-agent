@@ -561,7 +561,7 @@ Expected: FAIL on the two new tests (`check_omlx` not present).
 
 - [ ] **Step 3: Edit `scripts/verify_agent_env.sh`**
 
-Add resolved-config lines: in `trace_resolved_configuration()`, after the `OLLAMA_HOST` echo, add:
+Add resolved-config lines: in `trace_resolved_configuration()`, after the `LLM_HOST` echo, add:
 
 ```bash
   echo "  KMA_MLX_BASE_URL=${KMA_MLX_BASE_URL:-<unset>}  KMA_EMBED_MODEL=${KMA_EMBED_MODEL:-<unset>}  KMA_EMBED_DIMENSIONS=${KMA_EMBED_DIMENSIONS:-<unset>}"

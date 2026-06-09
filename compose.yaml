@@ -13,10 +13,8 @@ services:
       # Named volume: bind-mounting the host over /var/lib/postgresql breaks the image
       # entrypoint (chown on PGDATA /var/lib/postgresql/18/docker) on Docker Desktop/macOS.
       - km-agent-postgres:/var/lib/postgresql
-    # Host port -> container 5432. Use POSTGRES_PUBLISH_PORT (not DB_PORT) so an empty DB_PORT
-    # in .env does not break publishing; host-side tools/tests use DB_PORT = this value.
     ports:
-      - "${POSTGRES_PUBLISH_PORT:-5432}:5432"
+      - "${KMA_DB_PORT:-5432}:5432"
     networks:
       - km-agent
 
@@ -57,7 +55,7 @@ services:
       - EXA_API_KEY=${EXA_API_KEY:-}
       - KMA_PARALLEL_API_KEY=${KMA_PARALLEL_API_KEY:-}
       # Native Ollama on the host (run ./scripts/starter.sh). host.docker.internal is set below.
-      - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
+      - LLM_HOST=${LLM_HOST:-http://host.docker.internal:11434}
       # Git sync
       - GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN:-}
       - KMA_REPO_URL=${KMA_REPO_URL:-}
