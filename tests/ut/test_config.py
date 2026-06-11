@@ -2,18 +2,19 @@
 
 from pathlib import Path
 
-import pytest
+
 from dotenv import load_dotenv
 from kma.config import (
     Env,
     get_embed_dimensions,
     get_embed_model_id,
     get_embed_provider,
+    get_embed_host,
     get_llm_model_id,
     get_llm_provider,
     get_llm_base_url,
     get_llm_api_key,
-    get_llm_embed_base_url,
+    get_embed_base_url,
     kma_agent_reasoning_enabled,
     kma_stream_events_enabled,
     kma_show_team_member_responses_enabled,
@@ -52,12 +53,12 @@ def test_llm_configs() -> None:
     load_dotenv(REPO_ROOT / "example.env", override=True)
     assert get_llm_provider() == "mlx"
     assert get_llm_model_id() == "Qwen3.6:27b-4bit"
+    assert get_llm_base_url() == "http://localhost:7999/v1"
+    assert get_llm_api_key() == "not-needed"
+
     assert get_embed_provider() == "mlx"
     assert get_embed_model_id() == "embeddinggemma-300m-6bit"
     assert get_embed_dimensions() == 2048
+    assert get_embed_base_url() == "http://localhost:7999/v1"
+    assert get_embed_host() == "localhost"  
     
-    assert get_llm_base_url() == "http://localhost:7999/v1"
-    assert get_llm_api_key() == "not-needed"
-    assert get_llm_embed_base_url() == "http://localhost:7999"
-    
-

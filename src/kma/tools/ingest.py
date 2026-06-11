@@ -8,7 +8,7 @@ from typing import Sequence
 
 from agno.tools import tool
 
-
+from kma.config import Env
 
 def _slugify(text: str) -> str:
     """Convert text to a filesystem-safe slug."""
@@ -126,7 +126,6 @@ def _build_frontmatter(title: str, source: str, tags: list[str], doc_type: str) 
 
 def _do_ingest_url(raw_dir: Path, url: str, title: str, tags: list[str] | None = None, doc_type: str = "article") -> str:
     """Core ingest-URL logic (callable directly and via @tool wrapper)."""
-    from kma.config import PARALLEL_API_KEY
 
     slug = _slugify(title)
     filename = f"{slug}.md"
@@ -135,11 +134,11 @@ def _do_ingest_url(raw_dir: Path, url: str, title: str, tags: list[str] | None =
 
     # Try to fetch content via Parallel
     extracted = ""
-    if PARALLEL_API_KEY:
+    if Env.KMA_PARALLEL_API_KEY:
         try:
             from parallel import Parallel
 
-            client = Parallel(api_key=PARALLEL_API_KEY)
+            client = Parallel(api_key=Env.KMA_PARALLEL_API_KEY)
             result = client.beta.extract(urls=[url], full_content=True)
             if result and result.results:
                 r = result.results[0]

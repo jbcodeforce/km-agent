@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
+from kma.config import Env
 from kma.tools import ingest as ingest_mod
 from kma.tools.ingest import (
     _build_frontmatter,
@@ -91,7 +91,7 @@ def test_do_ingest_text_writes_file_and_manifest(tmp_path: Path) -> None:
 
 
 def test_do_ingest_url_without_parallel_key_writes_stub(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(ingest_mod, "PARALLEL_API_KEY", None, raising=False)
+    monkeypatch.setattr(ingest_mod, Env.KMA_PARALLEL_API_KEY, None, raising=False)
     raw = tmp_path / "raw"
     raw.mkdir()
     msg = _do_ingest_url(raw, "https://example.com/page", "Example Page", tags=None, doc_type="article")

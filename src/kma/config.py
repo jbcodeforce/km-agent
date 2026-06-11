@@ -2,7 +2,8 @@ import os
 from pathlib import Path
 from typing import Final, Literal
 
-
+from dotenv import load_dotenv
+load_dotenv()
 class Env:
     """Environment variable names (sync with repository ``.env``)."""
 
@@ -171,8 +172,8 @@ def get_embed_dimensions() -> int:
 
 def _llm_host_port_base_url() -> str | None:
     """Build ``http://host:port`` from ``KMA_LLM_HOST`` + ``KMA_LLM_PORT`` (legacy ``LLM_*`` accepted)."""
-    host = _env_first_nonempty(Env.KMA_LLM_HOST, Env.LLM_HOST)
-    port = _env_first_nonempty(Env.KMA_LLM_PORT, Env.LLM_PORT)
+    host = _env_first_nonempty(Env.KMA_LLM_HOST)
+    port = _env_first_nonempty(Env.KMA_LLM_PORT)
     if host is None or port is None:
         return None
     h = host.rstrip("/")
@@ -201,12 +202,17 @@ def get_llm_api_key() -> str:
     return "not-needed"
 
 
-def get_llm_embed_base_url() -> str:
+def get_embed_base_url() -> str:
     """Base URL for OMLX embeddings; falls back to the chat base URL (same server)."""
     raw = os.getenv(Env.KMA_EMBED_BASE_URL)
     if raw is not None and raw.strip() != "":
         return raw.strip()
     return get_llm_base_url()
+
+def get_embed_host() -> str:
+    """Host for OMLX embeddings; falls back to the chat host."""
+    raw =get_embed_base_url()
+    return raw.split("://")[-1].split(":")[0]
 
 
 

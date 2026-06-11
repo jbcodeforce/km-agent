@@ -4,12 +4,16 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 
-from kma.db import db_url, get_sql_engine, KMA_SCHEMA
+from kma.db import db_url, get_sql_engine, KMA_SCHEMA, create_knowledge
 
+def test_db_url() -> None:
+    assert db_url is not None
+    assert db_url.startswith("postgresql+psycopg://")
+    assert db_url.endswith("/ai")
 
 def test_postgres_public_schema_exists() -> None:
     """Default ``public`` schema is present on the configured database."""
-    engine = create_engine(db_url)
+    engine = get_sql_engine()
     try:
         with engine.connect() as conn:
             one = conn.execute(
@@ -27,6 +31,7 @@ def test_postgres_public_schema_exists() -> None:
 def test_postgres_kma_schema_exists() -> None:
     """KMA schema is present on the configured database."""
     engine = get_sql_engine()
+    assert engine is not None
     try:
         with engine.connect() as conn:
             one = conn.execute(
@@ -40,3 +45,11 @@ def test_postgres_kma_schema_exists() -> None:
         pytest.skip(f"PostgreSQL not reachable ({db_url!r}): {exc}")
     finally:
         engine.dispose()
+
+def test_create_knowledge_base() -> None:
+    knowledge_base = create_knowledge(name="test", table_name="test")
+    assert knowledge_base is not None
+    assert knowledge_base.name == "test"
+    assert knowledge_base.vector_db is not None
+    assert knowledge_base.contents_db is not None
+    print(knowledge_base)

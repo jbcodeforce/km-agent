@@ -140,7 +140,7 @@ def build_compiler_agent(
         tools=build_compiler_tools(km, context_dir=ctx, raw_roots=raw_roots),
         add_datetime_to_context=True,
         markdown=True,
-        reasoning=kma_agent_reasoning_enabled(),
+        #reasoning=kma_agent_reasoning_enabled(),
         stream_events=True if kma_stream_events_enabled() else None,
     )
 
