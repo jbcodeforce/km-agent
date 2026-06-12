@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest
 from agno.run.base import RunStatus
-from agno.run.agent import RunCompletedEvent, RunOutput
-from agno.run.base import RunStatus
+from agno.run.agent import RunOutput
 
-from kma.agents.compiler import build_compiler_agent
+from kma.agents.compiler import build_compile_file_prompt, build_compiler_agent
 from kma.tools.ingest import sync_manifest_from_raw_markdown
 
 
@@ -24,7 +22,7 @@ SUMMARY_NAME = "fitforpurpose.md"
 @pytest.mark.usefixtures("require_postgres")
 def test_compiler_processes() -> None:
     """
-    Create a sandbox manifest and process the file. 
+    Create a sandbox manifest and process one md file from the raw folder. 
     """
     raw_dir = IT_CONTEXT / "raw"
     sync_manifest_from_raw_markdown(raw_dir)
@@ -33,11 +31,9 @@ def test_compiler_processes() -> None:
     )
     assert agent is not None
     assert agent.model is not None
-    assert agent.model.id == "Qwen3.6-35B-A3B-UD-MLX-4bit"
+    assert agent.model.id == "Qwen3.6-27B-PARO"
     assert type(agent.model).__name__ == "OpenAILike"
-    prompt = (
-        "process the file fitforpurpose.md"
-    )
+    prompt = build_compile_file_prompt(SOURCE_RAW)
     try:
         final: RunOutput | None = None
         for chunk in agent.run(
@@ -59,6 +55,13 @@ def test_compiler_processes() -> None:
         entry = next((e for e in manifest if e.get("file") == SOURCE_RAW), None)
         assert entry is not None
         assert entry.get("compiled") is True
+
+        other_uncompiled = [
+            e for e in manifest if e.get("file") != SOURCE_RAW and e.get("compiled") is not True
+        ]
+        assert len(other_uncompiled) >= 1, "fixture should have other uncompiled entries"
+        for e in other_uncompiled:
+            assert e.get("compiled") is False, f"unexpected batch compile of {e.get('file')}"
 
         summary = IT_CONTEXT / "wiki" / "summaries" / SUMMARY_NAME
         assert summary.is_file()

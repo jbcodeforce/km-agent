@@ -12,7 +12,7 @@ from agno.knowledge import Knowledge
 from agno.models.base import Model
 
 from kma.llm_factory import build_default_llm_model
-from kma.agents.settings import agent_db, kma_knowledge
+from kma.agents.settings import get_agent_db, get_kma_knowledge
 from kma.tools.builder import build_linter_tools
 
 LINTER_INSTRUCTIONS = """\
@@ -22,7 +22,7 @@ You are the Linter, responsible for wiki quality and integrity.
 Run health checks on the wiki and produce a lint report.
 
 ### Checks to Run
-0. All text files should me markdown file with '.md' extension
+0. All text files should be markdown files with '.md' extension
 1. **Contradictions**: Compare claims across concept articles. Flag conflicts with source citations.
 2. **Stale articles**: Flag concepts not updated in 30+ days.
 3. **Missing concepts**: Find references to concepts that don't have articles yet (e.g. related links pointing to non-existent files).
@@ -75,25 +75,37 @@ Include these as suggestions in the report, not direct edits.
 def build_linter_agent(
      *,
     context_dir: Path | str | None = None,
-    raw_roots: Sequence[tuple[str, Path]] | None = None,
     knowledge: Knowledge | None = None,
     model: Model | None = None,
 ) -> Agent:
     md = model or build_default_llm_model()
-    km: Knowledge = knowledge or kma_knowledge
+    km: Knowledge = knowledge or get_kma_knowledge()
     return Agent(
         id="linter",
         name="Linter",
         role="Runs health checks on the wiki, finds issues, suggests improvements",
         model=md,
-        db=agent_db,
+        db=get_agent_db(),
         instructions=LINTER_INSTRUCTIONS,
         knowledge=km,
         search_knowledge=True,
-        tools=build_linter_tools(km),
+        tools=build_linter_tools(km, context_dir=context_dir),
         add_datetime_to_context=True,
         markdown=True,
     )
 
 
-linter = build_linter_agent()
+_linter: Agent | None = None
+
+
+def get_linter() -> Agent:
+    global _linter
+    if _linter is None:
+        _linter = build_linter_agent()
+    return _linter
+
+
+def __getattr__(name: str):
+    if name == "linter":
+        return get_linter()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

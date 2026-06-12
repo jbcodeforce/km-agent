@@ -2,8 +2,7 @@
 Navigator Agent
 ===============
 
-The primary agent users interact with. Handles
-SQL, files, web research, and wiki-aware Q&A.
+The primary agent users interact with. Handles files, web research, and wiki-aware Q&A.
 
 Reads the wiki index first for knowledge questions, then pulls
 specific articles. Falls back to raw/ and live sources.
@@ -20,7 +19,7 @@ from agno.learn import LearnedKnowledgeConfig, LearningMachine, LearningMode
 from agno.models.base import Model
 
 from kma.agents.instructions import BASE_INSTRUCTIONS, EXA_INSTRUCTIONS, WIKI_INSTRUCTIONS
-from kma.agents.settings import agent_db, kma_knowledge, kma_learnings
+from kma.agents.settings import get_agent_db, get_kma_knowledge, get_kma_learnings
 from kma.config import kma_agent_reasoning_enabled, kma_stream_events_enabled
 from kma.llm_factory import build_default_llm_model
 from kma.tools.builder import build_navigator_tools
@@ -28,9 +27,6 @@ from kma.tools.builder import build_navigator_tools
 
 def build_navigator_instructions() -> str:
     """Build instructions for the Navigator agent (core ops + wiki-aware retrieval).
-
-    Excludes Slack usage instructions — Slack posting is handled by the
-    team leader, not the Navigator.
     """
     parts = [BASE_INSTRUCTIONS, EXA_INSTRUCTIONS, WIKI_INSTRUCTIONS]
     return "".join(parts)
@@ -55,10 +51,10 @@ def build_navigator_agent(
         context_dir: Root containing ``wiki/`` and ``raw/`` for file and wiki tools.
         instructions: System instructions (default from ``build_navigator_instructions()``).
     """
-    kn: Knowledge = knowledge or kma_knowledge
-    lr: Knowledge = learnings or kma_learnings
+    kn: Knowledge = knowledge or get_kma_knowledge()
+    lr: Knowledge = learnings or get_kma_learnings()
     md = model or build_default_llm_model()
-    pg: PostgresDb = db or agent_db
+    pg: PostgresDb = db or get_agent_db()
     instr = instructions if instructions is not None else build_navigator_instructions()
     ctx = Path(context_dir).resolve() if context_dir is not None else None
     return Agent(
@@ -83,9 +79,22 @@ def build_navigator_agent(
         read_chat_history=True,
         num_history_runs=10,
         markdown=True,
-        reasoning=kma_agent_reasoning_enabled(),
+        #reasoning=kma_agent_reasoning_enabled(),
         stream_events=True if kma_stream_events_enabled() else None,
     )
 
 
-navigator = build_navigator_agent()
+_navigator: Agent | None = None
+
+
+def get_navigator() -> Agent:
+    global _navigator
+    if _navigator is None:
+        _navigator = build_navigator_agent()
+    return _navigator
+
+
+def __getattr__(name: str):
+    if name == "navigator":
+        return get_navigator()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

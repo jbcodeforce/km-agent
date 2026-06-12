@@ -1,9 +1,9 @@
 ---
 title: "Apache Flink"
 created: 2026-06-10
-updated: 2026-06-10
+updated: 2026-06-11
 sources: [raw/fitforpurpose.md]
-related: [Apache Kafka, Apache NiFi, Complex Event Processing, State Management, Streaming Architecture]
+related: [Apache Kafka, Apache NiFi, Complex Event Processing, State Management, Streaming Architecture, Kafka Streams]
 tags: [flink, streaming, computation, architecture]
 ---
 
@@ -40,13 +40,7 @@ Flink can integrate with rule engines in two ways:
 - [Fit for Purpose](../summaries/fitforpurpose.md)
 
 ## Related
-- [Apache Kafka](wiki/concepts/apache-kafka.md)
-- [Apache NiFi](wiki/concepts/apache-nifi.md)
-- [Complex Event Processing](wiki/concepts/complex-event-processing.md)
-- [Apache Kafka](apache-kafka.md)
+- [Kafka Streams](kafka-streams.md)
 - [Apache NiFi](apache-nifi.md)
 - [Complex Event Processing](complex-event-processing.md)
-## Related
-- [Apache Kafka](apache-kafka.md)
-- [Apache NiFi](apache-nifi.md)
-- [Complex Event Processing](complex-event-processing.md)
+- [Rule Engines](rule-engines.md)

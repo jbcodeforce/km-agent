@@ -82,7 +82,7 @@ fi
 
 FRONTEND_DIR="${REPO_ROOT}/src/frontend"
 
-mlx_base="${KMA_MLX_BASE_URL:-http://127.0.0.1:7999/v1}"
+mlx_base="${KMA_MLX_BASE_URL:-http://localhost:7999/v1}"
 mlx_base="${mlx_base%/}"
 mlx_models_url="${mlx_base}/models"
 

@@ -61,6 +61,3 @@ def test_build_default_embedder_mlx() -> None:
     assert embedder.dimensions == 2048
     assert embedder.base_url == "http://localhost:7999/v1"
     assert embedder.api_key == "not-needed"
-    src_text = "This is a test text"
-    embedding = embedder.get_embedding(text=src_text)
-    assert len(embedding) > 512

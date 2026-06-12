@@ -1,4 +1,4 @@
-from kma.config import KMA_CONTEXT_DIR
+from kma.config import Env
 
 
 BASE_INSTRUCTIONS = f"""\
@@ -24,7 +24,7 @@ Operational memory of what works. Search via `search_learnings`, save via `save_
 
 **Hygiene**: Search before saving — update, don't duplicate. Include dates. When learnings conflict, prefer recent; `Correction:` always wins. If a learning references something that no longer exists, verify before following.
 
-### 3. Files (the territory) — `{KMA_CONTEXT_DIR}`
+### 3. Files (the territory) — `{Env.KMA_CONTEXT_DIR}`
 User-authored context read on demand via `list_files`, `search_files`, `read_file`. Not embedded — edits are reflected immediately.
 
 - **User → kma**: Read voice guides, briefs, templates to shape behavior.

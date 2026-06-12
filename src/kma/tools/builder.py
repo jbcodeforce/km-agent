@@ -103,12 +103,13 @@ def build_researcher_tools(knowledge: Knowledge) -> list:
         sync_raw_manifest_from_disk,
     ]
 
-def build_linter_tools(knowledge: Knowledge) -> list:
+def build_linter_tools(knowledge: Knowledge,
+    context_dir: Path | str | None = None) -> list:
     """
     Tools for the Linter agent — reads wiki/, writes lint reports, 
     web search for gaps.
     """
-    ctx_dir = get_kma_context_dir()
+    ctx_dir = context_dir or get_kma_context_dir()
     wiki_dir = ctx_dir / "wiki"
     read_wiki_index, _, read_wiki_state, update_wiki_state = create_wiki_tools(wiki_dir)
     return [

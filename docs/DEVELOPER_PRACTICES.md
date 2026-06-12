@@ -31,7 +31,7 @@ src
 
 ## Start the solution in dev mode
 
-```
+```sh
 ./scripts/starter.sh --dev --frontend
 ```
 

@@ -10,11 +10,13 @@ Uses Parallel for web search (parallel_search) and content
 extraction (parallel_extract).
 """
 
+from __future__ import annotations
+
 from agno.agent import Agent
 from agno.learn import LearnedKnowledgeConfig, LearningMachine, LearningMode
 from kma.config import PARALLEL_API_KEY, kma_agent_reasoning_enabled, kma_stream_events_enabled
 from kma.llm_factory import build_default_llm_model
-from kma.agents.settings import agent_db, kma_knowledge, kma_learnings
+from kma.agents.settings import get_agent_db, get_kma_knowledge, get_kma_learnings
 from kma.tools.builder import build_researcher_tools
 
 RESEARCHER_INSTRUCTIONS = """\
@@ -49,27 +51,49 @@ You are the Researcher, a specialist in gathering and ingesting source material.
 - Do not answer user questions directly — you gather material, the Navigator answers questions\
 """
 
-researcher: Agent | None = None
 
-if PARALLEL_API_KEY:
+def build_researcher_agent() -> Agent | None:
+    """Construct the Researcher agent when ``PARALLEL_API_KEY`` is set."""
+    if not PARALLEL_API_KEY:
+        return None
+    km = get_kma_knowledge()
+    lr = get_kma_learnings()
     md = build_default_llm_model()
-    researcher = Agent(
+    return Agent(
         id="researcher",
         name="Researcher",
         role="Gathers source material from the web, converts to markdown, saves to raw/",
         model=md,
-        db=agent_db,
+        db=get_agent_db(),
         instructions=RESEARCHER_INSTRUCTIONS,
-        knowledge=kma_knowledge,
+        knowledge=km,
         search_knowledge=True,
         learning=LearningMachine(
-            knowledge=kma_learnings,
+            knowledge=lr,
             learned_knowledge=LearnedKnowledgeConfig(mode=LearningMode.AGENTIC),
         ),
         add_learnings_to_context=True,
-        tools=build_researcher_tools(kma_knowledge),
+        tools=build_researcher_tools(km),
         add_datetime_to_context=True,
         markdown=True,
         reasoning=kma_agent_reasoning_enabled(),
         stream_events=True if kma_stream_events_enabled() else None,
     )
+
+
+_researcher: Agent | None = None
+_initialized = False
+
+
+def get_researcher() -> Agent | None:
+    global _researcher, _initialized
+    if not _initialized:
+        _researcher = build_researcher_agent()
+        _initialized = True
+    return _researcher
+
+
+def __getattr__(name: str):
+    if name == "researcher":
+        return get_researcher()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

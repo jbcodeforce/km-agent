@@ -11,7 +11,7 @@
     "title": "Fit For Purpose",
     "source": "flink-studies",
     "ingested": "2026-06-08T00:00:00Z",
-    "compiled": false
+    "compiled": true
   },
   {
     "file": "governance.md",

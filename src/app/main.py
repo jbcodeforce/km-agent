@@ -4,23 +4,26 @@ from pathlib import Path
 
 from agno.os import AgentOS
 from kma.db import get_postgres_db
-from kma.agents.compiler import compiler
-from kma.agents.linter import linter
-from kma.agents.navigator import navigator
-from kma.agents.researcher import researcher
+from kma.agents.compiler import get_compiler
+from kma.agents.linter import get_linter
+from kma.agents.navigator import get_navigator
+from kma.agents.researcher import get_researcher
 
-from kma.agents.settings import kma_knowledge, kma_learnings
-from kma.agents.team import kma_team
+from kma.agents.settings import get_kma_knowledge, get_kma_learnings
+from kma.agents.team import get_kma_team
 
-agents: list = [a for a in [compiler, navigator, linter, researcher] if a is not None]
+
+def _build_agents() -> list:
+    return [a for a in [get_compiler(), get_navigator(), get_linter(), get_researcher()] if a is not None]
+
 
 agent_os = AgentOS(
     name="KM-Agent",
     tracing=True,
     db=get_postgres_db(),
-    teams=[kma_team],
-    agents=agents,
-    knowledge=[kma_knowledge, kma_learnings],
+    teams=[get_kma_team()],
+    agents=_build_agents(),
+    knowledge=[get_kma_knowledge(), get_kma_learnings()],
     config=str(Path(__file__).parent / "config.yaml"),
 )
 

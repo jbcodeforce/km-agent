@@ -1,7 +1,7 @@
 ---
 title: "Complex Event Processing"
 created: 2026-06-10
-updated: 2026-06-10
+updated: 2026-06-11
 sources: [raw/fitforpurpose.md]
 related: [Apache Flink, Rule Engines, Event-Driven Architecture, Time Windowing]
 tags: [cep, pattern-detection, event-processing, streaming]
@@ -53,5 +53,4 @@ Once a situation is detected:
 ## Related
 - [Apache Flink](apache-flink.md)
 - [Rule Engines](rule-engines.md)
-- [Event-Driven Architecture](event-driven-architecture.md)
-- [Time Windowing](time-windowing.md)
+- [Kafka Streams](kafka-streams.md)

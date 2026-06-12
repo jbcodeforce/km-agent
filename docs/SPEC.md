@@ -166,7 +166,7 @@ Does NOT compile wiki articles, modify wiki/, or interact with email/calendar/sl
 
 ### Compiler
 
-Reads uncompiled raw documents and produces/updates wiki articles.
+Reads uncompiled raw documents and produces/updates wiki articles. One file per invocation; the prompt must name an explicit ``file_id``. Batch compile via repeated runs or ``compile_docs_folder.py``.
 
 Tools: FileTools, update_knowledge, read_manifest, update_manifest_compiled, read_wiki_index, update_wiki_index, read_wiki_state, update_wiki_state.
 

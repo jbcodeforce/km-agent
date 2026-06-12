@@ -1,7 +1,7 @@
 ---
 title: "Apache NiFi"
 created: 2026-06-10
-updated: 2026-06-10
+updated: 2026-06-11
 sources: [raw/fitforpurpose.md]
 related: [Apache Flink, Data Ingestion, Data Routing, Event-Driven Architecture]
 tags: [nifi, data-ingestion, data-routes, logistics]

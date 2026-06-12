@@ -1,14 +1,14 @@
 # Knowledge Management Agent (km-agent)
 
-**km-agent** is an agentic workspace that turns your study materials and newly discovered sources into a **structured, queryable knowledge base** you can talk to through chat. It is inspired by the [Karpathy LLM wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) and the Agno [Pal](https://github.com/agno-agi/pal) project,  built on [Agno](https://github.com/agno-agi/agno) **AgentOS**, PostgreSQL with **pgvector**, and an optional **Vue** chat UI. 
+**km-agent** is an agentic workspace that turns your study materials and newly discovered sources into a structured, queryable knowledge base you can talk to through chat. It is inspired by the [Karpathy LLM wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) and the Agno [Pal](https://github.com/agno-agi/pal) project,  built on [Agno](https://github.com/agno-agi/agno) AgentOS, PostgreSQL with pgvector, and an optional Vue chat UI. 
 
-[05/30/2026 new deep research OSS](https://github.com/jordan-gibbs/hyperresearch) was delivered recently and may overlap what km-agent does. Deeper analysis is needed. 
+[05/30/2026 new deep research OSS](https://github.com/jordan-gibbs/hyperresearch) was delivered recently and may overlap what km-agent does. Deeper analysis is needed. One interest of this repository is to learn how to build this kind of agentic solutions.
 
 ---
 
 ## Why this exists
 
-Technical notes, knowledge repos (for example my [flink-studies](https://github.com/jbcodeforce/flink-studies)), and ad-hoc web findings usually live in different places: Git folders, bookmarks, Slack threads, and SQL databases. km-agent gives you a **single pipeline and a coordinated team of agents** so that material is **ingested**, **compiled into a wiki**, and **answered against** with context from files, SQL, and vector search—without you manually maintaining a separate “second brain” by hand.
+Technical notes, knowledge repos (for example my [flink-studies](https://github.com/jbcodeforce/flink-studies)), and ad-hoc web findings usually live in different places: Git folders, bookmarks, Slack threads, and SQL databases. `km-agent` gives you a single pipeline and a coordinated team of agents so that material is ingested, compiled into a wiki, and answered against with context from files, SQL, and vector search—without you manually maintaining a separate “second brain” by hand.
 
 Also tool like NotebookLM has a tendency to forget what was asked before. Vector Store with embeddings has some challenge with the quality of the embeddings: the size of the vector and how the text chunck was build while parsing the documents. Markdown files have the advantage to provide structured sections to help chunking. Wiki approach has the advantage to let the LLM, vias tools to search for indexing then content, so more a tree navigation that pure <vector-text> mapping approach. 
 
@@ -36,24 +36,24 @@ The high level architectrure view looks like:
 | Outcome | What it means for you |
 |--------|------------------------|
 | **A living wiki** | Raw markdown under `context/raw/` is incrementally compiled into `context/wiki/` (concepts, summaries, index)—not a one-off export. |
-| **One chat surface** | A **Navigator**-style agent routes questions across wiki index, articles, your `kma` SQL schema, files under `context/`, and Agno **Knowledge** / learnings stores. |
-| **Research → raw → wiki** | With **Parallel** configured (`PARALLEL_API_KEY`), a **Researcher** agent can gather web sources into `raw/`; the **Compiler** turns uncompiled sources into wiki updates. |
-| **Direct compiler access** | The **Compiler** is also exposed on AgentOS for **HTTP runs** (e.g. automation or `scripts/compile_docs_folder.py`) in addition to team coordination. |
-| **Persistent memory** | Sessions, hybrid vector + keyword search over **knowledge** tables, and **agentic learnings** live in **Postgres**—conversations and retrieval improve over time. |
-| **Local-first option** | Run **Ollama** on the host for chat and embeddings when you want models and data under your control; **OpenAI** / **Anthropic** are supported when you prefer cloud LLMs. |
-| **Web UI for development** | `src/frontend` is a small **Vue + Vite** app that proxies to AgentOS so you can exercise agents locally without writing API clients first. |
+| **One chat surface** | A Navigator-style agent routes questions across wiki index, articles, your `kma` SQL schema, files under `context/`, and Agno Knowledge / learnings stores. |
+| **Research → raw → wiki** | With **Parallel** configured (`PARALLEL_API_KEY`), a Researcher agent can gather web sources into `raw/`; the Compiler turns uncompiled sources into wiki updates. |
+| **Direct compiler access** | The Compiler is also exposed on AgentOS for HTTP runs (e.g. automation or `scripts/compile_docs_folder.py`) in addition to team coordination. |
+| **Persistent memory** | Sessions, hybrid vector + keyword search over knowledge tables, and agentic learnings live in Postgres—conversations and retrieval improve over time. |
+| **Local-first option** | Run **oMLX** on the host for chat and embeddings when you want models and data under your control; OpenAI / Anthropic are supported when you prefer cloud LLMs. |
+| **Web UI for development** | `src/frontend` is a small Vue + Vite app that proxies to AgentOS so you can exercise agents locally without writing API clients first. |
 
-You keep ownership of the **`context/`** tree and your database; the repo is the glue between **AgentOS**, **agents (`kma`)**, and your environment.
+You keep ownership of the `context/` tree and your database; the repo is the glue between AgentOS, agents (`kma`), and your environment.
 
 ---
 
 ## How it fits together
 
-1. **AgentOS** (`src/app/main.py`) serves the FastAPI app and wires **teams**, **agents**, **Postgres**, and **Knowledge** bases.  
-2. **`kma` team** (`src/kma/agents/team.py`) coordinates **Navigator**, **Compiler**, and optionally **Researcher** members.  
+1. **AgentOS** (`src/app/main.py`) serves the FastAPI app and wires teams, agents, Postgres, and Knowledge bases.  
+2. **`kma` team** (`src/kma/agents/team.py`) coordinates Navigator, Compiler, and optionally Researcher members.  
 3. **Tools** under `src/kma/tools/` connect SQL, filesystem, wiki/manifest operations, and ingestion to that team.
 
-For full architecture, capabilities (intents, memory tiers, context layout), and roadmap-level detail, see **[`docs/SPEC.md`](./docs/SPEC.md)**.
+For full architecture, capabilities (intents, memory tiers, context layout), and roadmap-level detail, see [`docs/SPEC.md`](./docs/SPEC.md).
 
 ---
 
@@ -70,7 +70,7 @@ For full architecture, capabilities (intents, memory tiers, context layout), and
 
 ## License and attribution
 
-This repository is licensed under **[Apache License 2.0](./LICENSE)**. km-agent builds on **Agno** and patterns from **Pal**; see also dependency metadata from `uv` / `pyproject.toml` for third-party terms.
+This repository is licensed under [Apache License 2.0](./LICENSE). km-agent builds on Agno and patterns from Pal; see also dependency metadata from `uv` / `pyproject.toml` for third-party terms.
 
 ### 🙏 Support my work
 

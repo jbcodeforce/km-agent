@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
-"""Prepare a studies ``docs/`` tree for the compiler and run the Compiler and Linter agents.
+"""Prepare a studies ``docs/`` tree for the compiler and run the Compiler agent.
 
 Crawls ``**/*.md`` under the given docs directory, ensures raw YAML
 frontmatter and ``.manifest.json`` entries (paths relative to that docs root) are present.
 If ``docs/.manifest.json`` is missing, an empty manifest is created before
 preparing files or invoking the compiler so that raw root always has manifest I/O.
 
-Then runs the Compiler with:
+Then runs the Compiler once per markdown file with:
 
 - ``raw_roots``: your docs folder (e.g. ``--label studies``) plus ``ingested``
   pointing at ``<context>/raw`` (researcher output), so both coexist.
 - ``context_dir``: wiki output under ``<context>/wiki/``.
-
-Finally run linter to ensure quality
 
 Requires Postgres and configured LLM/embeddings (see docs/DEVELOPER_PRACTICES.md).
 
@@ -37,8 +35,7 @@ if str(REPO_ROOT / "src") not in sys.path:
 
 from agno.run.base import RunStatus  # noqa: E402
 
-from kma.agents.compiler import build_compiler_agent  # noqa: E402
-from kma.agents.linter import build_linter_agent
+from kma.agents.compiler import build_compile_file_prompt, build_compiler_agent  # noqa: E402
 from kma.agents.settings import kma_knowledge  # noqa: E402
 from kma.config import get_kma_context_dir  # noqa: E402
 from kma.tools.ingest import (  # noqa: E402
@@ -273,26 +270,16 @@ def main() -> int:
         raw_roots=[(args.label, docs), ("ingested", ingested_root)],
         knowledge=kma_knowledge
     )
-    linter_agent = build_linter_agent()
     for p in md_files:
-        print(f"process file {p}")
-        SUMMARY_NAME=str(p)[:-3]
-        SOURCE_RAW=str(p)
-        prompt = ("You are running an automated batch compile. Use tools only; do not ask the user questions.\n"
-        "1) Call read_manifest and process every entry where compiled is false.\n"
-        f"2) Read {SOURCE_RAW} via read_file.\n"
-         f"3) Write wiki/summaries/{SUMMARY_NAME} with a short markdown summary (heading + at least two sentences).\n"
-        "4) Create one file under wiki/concepts/ with a short slug name (e.g. flink-ddl-overview.md) describing the topic briefly.\n"
-        f"5) Call update_manifest_compiled with filename {SOURCE_RAW}.\n"
-        "6) Call update_wiki_index with a minimal markdown index that lists the new concept under ## Concepts using paths starting with wiki/.\n"
-        "7) Call update_wiki_state with mark_compiled true and article_count at least 1.\n"
-        "Keep responses short; complete the workflow.")
+        rel = p.relative_to(docs).as_posix()
+        file_id = f"{args.label}:{rel}"
+        print(f"process file {file_id}")
+        prompt = build_compile_file_prompt(file_id, automated=True)
         out = compiler_agent.run(prompt)
         if out.status != RunStatus.completed:
             print(f"compiler run failed: {out.status} {out.content!r}", file=sys.stderr)
             return 1
-        out = linter_agent.run(prompt_2)
-        print(f"down processing {p}")
+        print(f"done processing {file_id}")
     print("compiler run completed")
     return 0
 
