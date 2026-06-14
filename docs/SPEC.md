@@ -46,7 +46,7 @@ Raw data flows through a compilation pipeline into a structured wiki:
 ```
 Ingest (Researcher)     →  context/raw/     →  .manifest.json tracks state
 Compile (Compiler)      →  context/wiki/    →  concepts/, summaries/, index.md
-Query (Navigator)       →  reads wiki index →  pulls specific articles
+Query (Navigator)       →  index-first and/or search_wiki →  pulls specific articles
 File outputs (Navigator)→  wiki/outputs/    →  compounds back into wiki
 Lint (Linter)           →  wiki/lint-report →  finds gaps, suggests research
 ```
@@ -85,10 +85,13 @@ Every interaction follows five steps:
 4. **Act** — Execute tool calls.
 5. **Learn** — Save discoveries, retrieval strategies, and patterns.
 
-### 4. Dual Knowledge System
+### 4. Context stores: Knowledge, Learnings, Wiki
 
-- **`kma_knowledge`** — Metadata index (routing layer). File manifests (`File:`), table schemas (`Schema:`), source capabilities (`Source:`), cross-source discoveries (`Discovery:`), wiki articles (`Wiki:`), raw sources (`Raw:`).
-- **`kma_learnings`** — Operational memory. Retrieval strategies (`Retrieval:`), recurring patterns (`Pattern:`), explicit user corrections (`Correction:`). Corrections always take priority.
+Three systems serve different roles (see [`ARCHITECTURE_WIKI_RAG.md`](./ARCHITECTURE_WIKI_RAG.md)):
+
+- **`kma_knowledge`** — Metadata index (routing layer). File manifests (`File:`), table schemas (`Schema:`), source capabilities (`Source:`), cross-source discoveries (`Discovery:`), wiki articles (`Wiki:`), raw sources (`Raw:`). Not domain article bodies.
+- **`kma_learnings`** — Operational memory. Retrieval strategies (`Retrieval:`), recurring patterns (`Pattern:`), explicit user corrections (`Correction:`). Corrections always take priority. Not domain content.
+- **`context/wiki/`** — Compiled domain knowledge (markdown). Optional **`kma_wiki`** pgvector table for semantic chunk search via `search_wiki` after offline `scripts/index_wiki.py`.
 
 **Bootstrap**: `context/load_context.py` populates `kma_knowledge` on first run by scanning the context directory, parsing YAML frontmatter for tags, and inserting `File:` metadata entries. This is the bootstrap step that makes Navigator's recall work — without it, the knowledge routing layer is empty. Supports `--recreate` (clear and reload) and `--dry-run` (preview). Also exposed via `/context/reload` endpoint and scheduled daily.
 
@@ -150,9 +153,9 @@ Routes requests to specialists or responds directly for simple things.
 
 Primary agent for user interaction. Handles SQL, files, web search, and wiki-aware Q&A.
 
-Tools: SQLTools, FileTools, MCPTools (Exa), update_knowledge, read_wiki_index, read_wiki_state, read_manifest.
+Tools: SQLTools, FileTools, update_knowledge, read_wiki_index, read_wiki_state, read_manifest, search_wiki (when `kma_wiki` is indexed).
 
-Wiki retrieval priority: `wiki/concepts/` → `wiki/summaries/` → `raw/` → live sources.
+Wiki retrieval priority: `search_wiki` (if indexed) → `wiki/index.md` + `read_file` on concepts/summaries → `raw/` → live sources.
 
 ### Researcher
 

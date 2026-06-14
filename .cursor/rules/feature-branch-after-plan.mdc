@@ -1,0 +1,58 @@
+---
+description: Create a git feature branch before major implementation, especially after Plan mode
+alwaysApply: true
+---
+
+# Feature Branch Before Major Implementation
+
+When work is a **major feature** (multi-file changes, new subsystem, architectural shift, or anything that would be hard to revert on `main`), **create a dedicated git branch before writing code**.
+
+## When to Branch
+
+Create a branch when **any** of these apply:
+
+- Plan mode produced an implementation plan you are about to execute
+- The change spans multiple modules, agents, or layers (backend + frontend + tests)
+- The work will take more than one session or commit
+- You are adding a new capability, not a small fix or doc tweak
+
+Skip branching for: single-file bugfixes, typo/docs edits, config-only one-liners, or read-only exploration.
+
+## Plan → Branch → Implement
+
+After Plan mode (or once a plan is agreed):
+
+1. **Propose a branch name** — short, kebab-case, descriptive (match repo style: `omlx-provider-and-validation`, not `feature/xyz` unless the user prefers prefixes)
+2. **Confirm with the user** if the branch name is ambiguous or they are already on a feature branch
+3. **Create and switch** before the first implementation edit:
+   ```bash
+   git checkout -b <branch-name>
+   ```
+4. **Implement on that branch** — do not commit major feature work directly on `main`
+5. **Stay on the branch** until the feature is complete and ready for PR
+
+## Agent Behavior
+
+- **Before first code change** for a planned major feature: check `git branch --show-current`. If on `main`, create a branch first (ask the user only when the name is unclear).
+- **After Plan mode**: treat branch creation as the first implementation step — not optional.
+- **If already on a feature branch** whose name matches the planned work, continue there; do not create a nested branch.
+- **Do not push** unless the user asks.
+
+## Branch Naming
+
+- Use kebab-case: `add-researcher-ingest`, `mlx-embedder-support`
+- Prefer outcome or scope over ticket IDs unless the user specifies otherwise
+- Avoid generic names: `fix`, `updates`, `wip`
+
+## Examples
+
+```bash
+# ✅ After planning MLX embedder support
+git checkout -b mlx-embedder-support
+
+# ✅ After planning chat streaming UI
+git checkout -b frontend-stream-text
+
+# ❌ Implementing a 10-file agent refactor while still on main
+# (create a branch first)
+```

@@ -64,6 +64,7 @@ In a separate terminal, from the repo root, start Postgresql, km-agent container
 |--------|----------|
 | Different use cases | [Section below](#use-cases-living-document) |
 | Architecture, agents, pipeline, intents | [`SPEC.md`](./SPEC.md) |
+| Knowledge vs learnings vs wiki, index vs embeddings | [`ARCHITECTURE_WIKI_RAG.md`](./ARCHITECTURE_WIKI_RAG.md) |
 | Docker volumes, tests, frontend proxy | [`DEVELOPER_PRACTICES.md`](./DEVELOPER_PRACTICES.md) |
 | Repo overview and quick links | [`../README.md`](../README.md) |
 
