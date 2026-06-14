@@ -138,7 +138,11 @@ export function chatHistoryToMessages(chatHistory) {
     if (role !== 'user' && role !== 'assistant') continue
     const content =
       typeof m.content === 'string' ? m.content : m.content != null ? String(m.content) : ''
-    out.push({ role, content })
+    out.push({
+      role,
+      content,
+      streamComplete: role === 'assistant'
+    })
   }
   return out
 }

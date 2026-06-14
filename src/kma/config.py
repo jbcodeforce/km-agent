@@ -23,6 +23,9 @@ class Env:
 
     # Integrations
     KMA_PARALLEL_API_KEY: Final = "KMA_PARALLEL_API_KEY"
+    KMA_PARALLEL_MAX_RESULTS: Final = "KMA_PARALLEL_MAX_RESULTS"
+    KMA_PARALLEL_MAX_CHARS_PER_RESULT: Final = "KMA_PARALLEL_MAX_CHARS_PER_RESULT"
+    KMA_PARALLEL_INGEST_MAX_CHARS: Final = "KMA_PARALLEL_INGEST_MAX_CHARS"
     SGAI_API_KEY: Final = "SGAI_API_KEY"
     EXA_API_KEY: Final = "EXA_API_KEY"
 
@@ -82,7 +85,7 @@ def kma_show_team_member_responses_enabled() -> bool:
 
 
 CompilerLlmProvider = Literal["ollama", "openai", "anthropic", "cursor", "mlx"]
-EmbedProvider = Literal["ollama", "openai", "mlx"]
+EmbedProvider = Literal["ollama", "openai", "mlx", "local", "fastembed"]
 
 _DEFAULT_LLM_MODEL_ID: dict[CompilerLlmProvider, str] = {
     "ollama": "qwen3.6:35b-a3b",
@@ -93,10 +96,14 @@ _DEFAULT_LLM_MODEL_ID: dict[CompilerLlmProvider, str] = {
 }
 
 # mlx has no default embedding model; KMA_EMBED_MODEL is required (enforced in get_embed_model_id).
-_DEFAULT_EMBED_MODEL_AND_DIMS: dict[Literal["ollama", "openai", "mlx"], tuple[str, int]] = {
+_DEFAULT_EMBED_MODEL_AND_DIMS: dict[
+    Literal["ollama", "openai", "mlx", "local", "fastembed"], tuple[str, int]
+] = {
     "ollama": ("nomic-embed-text:latest", 768),
     "openai": ("text-embedding-3-small", 1536),
     "mlx": ("embeddinggemma-300m-6bit", 1536),
+    "local": ("nomical-modernbert-embed-base-4bit", 768),
+    "fastembed": ("BAAI/bge-small-en-v1.5", 384),
 }
 
 
@@ -130,9 +137,10 @@ def get_llm_model_id() -> str:
 def get_embed_provider() -> EmbedProvider:
     """Which backend generates Knowledge / PgVector embeddings."""
     raw = (os.getenv(Env.KMA_EMBED_PROVIDER) or "ollama").strip().lower()
-    if raw not in ("ollama", "openai", "mlx"):
+    if raw not in ("ollama", "openai", "mlx", "local", "fastembed"):
         raise ValueError(
-            f"Invalid {Env.KMA_EMBED_PROVIDER}={raw!r}; expected ollama, openai, or mlx"
+            f"Invalid {Env.KMA_EMBED_PROVIDER}={raw!r}; "
+            "expected ollama, openai, mlx, local, or fastembed"
         )
     return raw  # type: ignore[return-value]
 
@@ -211,9 +219,39 @@ def get_embed_base_url() -> str:
 
 def get_embed_host() -> str:
     """Host for OMLX embeddings; falls back to the chat host."""
-    raw =get_embed_base_url()
+    raw = get_embed_base_url()
     return raw.split("://")[-1].split(":")[0]
 
 
+def get_parallel_api_key() -> str | None:
+    """Parallel API key for Researcher web search/extract (`PARALLEL_API_KEY` legacy alias)."""
+    return _env_first_nonempty(Env.KMA_PARALLEL_API_KEY, "PARALLEL_API_KEY")
 
+
+def _env_positive_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = int(raw.strip())
+    except ValueError:
+        raise ValueError(f"{name}={raw.strip()!r} is not a valid integer")
+    if value <= 0:
+        raise ValueError(f"{name} must be positive, got {value}")
+    return value
+
+
+def get_parallel_max_results() -> int:
+    """Default max Parallel search hits per call (Researcher)."""
+    return _env_positive_int(Env.KMA_PARALLEL_MAX_RESULTS, 2)
+
+
+def get_parallel_max_chars_per_result() -> int:
+    """Default max excerpt chars per Parallel search hit (Researcher)."""
+    return _env_positive_int(Env.KMA_PARALLEL_MAX_CHARS_PER_RESULT, 3000)
+
+
+def get_parallel_ingest_max_chars() -> int:
+    """Max chars saved per ``ingest_url`` Parallel extract."""
+    return _env_positive_int(Env.KMA_PARALLEL_INGEST_MAX_CHARS, 8000)
 

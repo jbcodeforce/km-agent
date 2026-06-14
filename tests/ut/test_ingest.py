@@ -15,14 +15,46 @@ from kma.config import Env
 from kma.tools import ingest as ingest_mod
 from kma.tools.ingest import (
     _build_frontmatter,
+    _coerce_tags,
     _do_ingest_text,
     _do_ingest_url,
     _read_manifest,
     _slugify,
     _write_manifest,
     create_ingest_tools,
+    manifest_entry_compiled,
+    mark_manifest_compiled,
     sync_manifest_from_raw_markdown,
 )
+
+
+def test_coerce_tags_json_string() -> None:
+    assert _coerce_tags('["apache-kafka", "event-streaming"]') == ["apache-kafka", "event-streaming"]
+
+
+def test_coerce_tags_list() -> None:
+    assert _coerce_tags(["a", "b"]) == ["a", "b"]
+
+
+def test_coerce_tags_comma_separated() -> None:
+    assert _coerce_tags("a, b, c") == ["a", "b", "c"]
+
+
+def test_create_ingest_tools_ingest_text_accepts_json_tags(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    tools = create_ingest_tools(raw)
+    ingest_text = tools[1]
+    msg = ingest_text.entrypoint(
+        title="Kafka",
+        content="# Kafka\n",
+        source="https://kafka.apache.org/intro/",
+        tags='["apache-kafka", "event-streaming"]',
+        doc_type="article",
+    )
+    assert "kafka.md" in msg.lower() or "Kafka" in msg
+    text = (raw / "kafka.md").read_text(encoding="utf-8")
+    assert "apache-kafka" in text
 
 
 def test_slugify_basic() -> None:
@@ -91,7 +123,8 @@ def test_do_ingest_text_writes_file_and_manifest(tmp_path: Path) -> None:
 
 
 def test_do_ingest_url_without_parallel_key_writes_stub(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(ingest_mod, Env.KMA_PARALLEL_API_KEY, None, raising=False)
+    monkeypatch.delenv(Env.KMA_PARALLEL_API_KEY, raising=False)
+    monkeypatch.delenv("PARALLEL_API_KEY", raising=False)
     raw = tmp_path / "raw"
     raw.mkdir()
     msg = _do_ingest_url(raw, "https://example.com/page", "Example Page", tags=None, doc_type="article")
@@ -110,11 +143,12 @@ def test_do_ingest_url_with_parallel_writes_extracted(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("kma.config.PARALLEL_API_KEY", "fake-key", raising=False)
+    monkeypatch.setenv(Env.KMA_PARALLEL_API_KEY, "fake-key")
     raw = tmp_path / "raw"
     raw.mkdir()
     result_row = MagicMock()
-    result_row.full_content = "# Extracted\n\nHello."
+    result_row.excerpts = ["# Extracted\n\nHello."]
+    result_row.full_content = None
     mock_result = MagicMock()
     mock_result.results = [result_row]
     mock_parallel_cls.return_value.beta.extract.return_value = mock_result
@@ -125,6 +159,10 @@ def test_do_ingest_url_with_parallel_writes_extracted(
     text = f.read_text(encoding="utf-8")
     assert "# Extracted" in text
     assert "Hello." in text
+    mock_parallel_cls.return_value.beta.extract.assert_called_once()
+    call_kwargs = mock_parallel_cls.return_value.beta.extract.call_args.kwargs
+    assert call_kwargs["urls"] == ["https://ex.com"]
+    assert call_kwargs["excerpts"] == {"max_chars_per_result": 8000}
 
 
 def test_create_ingest_tools_read_manifest_empty(tmp_path: Path) -> None:
@@ -135,6 +173,17 @@ def test_create_ingest_tools_read_manifest_empty(tmp_path: Path) -> None:
     read_manifest = next(t for t in tools if t.name == "read_manifest")
     out = read_manifest.entrypoint()
     assert "empty" in out.lower() or "No documents" in out
+
+
+def test_mark_manifest_compiled_and_entry_compiled(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    _write_manifest(raw, [{"file": "x.md", "title": "X", "source": "s", "ingested": "t", "compiled": False}])
+    assert manifest_entry_compiled(raw, "x.md") is False
+    assert manifest_entry_compiled(raw, "missing.md") is False
+    assert mark_manifest_compiled(raw, "x.md") is True
+    assert manifest_entry_compiled(raw, "x.md") is True
+    assert mark_manifest_compiled(raw, "missing.md") is False
 
 
 def test_create_ingest_tools_update_manifest_compiled(tmp_path: Path) -> None:

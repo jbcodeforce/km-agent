@@ -8,7 +8,7 @@ from typing import Sequence
 
 from agno.tools import tool
 
-from kma.config import Env
+from kma.config import get_parallel_api_key, get_parallel_ingest_max_chars
 
 def _slugify(text: str) -> str:
     """Convert text to a filesystem-safe slug."""
@@ -29,6 +29,25 @@ def _read_manifest(raw_dir: Path) -> list[dict]:
 def _write_manifest(raw_dir: Path, manifest: list[dict]) -> None:
     manifest_path = raw_dir / ".manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+
+
+def manifest_entry_compiled(raw_dir: Path, file_rel: str) -> bool:
+    """Return whether ``file_rel`` is marked compiled in ``raw_dir/.manifest.json``."""
+    for entry in _read_manifest(raw_dir):
+        if entry.get("file") == file_rel:
+            return bool(entry.get("compiled"))
+    return False
+
+
+def mark_manifest_compiled(raw_dir: Path, file_rel: str) -> bool:
+    """Mark one manifest entry compiled. Returns True if the entry was found and updated."""
+    manifest = _read_manifest(raw_dir)
+    for entry in manifest:
+        if entry.get("file") == file_rel:
+            entry["compiled"] = True
+            _write_manifest(raw_dir, manifest)
+            return True
+    return False
 
 
 def _parse_frontmatter_lines(block: str) -> dict[str, str]:
@@ -109,6 +128,25 @@ def sync_manifest_from_raw_markdown(raw_dir: Path) -> str:
     return f"Synced {len(rows)} manifest entries under {raw_path}"
 
 
+def _coerce_tags(tags: list[str] | str | None) -> list[str]:
+    """Normalize tool ``tags`` — agents often pass a JSON array string."""
+    if tags is None:
+        return []
+    if isinstance(tags, list):
+        return [str(t).strip() for t in tags if str(t).strip()]
+    raw = tags.strip()
+    if not raw:
+        return []
+    if raw.startswith("["):
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                return [str(t).strip() for t in parsed if str(t).strip()]
+        except json.JSONDecodeError:
+            pass
+    return [part.strip() for part in raw.split(",") if part.strip()]
+
+
 def _build_frontmatter(title: str, source: str, tags: list[str], doc_type: str) -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     tag_str = ", ".join(tags) if tags else ""
@@ -132,17 +170,25 @@ def _do_ingest_url(raw_dir: Path, url: str, title: str, tags: list[str] | None =
     file_path = raw_dir / filename
     frontmatter = _build_frontmatter(title, url, tags or [], doc_type)
 
-    # Try to fetch content via Parallel
+    # Try to fetch content via Parallel (bounded excerpts — keeps MLX context small)
     extracted = ""
-    if Env.KMA_PARALLEL_API_KEY:
+    parallel_key = get_parallel_api_key()
+    if parallel_key:
         try:
             from parallel import Parallel
 
-            client = Parallel(api_key=Env.KMA_PARALLEL_API_KEY)
-            result = client.beta.extract(urls=[url], full_content=True)
+            max_chars = get_parallel_ingest_max_chars()
+            client = Parallel(api_key=parallel_key)
+            result = client.beta.extract(
+                urls=[url],
+                excerpts={"max_chars_per_result": max_chars},
+            )
             if result and result.results:
                 r = result.results[0]
-                extracted = r.full_content or ""
+                if getattr(r, "excerpts", None):
+                    extracted = "\n\n".join(r.excerpts)
+                elif getattr(r, "full_content", None):
+                    extracted = (r.full_content or "")[:max_chars]
         except Exception as e:
             extracted = f"*(Content extraction failed: {e}. Stub saved — fetch manually.)*"
 
@@ -209,7 +255,12 @@ def create_ingest_tools(raw_dir: Path) -> list:
     """
 
     @tool
-    def ingest_url(url: str, title: str, tags: list[str] | None = None, doc_type: str = "article") -> str:
+    def ingest_url(
+        url: str,
+        title: str,
+        tags: list[str] | str | None = None,
+        doc_type: str = "article",
+    ) -> str:
         """Ingest a URL into the knowledge base raw/ directory.
 
         Fetches page content via Parallel (if configured) and saves as a
@@ -219,17 +270,21 @@ def create_ingest_tools(raw_dir: Path) -> list:
         Args:
             url: The source URL.
             title: A descriptive title for the document.
-            tags: Optional list of topic tags (e.g. ["rag", "retrieval"]).
+            tags: Optional topic tags as a list or JSON array string (e.g. ["rag", "retrieval"]).
             doc_type: Document type: paper, article, repo, notes, transcript, image.
 
         Returns:
             Confirmation with the file path and content status.
         """
-        return _do_ingest_url(raw_dir, url, title, tags, doc_type)
+        return _do_ingest_url(raw_dir, url, title, _coerce_tags(tags), doc_type)
 
     @tool
     def ingest_text(
-        title: str, content: str, source: str = "user", tags: list[str] | None = None, doc_type: str = "notes"
+        title: str,
+        content: str,
+        source: str = "user",
+        tags: list[str] | str | None = None,
+        doc_type: str = "notes",
     ) -> str:
         """Ingest text content into the knowledge base raw/ directory.
 
@@ -241,13 +296,13 @@ def create_ingest_tools(raw_dir: Path) -> list:
             title: A descriptive title for the document.
             content: The markdown content to save.
             source: Where the content came from (URL, "user", "clipboard", etc.).
-            tags: Optional list of topic tags.
+            tags: Optional topic tags as a list or JSON array string.
             doc_type: Document type: paper, article, repo, notes, transcript, image.
 
         Returns:
             Confirmation with the file path.
         """
-        return _do_ingest_text(raw_dir, title, content, source, tags, doc_type)
+        return _do_ingest_text(raw_dir, title, content, source, _coerce_tags(tags), doc_type)
 
     @tool
     def read_manifest() -> str:
@@ -273,12 +328,8 @@ def create_ingest_tools(raw_dir: Path) -> list:
         Returns:
             Confirmation message.
         """
-        manifest = _read_manifest(raw_dir)
-        for entry in manifest:
-            if entry["file"] == filename:
-                entry["compiled"] = True
-                _write_manifest(raw_dir, manifest)
-                return f"Marked as compiled: {filename}"
+        if mark_manifest_compiled(raw_dir, filename):
+            return f"Marked as compiled: {filename}"
         return f"Not found in manifest: {filename}"
 
     @tool
@@ -342,20 +393,13 @@ def create_compiler_manifest_tools(
             if raw_home is None:
                 return f"Unknown raw root label: {label}"
             manifest = _read_manifest(raw_home)
-            for entry in manifest:
-                if entry.get("file") == rel:
-                    entry["compiled"] = True
-                    _write_manifest(raw_home, manifest)
-                    return f"Marked as compiled: {key}"
+            if mark_manifest_compiled(raw_home, rel):
+                return f"Marked as compiled: {key}"
             return f"Not found in manifest: {key}"
         if len(roots) == 1:
             raw_home = roots[0][1]
-            manifest = _read_manifest(raw_home)
-            for entry in manifest:
-                if entry.get("file") == key:
-                    entry["compiled"] = True
-                    _write_manifest(raw_home, manifest)
-                    return f"Marked as compiled: {key}"
+            if mark_manifest_compiled(raw_home, key):
+                return f"Marked as compiled: {key}"
             return f"Not found in manifest: {key}"
         # multi-root but caller passed bare file — ambiguous
         return (

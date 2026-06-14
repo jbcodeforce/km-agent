@@ -40,3 +40,37 @@ def create_update_knowledge(knowledge: Knowledge):
         return f"Knowledge updated: {title}"
 
     return update_knowledge
+
+
+def create_search_wiki(wiki_knowledge: Knowledge):
+    """Create search_wiki tool for semantic recall over embedded wiki chunks."""
+
+    @tool
+    def search_wiki(query: str, max_results: int = 8) -> str:
+        """Semantic search over offline-indexed wiki articles (pgvector).
+
+        Use after wiki content has been embedded via ``scripts/index_wiki.py``.
+        Returns relevant excerpts with wiki paths; follow up with ``read_file``
+        for full articles when needed.
+
+        Args:
+            query: Natural language search query.
+            max_results: Maximum chunks to return (default 8).
+
+        Returns:
+            Matching wiki excerpts or a message when nothing is found.
+        """
+        docs = wiki_knowledge.search(query, max_results=max_results)
+        if not docs:
+            return "No wiki matches found. Try read_wiki_index and read_file, or re-run index_wiki."
+        parts: list[str] = []
+        for i, doc in enumerate(docs, start=1):
+            meta = doc.meta_data or {}
+            path = meta.get("wiki_path", meta.get("name", "unknown"))
+            content = (doc.content or "").strip()
+            if len(content) > 1200:
+                content = content[:1200] + "..."
+            parts.append(f"### {i}. {path}\n{content}")
+        return "\n\n".join(parts)
+
+    return search_wiki

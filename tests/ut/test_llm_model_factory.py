@@ -4,8 +4,9 @@ from agno.models.ollama import OllamaResponses
 from agno.models.openai import OpenAILike, OpenAIResponses
 from dotenv import load_dotenv
 from kma.config import Env
-from kma.llm_factory import build_default_llm_model, build_default_embedder
+from kma.llm_factory import build_default_llm_model, build_default_embedder, _cached_build_default_embedder
 from pathlib import Path
+from kma.embeddings.local_mlx import LocalMLXEmbedder
 from agno.knowledge.embedder.openai import OpenAIEmbedder
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -53,11 +54,25 @@ def test_build_default_llm_openai_provider(monkeypatch) -> None:
     assert model.base_url == "http://localhost:11434/v1"
     assert isinstance(model, OpenAIResponses)
 
-def test_build_default_embedder_mlx() -> None:
+def test_build_default_embedder_local_from_example_env() -> None:
+    _cached_build_default_embedder.cache_clear()
     load_dotenv(REPO_ROOT / "example.env", override=True)
+    embedder = build_default_embedder()
+    assert isinstance(embedder, LocalMLXEmbedder)
+    assert embedder.id == "nomical-modernbert-embed-base-4bit"
+    assert embedder.dimensions == 768
+
+
+def test_build_default_embedder_mlx(monkeypatch) -> None:
+    _cached_build_default_embedder.cache_clear()
+    monkeypatch.setenv(Env.KMA_EMBED_PROVIDER, "mlx")
+    monkeypatch.setenv(Env.KMA_EMBED_MODEL, "embeddinggemma-300m-6bit")
+    monkeypatch.setenv(Env.KMA_EMBED_DIMENSIONS, "1536")
+    monkeypatch.setenv(Env.KMA_EMBED_BASE_URL, "http://localhost:7999/v1")
+    monkeypatch.setenv(Env.KMA_LLM_BASE_URL, "http://localhost:7999/v1")
     embedder = build_default_embedder()
     assert isinstance(embedder, OpenAIEmbedder)
     assert embedder.id == "embeddinggemma-300m-6bit"
-    assert embedder.dimensions == 2048
+    assert embedder.dimensions == 1536
     assert embedder.base_url == "http://localhost:7999/v1"
     assert embedder.api_key == "not-needed"

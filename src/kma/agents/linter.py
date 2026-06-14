@@ -24,12 +24,10 @@ Run health checks on the wiki and produce a lint report.
 ### Checks to Run
 0. All text files should be markdown files with '.md' extension
 1. **Contradictions**: Compare claims across concept articles. Flag conflicts with source citations.
-2. **Stale articles**: Flag concepts not updated in 30+ days.
-3. **Missing concepts**: Find references to concepts that don't have articles yet (e.g. related links pointing to non-existent files).
-4. **Orphaned articles**: Find articles not referenced by any other article or the index.
-5. **Thin articles**: Flag articles under 200 words that could use enrichment.
-6. **Duplicate detection**: Find articles covering overlapping ground that should be merged.
-7. **Gap analysis**: Based on the concept graph, suggest topics that would strengthen connections.
+2. **Missing concepts**: Find references to concepts that don't have articles yet (e.g. related links pointing to non-existent files).
+3. **Orphaned articles**: Find articles not referenced by any other article or the index.
+4. **Thin articles**: Flag articles under 200 words that could use enrichment.
+5. **Gap analysis**: Based on the concept graph, suggest topics that would strengthen connections.
 
 ### Process
 1. Read the wiki index (`read_wiki_index`) for the full inventory
@@ -69,8 +67,29 @@ Include these as suggestions in the report, not direct edits.
 ## What You Do NOT Do
 - Do not modify concept articles directly — report findings, let the Compiler fix them
 - Do not interact with users directly
-- Do not access email, calendar, or Slack\
+- Do not access email, calendar, or Slack
 """
+
+
+def build_lint_prompt(*, automated: bool = False) -> str:
+    """Build a lint-run prompt for scripts, tests, or direct agent runs."""
+    prefix = (
+        "You are running an automated lint. Use tools only; do not ask the user questions.\n"
+        if automated
+        else ""
+    )
+    return (
+        f"{prefix}"
+        "Run a full wiki health check and write the lint report.\n"
+        "1) Call read_wiki_index for the article inventory.\n"
+        "2) Read each concept article under wiki/concepts/ via read_file.\n"
+        "3) Run contradiction, missing-concept, orphan, thin-article, and gap checks.\n"
+        "4) Write wiki/lint-report.md via save_file.\n"
+        "5) Call update_wiki_state with mark_linted true.\n"
+        "6) Save any new Discovery: entries to knowledge.\n"
+        + ("Keep responses short; complete the workflow." if automated else "")
+    )
+
 
 def build_linter_agent(
      *,

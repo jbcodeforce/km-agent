@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 from agno.models.base import Model
 from agno.models.ollama import OllamaResponses
 from agno.models.openai import OpenAIResponses, OpenAILike
@@ -55,10 +57,41 @@ def build_default_llm_model() -> Model:
 
 def build_default_embedder() -> Embedder:
     """Embedder for Knowledge bases from ``KMA_EMBED_PROVIDER``."""
+    return _cached_build_default_embedder()
+
+
+@lru_cache(maxsize=1)
+def _cached_build_default_embedder() -> Embedder:
     provider = get_embed_provider()
     api_key = get_llm_api_key()
     model_id = get_embed_model_id()
     dimensions = get_embed_dimensions()
+    if provider == "local":
+        import importlib.util
+
+        if importlib.util.find_spec("mlx_embeddings") is None:
+            raise RuntimeError(
+                f"{Env.KMA_EMBED_PROVIDER}=local requires the local-mlx extra "
+                "(run: uv sync --extra local-mlx). Docker images use ollama embeddings instead."
+            )
+        from kma.embeddings.local_mlx import LocalMLXEmbedder, _DEFAULT_FALLBACK_MODEL
+
+        return LocalMLXEmbedder(
+            id=model_id,
+            dimensions=dimensions,
+            fallback_model_id=_DEFAULT_FALLBACK_MODEL,
+        )
+    if provider == "fastembed":
+        import importlib.util
+
+        if importlib.util.find_spec("fastembed") is None:
+            raise RuntimeError(
+                f"{Env.KMA_EMBED_PROVIDER}=fastembed requires the fastembed extra "
+                "(run: uv sync --extra fastembed)."
+            )
+        from kma.embeddings.fastembed_embedder import FastEmbedEmbedder
+
+        return FastEmbedEmbedder(id=model_id, dimensions=dimensions)
     if provider == "ollama":
         return OllamaEmbedder(
             id=model_id,

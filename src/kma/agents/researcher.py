@@ -11,12 +11,13 @@ extraction (parallel_extract).
 """
 
 from __future__ import annotations
-
+from pathlib import Path
 from agno.agent import Agent
-from agno.learn import LearnedKnowledgeConfig, LearningMachine, LearningMode
-from kma.config import PARALLEL_API_KEY, kma_agent_reasoning_enabled, kma_stream_events_enabled
+from agno.knowledge import Knowledge
+from agno.models.base import Model
+from kma.config import get_parallel_api_key, kma_stream_events_enabled
 from kma.llm_factory import build_default_llm_model
-from kma.agents.settings import get_agent_db, get_kma_knowledge, get_kma_learnings
+from kma.agents.settings import get_agent_db, get_kma_knowledge
 from kma.tools.builder import build_researcher_tools
 
 RESEARCHER_INSTRUCTIONS = """\
@@ -24,9 +25,9 @@ You are the Researcher, a specialist in gathering and ingesting source material.
 
 ## Your Job
 1. Search the web using `parallel_search` to find relevant sources
-2. Extract full content from URLs using `parallel_extract`
+2. Extract content from URLs using `parallel_extract` (excerpts only — not full pages)
 3. Save to raw/ using `ingest_text` with proper YAML frontmatter
-4. For quick URL ingestion, use `ingest_url` which auto-fetches content via Parallel
+4. For quick URL ingestion, use `ingest_url` which auto-fetches bounded excerpts via Parallel
 5. Update pal_knowledge with `Raw: {title}` metadata entries
 
 ## Ingest Rules
@@ -35,11 +36,12 @@ You are the Researcher, a specialist in gathering and ingesting source material.
 - Tags should be specific topics (e.g. ["rag", "retrieval", "vector-search"]), not generic
 - doc_type is one of: paper, article, repo, notes, transcript, image
 - For multi-page sources, summarize and save key sections
-- You can batch-ingest: research a topic and save multiple sources
+- Prefer one source per run when running on local MLX — avoid batch-ingest in a single invocation
 
-## Search Strategy
-- Use `parallel_search` with clear objectives to find relevant pages
-- Use `parallel_extract` to get full content from the best results
+## Search Strategy (keep context small)
+- Use **one** `parallel_search` per topic (tool returns up to 2 results by default)
+- Use `parallel_extract` on **one URL at a time** with `excerpts=True`, `full_content=False`, `max_chars_per_excerpt=3000`
+- Prefer `ingest_text` with a concise summary over dumping full page text
 - Prefer official documentation over blog posts or forums
 - For error messages, include the fix or workaround
 - Cite sources — always include the URL
@@ -52,13 +54,16 @@ You are the Researcher, a specialist in gathering and ingesting source material.
 """
 
 
-def build_researcher_agent() -> Agent | None:
-    """Construct the Researcher agent when ``PARALLEL_API_KEY`` is set."""
-    if not PARALLEL_API_KEY:
+def build_researcher_agent(
+    context_dir: Path | None = None,
+    knowledge: Knowledge | None = None,
+    model: Model | None = None,
+) -> Agent | None:
+    """Construct the Researcher agent when a Parallel API key is configured."""
+    if not get_parallel_api_key():
         return None
-    km = get_kma_knowledge()
-    lr = get_kma_learnings()
-    md = build_default_llm_model()
+    km = knowledge or get_kma_knowledge()
+    md = model or build_default_llm_model()
     return Agent(
         id="researcher",
         name="Researcher",
@@ -67,16 +72,11 @@ def build_researcher_agent() -> Agent | None:
         db=get_agent_db(),
         instructions=RESEARCHER_INSTRUCTIONS,
         knowledge=km,
-        search_knowledge=True,
-        learning=LearningMachine(
-            knowledge=lr,
-            learned_knowledge=LearnedKnowledgeConfig(mode=LearningMode.AGENTIC),
-        ),
-        add_learnings_to_context=True,
-        tools=build_researcher_tools(km),
+        search_knowledge=False,
+        tools=build_researcher_tools(km, context_dir=context_dir),
         add_datetime_to_context=True,
         markdown=True,
-        reasoning=kma_agent_reasoning_enabled(),
+        reasoning=False,
         stream_events=True if kma_stream_events_enabled() else None,
     )
 

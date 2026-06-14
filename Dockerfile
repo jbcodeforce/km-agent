@@ -29,11 +29,12 @@ ENV UV_COMPILE_BYTECODE=1 \
     PATH=/app/.venv/bin:$PATH
 
 COPY pyproject.toml uv.lock README.md /app/
-RUN uv sync --frozen --no-install-project
+RUN uv sync --frozen --no-install-project --extra fastembed
 
 COPY src /app/src
+COPY scripts /app/scripts
 COPY --from=frontend /ui/dist /app/src/frontend/dist
-RUN uv sync --frozen
+RUN uv sync --frozen --extra fastembed
 
 EXPOSE 8000
 # Use the venv interpreter explicitly (avoids broken shebangs on some setups).

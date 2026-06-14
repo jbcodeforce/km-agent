@@ -15,6 +15,10 @@ from kma.config import (
     get_llm_base_url,
     get_llm_api_key,
     get_embed_base_url,
+    get_parallel_api_key,
+    get_parallel_max_chars_per_result,
+    get_parallel_max_results,
+    get_parallel_ingest_max_chars,
     kma_agent_reasoning_enabled,
     kma_stream_events_enabled,
     kma_show_team_member_responses_enabled,
@@ -56,9 +60,17 @@ def test_llm_configs() -> None:
     assert get_llm_base_url() == "http://localhost:7999/v1"
     assert get_llm_api_key() == "not-needed"
 
-    assert get_embed_provider() == "mlx"
-    assert get_embed_model_id() == "embeddinggemma-300m-6bit"
-    assert get_embed_dimensions() == 2048
-    assert get_embed_base_url() == "http://localhost:7999/v1"
-    assert get_embed_host() == "localhost"  
+    assert get_embed_provider() == "local"
+    assert get_embed_model_id() == "nomical-modernbert-embed-base-4bit"
+    assert get_embed_dimensions() == 768
+
+def test_parallel_config_defaults(monkeypatch) -> None:
+    monkeypatch.setenv(Env.KMA_PARALLEL_API_KEY, "test-key")
+    monkeypatch.delenv(Env.KMA_PARALLEL_MAX_RESULTS, raising=False)
+    monkeypatch.delenv(Env.KMA_PARALLEL_MAX_CHARS_PER_RESULT, raising=False)
+    monkeypatch.delenv(Env.KMA_PARALLEL_INGEST_MAX_CHARS, raising=False)
+    assert get_parallel_api_key() == "test-key"
+    assert get_parallel_max_results() == 2
+    assert get_parallel_max_chars_per_result() == 3000
+    assert get_parallel_ingest_max_chars() == 8000
     

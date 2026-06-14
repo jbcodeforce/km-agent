@@ -45,7 +45,37 @@
             </template>
           </div>
           <div class="message-content">
-            <div class="message-text" v-html="formatMessage(msg.content)"></div>
+            <template v-if="msg.role === 'assistant'">
+              <div v-if="msg.streamComplete" class="message-toolbar">
+                <div class="view-toggle" role="group" aria-label="Message view">
+                  <button
+                    type="button"
+                    :class="{ active: getViewMode(index) === 'text' }"
+                    @click="setViewMode(index, 'text')"
+                  >
+                    Text
+                  </button>
+                  <button
+                    type="button"
+                    :class="{ active: getViewMode(index) === 'markdown' }"
+                    @click="setViewMode(index, 'markdown')"
+                  >
+                    Markdown
+                  </button>
+                </div>
+              </div>
+              <pre
+                v-if="!msg.streamComplete || getViewMode(index) === 'text'"
+                class="message-text plain"
+              >{{ msg.content }}</pre>
+              <div
+                v-else
+                class="message-text markdown"
+                v-html="renderMarkdown(msg.content)"
+              ></div>
+              <div v-if="msg.streamComplete" class="stream-end">END</div>
+            </template>
+            <div v-else class="message-text user-text">{{ msg.content }}</div>
           </div>
         </div>
       </template>
@@ -120,6 +150,8 @@ import {
   getSession,
   chatHistoryToMessages
 } from '@/services/agentOs.js'
+import { consumeLeadingNewlines } from '@/utils/streamText.js'
+import { renderMarkdown } from '@/utils/messageRender.js'
 
 const props = defineProps({
   agentId: { type: String, required: true },
@@ -139,6 +171,20 @@ const isLoading = ref(false)
 const error = ref(null)
 const messagesContainer = ref(null)
 const inputField = ref(null)
+/** @type {import('vue').Ref<Record<number, 'text' | 'markdown'>>} */
+const messageViewModes = ref({})
+/** @param {number} index */
+function getViewMode(index) {
+  const msg = messages.value[index]
+  if (msg?.role === 'assistant' && !msg.streamComplete) return 'text'
+  return messageViewModes.value[index] ?? 'markdown'
+}
+
+/** @param {number} index @param {'text' | 'markdown'} mode */
+function setViewMode(index, mode) {
+  messageViewModes.value = { ...messageViewModes.value, [index]: mode }
+}
+
 /** Scroll the message container after DOM updates. */
 function scrollToBottom() {
   nextTick(() => {
@@ -146,23 +192,6 @@ function scrollToBottom() {
       messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
     }
   })
-}
-
-/**
- * Lightweight markdown-ish HTML for assistant/user bubbles (not a full MD parser).
- * @param {string} content
- * @returns {string}
- */
-function formatMessage(content) {
-  let formatted = String(content || '')
-    .replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-    .replace(/\n/g, '<br>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/^(\d+)\. (.+)$/gm, '<li>$2</li>')
-  return formatted
 }
 
 /** Merge keys into the current route query (e.g. new session_id after first run). */
@@ -182,16 +211,19 @@ function mergeQuery(updates) {
 async function hydrateFromSession(sessionId) {
   if (!sessionId) {
     messages.value = []
+    messageViewModes.value = {}
     return
   }
   error.value = null
   try {
     const s = await getSession(sessionId, { userId: props.userId })
     messages.value = chatHistoryToMessages(s.chat_history || [])
+    messageViewModes.value = {}
     scrollToBottom()
   } catch (e) {
     error.value = e.message || 'Failed to load session'
     messages.value = []
+    messageViewModes.value = {}
   }
 }
 
@@ -230,6 +262,8 @@ async function sendMessage() {
   traceLines.value = []
 
   const sid = route.query.session_id || null
+  let streamLeadBuffer = ''
+  let streamTextStarted = false
 
   await createAgentRunStream(
     props.agentId,
@@ -245,11 +279,20 @@ async function sendMessage() {
         }
       },
       onTextChunk: (text) => {
+        let toAppend = text
+        if (!streamTextStarted) {
+          const { buffer, emit } = consumeLeadingNewlines(streamLeadBuffer, text)
+          streamLeadBuffer = buffer
+          if (emit == null) return
+          toAppend = emit
+          streamTextStarted = true
+        }
+
         const last = messages.value[messages.value.length - 1]
         if (last && last.role === 'assistant') {
-          last.content += text
+          last.content += toAppend
         } else {
-          messages.value.push({ role: 'assistant', content: text })
+          messages.value.push({ role: 'assistant', content: toAppend, streamComplete: false })
         }
         scrollToBottom()
       },
@@ -266,6 +309,10 @@ async function sendMessage() {
       },
       onDone: () => {
         isLoading.value = false
+        const last = messages.value[messages.value.length - 1]
+        if (last?.role === 'assistant') {
+          last.streamComplete = true
+        }
         scrollToBottom()
         emit('run-complete')
       }
@@ -392,6 +439,65 @@ function sendSuggested(text) {
   color: #e2e8f0;
   font-size: 0.9375rem;
   line-height: 1.6;
+  min-width: 0;
+}
+
+.message-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: -0.25rem 0 0.5rem;
+}
+
+.view-toggle {
+  display: inline-flex;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.view-toggle button {
+  background: #0f172a;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.view-toggle button.active {
+  background: #334155;
+  color: #f1f5f9;
+}
+
+.view-toggle button:not(.active):hover {
+  color: #cbd5e1;
+}
+
+.message-text.plain,
+.message-text.user-text {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  background: transparent;
+}
+
+.stream-end {
+  margin-top: 0.625rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #334155;
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-align: right;
 }
 
 .message.user .message-content {
@@ -422,6 +528,55 @@ function sendSuggested(text) {
 
 .message-text :deep(li) {
   margin-left: 1rem;
+}
+
+.message-text.markdown :deep(h1),
+.message-text.markdown :deep(h2),
+.message-text.markdown :deep(h3),
+.message-text.markdown :deep(h4) {
+  margin: 0.75rem 0 0.5rem;
+  color: #f1f5f9;
+  line-height: 1.3;
+}
+
+.message-text.markdown :deep(h1:first-child),
+.message-text.markdown :deep(h2:first-child),
+.message-text.markdown :deep(h3:first-child),
+.message-text.markdown :deep(p:first-child) {
+  margin-top: 0;
+}
+
+.message-text.markdown :deep(p) {
+  margin: 0.5rem 0;
+}
+
+.message-text.markdown :deep(ul),
+.message-text.markdown :deep(ol) {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.message-text.markdown :deep(blockquote) {
+  margin: 0.5rem 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid #475569;
+  color: #cbd5e1;
+}
+
+.message-text.markdown :deep(a) {
+  color: #34d399;
+}
+
+.message-text.markdown :deep(table) {
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  width: 100%;
+}
+
+.message-text.markdown :deep(th),
+.message-text.markdown :deep(td) {
+  border: 1px solid #334155;
+  padding: 0.375rem 0.5rem;
 }
 
 .typing-indicator {

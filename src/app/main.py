@@ -9,7 +9,7 @@ from kma.agents.linter import get_linter
 from kma.agents.navigator import get_navigator
 from kma.agents.researcher import get_researcher
 
-from kma.agents.settings import get_kma_knowledge, get_kma_learnings
+from kma.agents.settings import get_kma_knowledge, get_kma_learnings, get_kma_wiki
 from kma.agents.team import get_kma_team
 
 
@@ -23,7 +23,7 @@ agent_os = AgentOS(
     db=get_postgres_db(),
     teams=[get_kma_team()],
     agents=_build_agents(),
-    knowledge=[get_kma_knowledge(), get_kma_learnings()],
+    knowledge=[get_kma_knowledge(), get_kma_learnings(), get_kma_wiki()],
     config=str(Path(__file__).parent / "config.yaml"),
 )
 

@@ -6,7 +6,8 @@ frontmatter and ``.manifest.json`` entries (paths relative to that docs root) ar
 If ``docs/.manifest.json`` is missing, an empty manifest is created before
 preparing files or invoking the compiler so that raw root always has manifest I/O.
 
-Then runs the Compiler once per markdown file with:
+Then runs the Compiler once per markdown file (skipping entries already marked
+``compiled: true`` in ``.manifest.json``), then the Linter once, with:
 
 - ``raw_roots``: your docs folder (e.g. ``--label studies``) plus ``ingested``
   pointing at ``<context>/raw`` (researcher output), so both coexist.
@@ -36,12 +37,15 @@ if str(REPO_ROOT / "src") not in sys.path:
 from agno.run.base import RunStatus  # noqa: E402
 
 from kma.agents.compiler import build_compile_file_prompt, build_compiler_agent  # noqa: E402
+from kma.agents.linter import build_lint_prompt, build_linter_agent  # noqa: E402
 from kma.agents.settings import kma_knowledge  # noqa: E402
 from kma.config import get_kma_context_dir  # noqa: E402
 from kma.tools.ingest import (  # noqa: E402
     _build_frontmatter,
     _read_manifest,
     _write_manifest,
+    manifest_entry_compiled,
+    mark_manifest_compiled,
 )
 
 _EXCLUDE_DIR_NAMES = frozenset(
@@ -95,7 +99,14 @@ def _ensure_manifest_exists(raw_dir: Path, *, dry_run: bool) -> None:
         print(f"created empty manifest: {manifest_path}")
 
 
-def _append_manifest_entry(raw_dir: Path, file_rel: str, title: str, source: str) -> None:
+def _append_manifest_entry(
+    raw_dir: Path,
+    file_rel: str,
+    title: str,
+    source: str,
+    *,
+    reset_compiled: bool = False,
+) -> None:
     manifest = _read_manifest(raw_dir)
     ingested = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     for entry in manifest:
@@ -103,7 +114,8 @@ def _append_manifest_entry(raw_dir: Path, file_rel: str, title: str, source: str
             entry["title"] = title
             entry["source"] = source
             entry["ingested"] = ingested
-            entry["compiled"] = False
+            if reset_compiled:
+                entry["compiled"] = False
             _write_manifest(raw_dir, manifest)
             return
     manifest.append(
@@ -141,6 +153,7 @@ def _prepare_file(
     *,
     force: bool,
     dry_run: bool,
+    recompile: bool,
 ) -> tuple[str, str | None]:
     """
     Prepare yaml formatter in src file is not present
@@ -155,7 +168,7 @@ def _prepare_file(
         title = _first_h1_title(text) or Path(rel).stem.replace("-", " ").title()
         if dry_run:
             return ("dry_run", None)
-        _append_manifest_entry(docs_root, rel, title, source)
+        _append_manifest_entry(docs_root, rel, title, source, reset_compiled=recompile)
         return ("updated", None)
     has_yaml_fmt=_has_yaml_frontmatter(text)
     if  has_yaml_fmt and not force:
@@ -175,7 +188,7 @@ def _prepare_file(
         print(f"[dry-run] would update {rel}")
         return ("dry_run", None)
     path.write_text(new_text, encoding="utf-8")
-    _append_manifest_entry(docs_root, rel, title, source)
+    _append_manifest_entry(docs_root, rel, title, source, reset_compiled=recompile)
     return ("updated", None)
 
 
@@ -220,6 +233,16 @@ def main() -> int:
         action="store_true",
         help="Only prepare docs/manifest; do not call the LLM",
     )
+    parser.add_argument(
+        "--skip-linter",
+        action="store_true",
+        help="Skip the post-compile Linter agent run",
+    )
+    parser.add_argument(
+        "--recompile",
+        action="store_true",
+        help="Re-run the Compiler for files already marked compiled in the manifest",
+    )
     args = parser.parse_args()
 
     docs = args.docs.resolve()
@@ -245,6 +268,7 @@ def main() -> int:
             args.doc_type,
             force=args.force,
             dry_run=args.dry_run,
+            recompile=args.recompile,
         )
         if err:
             print(err, file=sys.stderr)
@@ -260,27 +284,51 @@ def main() -> int:
     (wiki / "concepts").mkdir(parents=True, exist_ok=True)
     (ctx / "raw").mkdir(parents=True, exist_ok=True)
 
-    if args.dry_run or args.skip_compiler:
-        print("skip compiler (--dry-run or --skip-compiler)")
+    if args.dry_run:
+        print("skip compiler and linter (--dry-run)")
         return 0
 
     ingested_root = ctx / "raw"
-    compiler_agent = build_compiler_agent(
-        context_dir=ctx,
-        raw_roots=[(args.label, docs), ("ingested", ingested_root)],
-        knowledge=kma_knowledge
-    )
-    for p in md_files:
-        rel = p.relative_to(docs).as_posix()
-        file_id = f"{args.label}:{rel}"
-        print(f"process file {file_id}")
-        prompt = build_compile_file_prompt(file_id, automated=True)
-        out = compiler_agent.run(prompt)
-        if out.status != RunStatus.completed:
-            print(f"compiler run failed: {out.status} {out.content!r}", file=sys.stderr)
-            return 1
-        print(f"done processing {file_id}")
-    print("compiler run completed")
+    if not args.skip_compiler:
+        compiler_agent = build_compiler_agent(
+            context_dir=ctx,
+            raw_roots=[(args.label, docs), ("ingested", ingested_root)],
+            knowledge=kma_knowledge,
+        )
+        skipped = 0
+        for p in md_files:
+            rel = p.relative_to(docs).as_posix()
+            file_id = f"{args.label}:{rel}"
+            if not args.recompile and manifest_entry_compiled(docs, rel):
+                print(f"skip already compiled: {file_id}")
+                skipped += 1
+                continue
+            print(f"process file {file_id}")
+            prompt = build_compile_file_prompt(file_id, automated=True)
+            out = compiler_agent.run(prompt)
+            if out.status != RunStatus.completed:
+                print(f"compiler run failed: {out.status} {out.content!r}", file=sys.stderr)
+                return 1
+            if not mark_manifest_compiled(docs, rel):
+                print(f"warning: manifest entry not found for {file_id}", file=sys.stderr)
+            print(f"done processing {file_id}")
+        if skipped:
+            print(f"skipped {skipped} already-compiled file(s)")
+        print("compiler run completed")
+    else:
+        print("skip compiler (--skip-compiler)")
+
+    if args.skip_linter:
+        print("skip linter (--skip-linter)")
+        return 0
+
+    linter_agent = build_linter_agent(context_dir=ctx, knowledge=kma_knowledge)
+    print("running linter")
+    lint_out = linter_agent.run(build_lint_prompt(automated=True))
+    if lint_out.status != RunStatus.completed:
+        print(f"linter run failed: {lint_out.status} {lint_out.content!r}", file=sys.stderr)
+        return 1
+    print("linter run completed")
     return 0
 
 

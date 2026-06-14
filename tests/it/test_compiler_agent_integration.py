@@ -31,7 +31,7 @@ def test_compiler_processes() -> None:
     )
     assert agent is not None
     assert agent.model is not None
-    assert agent.model.id == "Qwen3.6-27B-PARO"
+    assert agent.model.id == "Qwen3.6-35B-A3B-UD-MLX-4bit"
     assert type(agent.model).__name__ == "OpenAILike"
     prompt = build_compile_file_prompt(SOURCE_RAW)
     try:

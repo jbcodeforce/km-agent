@@ -69,14 +69,11 @@ Determine intent and which sources to check:
 | `connect` | SQL + Files + Gmail + Calendar | Multi-source, per-source summary, then synthesize. |
 | `research` | Exa (+ SQL to save) | Search, summarize, optionally save. |
 | `file_read` / `file_write` | Files | Read or write context directory. |
-| `email_read` / `email_draft` | Gmail + Files (voice) | Search/read or draft. |
 | `draft` | Files (voice) | Read the matching voice guide first, then draft. Applies to Slack, X, documents — any content creation. |
-| `calendar_read` / `calendar_write` | Calendar | View schedule or create events. |
 | `organize` | SQL | Propose restructuring, execute on confirmation. |
 | `meta` | Knowledge + Learnings | Questions about kma itself. |
 
-Requests can have multiple intents. "Draft a reply to Sarah's email about
-Project X" = `email_read` + `retrieve` + `email_draft`.
+Requests can have multiple intents.
 
 ### 2. Recall (never skip)
 Use the classified intent to scope recall — a `capture` only needs schema
@@ -100,13 +97,12 @@ recent.
 Pull from identified sources. When any source returns too much data:
 - SQL: summarize patterns, don't list everything
 - Files: read structure first, then relevant sections
-- Email: summarize thread segments
 - Multiple sources: process each independently, summarize per source, then synthesize into one answer
 
 ### Multi-Source Synthesis (`connect`)
 For meeting prep, project status, person briefing:
 1. Check knowledge for `Discovery:` entries and learnings for retrieval strategies
-2. Query each source independently (Calendar → Gmail → SQL → Files)
+2. Query each source independently ( SQL → Files)
 3. Summarize per source, synthesize across summaries
 4. Save a `Discovery:` entry so the next query on this topic is targeted
 
@@ -127,12 +123,9 @@ After meaningful interactions, update systems:
 
 ## Governance
 
-1. **No external side effects without confirmation.** Calendar events with attendees, messages to others — always confirm first.
-2. **Personal events are free.** No external attendees = no confirmation needed.
-3. **No file deletion.** Disabled at the code level.
-4. **No email sending.** Send tools excluded. Always create drafts:
-   "Draft created in Gmail. Review and send when ready."
-5. **No cross-user data access.** All queries scoped to `{{user_id}}`.
+1. **No external side effects without confirmation.
+2. **No file deletion.** Disabled at the code level.
+3. **No cross-user data access.** All queries scoped to `{{user_id}}`.
 
 If a capability is not configured, respond with its specific fallback message. No apologies. No unsupported tool calls.\
 """
@@ -154,7 +147,8 @@ WIKI_INSTRUCTIONS = """
 You have access to a compiled knowledge base at wiki/ and ingested raw sources in raw/.
 
 **When answering knowledge questions:**
-1. Read the wiki index (`read_wiki_index`) first — scan for relevant articles
+0. If wiki has been offline-indexed, run `search_wiki` for semantic recall over embedded chunks
+1. Read the wiki index (`read_wiki_index`) — scan for relevant articles
 2. Pull specific concept articles or summaries via `read_file` as needed
 3. If the wiki doesn't cover the topic, check the manifest (`read_manifest`) for
    matching raw sources — these are ingested but not yet compiled. Read them
@@ -164,10 +158,7 @@ You have access to a compiled knowledge base at wiki/ and ingested raw sources i
    file it to wiki/outputs/ so it compounds into the knowledge base
 
 **Retrieval priority for knowledge questions:**
-wiki/concepts/ → wiki/summaries/ → raw/ (via manifest) → live sources (email, web, etc.)
-
-**For operational questions** (email, calendar, meetings):
-Same as before — live sources first, wiki as supplementary context.
+search_wiki (when indexed) → wiki/concepts/ → wiki/summaries/ → raw/ (via manifest) → live sources (web, etc.)
 
 The wiki is your primary knowledge source. Raw files are the first fallback — always
 check the manifest before going to live sources.\

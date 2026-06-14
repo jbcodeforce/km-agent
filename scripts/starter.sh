@@ -13,9 +13,8 @@
 #   -h, --help
 #
 # Environment:
+#   Loads ${REPO_ROOT}/.env at startup (exports all variables). Copy example.env → .env if missing.
 #   KMA_MLX_BASE_URL  OMLX OpenAI-compatible base URL (default: http://127.0.0.1:7999/v1).
-#   OMLX_PORT         Host port for `omlx serve` when not already running (default: 7999).
-#   OMLX_MODEL_DIR    Model directory for `omlx serve` (default: $HOME/.lmstudio/models).
 #   KMA_AGENT_OS_HOST (AGENT_OS_HOST)  Bind address for AgentOS (default: 127.0.0.1)
 #   KMA_AGENT_OS_PORT (AGENT_OS_PORT, PORT)  AgentOS port (default: 8000)
 #   KMA_VITE_PORT (VITE_PORT)  Vite dev port (default: 5174; read from src/frontend/.env if set)
@@ -59,6 +58,51 @@ require_curl() {
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${REPO_ROOT}/compose.yaml"
+ENV_FILE="${REPO_ROOT}/.env"
+
+load_env_file() {
+  if [[ ! -f "${1}" ]]; then
+    echo "starter.sh: no ${1} found (using environment defaults)."
+    return 0
+  fi
+  echo "starter.sh: loading ${1}..."
+  set -a
+  # shellcheck disable=SC1090
+  source "${1}"
+  set +a
+}
+
+mask_secret() {
+  if [[ -n "${1:-}" ]]; then
+    echo "***set***"
+  else
+    echo "(unset)"
+  fi
+}
+
+echo_current_settings() {
+  echo "--- Environment (from .env + shell) ---"
+  echo "  KMA_LLM_PROVIDER=${KMA_LLM_PROVIDER:-<unset>}"
+  echo "  KMA_LLM_MODEL_ID=${KMA_LLM_MODEL_ID:-<unset>}"
+  echo "  KMA_LLM_BASE_URL=${KMA_LLM_BASE_URL:-<unset>}"
+  echo "  KMA_EMBED_PROVIDER=${KMA_EMBED_PROVIDER:-<unset>}"
+  echo "  KMA_EMBED_MODEL=${KMA_EMBED_MODEL:-<unset>}"
+  echo "  KMA_EMBED_DIMENSIONS=${KMA_EMBED_DIMENSIONS:-<unset>}"
+  echo "  KMA_CONTEXT_DIR=${KMA_CONTEXT_DIR:-<unset>}"
+  echo "  KMA_DB_HOST=${KMA_DB_HOST:-${DB_HOST:-<unset>}}"
+  echo "  KMA_DB_PORT=${KMA_DB_PORT:-${DB_PORT:-<unset>}}"
+  echo "  KMA_DB_DATABASE=${KMA_DB_DATABASE:-${DB_DATABASE:-<unset>}}"
+  echo "  KMA_DB_USER=${KMA_DB_USER:-${DB_USER:-<unset>}}"
+  echo "  KMA_AGENT_OS_HOST=${KMA_AGENT_OS_HOST:-${AGENT_OS_HOST:-<unset>}}"
+  echo "  KMA_AGENT_OS_PORT=${KMA_AGENT_OS_PORT:-${AGENT_OS_PORT:-${PORT:-<unset>}}}"
+  echo "  KMA_VITE_PORT=${KMA_VITE_PORT:-${VITE_PORT:-<unset>}}"
+  echo "  RUNTIME_ENV=${RUNTIME_ENV:-<unset>}"
+  echo "  AGNO_DEBUG=${AGNO_DEBUG:-<unset>}"
+  echo "  KMA_LLM_API_KEY=$(mask_secret "${KMA_LLM_API_KEY:-${OMLX_API_KEY:-}}")"
+  echo "  KMA_PARALLEL_API_KEY=$(mask_secret "${KMA_PARALLEL_API_KEY:-${PARALLEL_API_KEY:-}}")"
+  echo "  EXA_API_KEY=$(mask_secret "${EXA_API_KEY:-}")"
+  echo "---------------------------------------"
+}
 
 MODE=docker
 WITH_FRONTEND=0
@@ -80,11 +124,23 @@ if [[ "${WITH_FRONTEND}" == "1" && "${MODE}" != "dev" ]]; then
   die "--frontend requires --dev"
 fi
 
+load_env_file "${ENV_FILE}"
+echo_current_settings
+
 FRONTEND_DIR="${REPO_ROOT}/src/frontend"
 
-mlx_base="${KMA_MLX_BASE_URL:-http://localhost:7999/v1}"
+mlx_base="${KMA_LLM_BASE_URL:-http://localhost:7999/v1}"
 mlx_base="${mlx_base%/}"
 mlx_models_url="${mlx_base}/models"
+mlx_api_key="${KMA_LLM_API_KEY:-${OMLX_API_KEY:-not-needed}}"
+
+curl_mlx_models() {
+  curl -fsS -H "Authorization: Bearer ${mlx_api_key}" "${mlx_models_url}"
+}
+
+omlx_models_reachable() {
+  curl_mlx_models >/dev/null 2>&1
+}
 
 require_docker_for_compose() {
   have_cmd docker || die "Docker CLI not found. Install Docker or use --dev with Postgres reachable."
@@ -131,12 +187,12 @@ prepare_dev_backend() {
   fi
   have_cmd uv || die "uv not found; install uv and run 'uv sync' from the repo root."
   require_curl
-  if ! curl -fsS "${mlx_models_url}" >/dev/null 2>&1; then
+  if ! omlx_models_reachable; then
     die "OMLX is not responding at ${mlx_base}. Start it first (e.g. ./scripts/starter.sh in another terminal), then retry --dev."
   fi
   cd "${REPO_ROOT}" || die "cannot cd to ${REPO_ROOT}"
   echo "starter.sh: uv sync (ensure ${REPO_ROOT}/.venv matches the project)..."
-  uv sync --directory "${REPO_ROOT}" || die "uv sync failed"
+  uv sync --directory "${REPO_ROOT}" --extra local-mlx || die "uv sync failed"
   local venv_py="${REPO_ROOT}/.venv/bin/python"
   [[ -x "${venv_py}" ]] || die "starter.sh: expected ${venv_py} after uv sync"
   export PYTHONPATH="${REPO_ROOT}/src${PYTHONPATH:+:${PYTHONPATH}}"
@@ -224,7 +280,7 @@ if ! have_cmd omlx; then
 fi
 
 require_curl
-if curl -fsS "${mlx_models_url}" >/dev/null 2>&1; then
+if omlx_models_reachable; then
   echo "OMLX is already responding at ${mlx_base}. Docker stack is up; nothing else to start."
   exit 0
 fi

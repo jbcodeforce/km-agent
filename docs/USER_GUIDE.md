@@ -53,13 +53,6 @@ In a separate terminal, from the repo root, start Postgresql, km-agent container
 ./scripts/starter.sh
 ```
 
-This script brings up backend, database, frontend for chat interface and starts **Ollama** if nothing is already listening on the configured port. Pull the models you configured (chat + embedding), for example:
-
-```bash
-ollama pull qwen3.6:35b-a3b 
-ollama pull nomic-embed-text:latest
-```
-
 * Validate your environment:
   ```sh
   ./scripts/verify_agent_env.sh --frontend
@@ -71,28 +64,24 @@ ollama pull nomic-embed-text:latest
 |--------|----------|
 | Different use cases | [Section below](#use-cases-living-document) |
 | Architecture, agents, pipeline, intents | [`SPEC.md`](./SPEC.md) |
-| Docker volumes, Ollama, tests, frontend proxy | [`DEVELOPER_PRACTICES.md`](./DEVELOPER_PRACTICES.md) |
+| Docker volumes, tests, frontend proxy | [`DEVELOPER_PRACTICES.md`](./DEVELOPER_PRACTICES.md) |
 | Repo overview and quick links | [`../README.md`](../README.md) |
 
 ---
 
 ## Use cases
 
-The following sections are **outlines**. We will keep adding steps, examples, troubleshooting, and screenshots. When you extend a use case, preserve the **Goal / Preconditions / Steps / Success / Next** shape so the guide stays scannable.
+We will keep adding steps, examples, troubleshooting, and screenshots. When you extend a use case, preserve the **Goal / Preconditions / Steps / Success / Next** shape so the guide stays scannable.
 
 ### UC-1 — Attach a studies repository and compile documentation into the wiki
 
-**Goal:** Point km-agent at an existing Markdown tree (for example a `docs/` folder of the [flink-studies](https://github.com/jbcodeforce/flink-studies)), normalize front matter and manifest entries, and run the **Compiler** agent so **`context/wiki/`** gains summaries, concept pages, and an updated **`index.md`**.
+**Goal:** Point km-agent at an existing Markdown tree (for example a `docs/` folder of the [flink-studies](https://github.com/jbcodeforce/flink-studies)), normalize front matter and manifest entries, and run the **Compiler** and **linter** agents so **`context/wiki/`** gains summaries, concept pages, and an updated **`index.md`**.
 
 #### Preconditions
 
 - Postgres running; LLM and embedder configured (`KMA_LLM_PROVIDER`, `KMA_EMBED_*`).
-- Ollama (or cloud) models pulled for both chat and embeddings.
-
-* The following script validate your environment:
-  ```sh
-  ./scripts/verify_agent_env.sh --frontend
-  ```
+- OMLX server (or cloud) models pulled for chat.
+- Embedding model will be pulled on the first calls
 
 #### Steps (outline)
 
@@ -109,7 +98,6 @@ The following sections are **outlines**. We will keep adding steps, examples, tr
 3. Inspect `context/wiki/index.md` and `context/wiki/concepts/` after a successful run.
 
 **Success:** Uncompiled sources in the manifest move to **compiled**, and the wiki index reflects new or updated articles.
-
 
 ### UC-2 — Ask questions using the wiki, files, and SQL
 

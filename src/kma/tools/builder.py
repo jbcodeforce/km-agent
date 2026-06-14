@@ -7,10 +7,16 @@ from agno.tools.file import FileTools
 from agno.tools.sql import SQLTools
 from agno.tools.parallel import ParallelTools
 
-from kma.config import get_kma_context_dir
+from kma.config import (
+    Env,
+    get_kma_context_dir,
+    get_parallel_api_key,
+    get_parallel_max_chars_per_result,
+    get_parallel_max_results,
+)
 from kma.tools.compiler_fs import create_compiler_file_tools, use_labelled_raw_paths
 from kma.tools.ingest import create_compiler_manifest_tools
-from kma.tools.knowledge import create_update_knowledge
+from kma.tools.knowledge import create_update_knowledge, create_search_wiki
 from kma.tools.wiki import create_wiki_tools
 from kma.db import KMA_SCHEMA, get_sql_engine
 from kma.tools.ingest import create_ingest_tools
@@ -61,12 +67,17 @@ def build_compiler_tools(
 
 
 
-def build_navigator_tools(knowledge: Knowledge, context_dir: Path | str | None = None) -> list:
+def build_navigator_tools(
+    knowledge: Knowledge,
+    context_dir: Path | str | None = None,
+    wiki_knowledge: Knowledge | None = None,
+) -> list:
     """Tools for the Navigator agent — email, calendar, SQL, files, Exa, wiki reading, manifest.
 
     Args:
         knowledge: Knowledge base for ``update_knowledge``.
         context_dir: Root containing ``wiki/`` and ``raw/``; defaults to ``get_kma_context_dir()``.
+        wiki_knowledge: Optional ``kma_wiki`` base for ``search_wiki`` semantic recall.
     """
     base = Path(context_dir).resolve() if context_dir is not None else get_kma_context_dir().resolve()
     tools: list = [
@@ -80,6 +91,8 @@ def build_navigator_tools(knowledge: Knowledge, context_dir: Path | str | None =
     # create_wiki_tools returns: [read_index, update_index, read_state, update_state]
     read_wiki_index, _, read_wiki_state, _ = create_wiki_tools(wiki_dir)
     tools.extend([read_wiki_index, read_wiki_state])
+    if wiki_knowledge is not None:
+        tools.append(create_search_wiki(wiki_knowledge))
 
     # Manifest access — lets Navigator discover ingested raw sources
     _, _, read_manifest, *_ = create_ingest_tools(raw_dir)
@@ -88,14 +101,23 @@ def build_navigator_tools(knowledge: Knowledge, context_dir: Path | str | None =
     return tools
 
 
-def build_researcher_tools(knowledge: Knowledge) -> list:
+def build_researcher_tools(
+    knowledge: Knowledge,
+    context_dir: Path  | None = None) -> list:
     """Tools for the Researcher agent — Parallel search/extract + ingest to raw/."""
-    raw_dir = get_kma_context_dir() / "raw"
+    ctx_dir = context_dir or get_kma_context_dir()
+    raw_dir = ctx_dir / "raw"
     ingest_url, ingest_text, read_manifest, _, sync_raw_manifest_from_disk = create_ingest_tools(raw_dir)
-    os.environ["PARALLEL_API_KEY"] = os.getenv("KMA_PARALLEL_API_KEY", "")
+    parallel_key = get_parallel_api_key()
+    if parallel_key:
+        os.environ["PARALLEL_API_KEY"] = parallel_key
     return [
-        FileTools(base_dir=get_kma_context_dir(), enable_delete_file=False),
-        ParallelTools(),
+        FileTools(base_dir=ctx_dir, enable_delete_file=False),
+        ParallelTools(
+            api_key=parallel_key,
+            max_results=get_parallel_max_results(),
+            max_chars_per_result=get_parallel_max_chars_per_result(),
+        ),
         create_update_knowledge(knowledge),
         ingest_url,
         ingest_text,

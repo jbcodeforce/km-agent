@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock
 
-from kma.agents.linter import build_linter_agent
+from kma.agents.linter import build_lint_prompt, build_linter_agent
 from kma.config import Env
 from kma.llm_factory import build_default_llm_model
 from kma.tools.builder import build_linter_tools
@@ -12,6 +12,14 @@ def test_build_linter_tools() -> None:
     km = MagicMock()
     tools = build_linter_tools(knowledge=km)
     assert len(tools) > 0
+
+
+def test_build_lint_prompt_automated() -> None:
+    prompt = build_lint_prompt(automated=True)
+    assert "automated lint" in prompt
+    assert "read_wiki_index" in prompt
+    assert "wiki/lint-report.md" in prompt
+    assert "mark_linted" in prompt
 
 
 def test_build_linter_agent_wiring(monkeypatch) -> None:

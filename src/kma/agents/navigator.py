@@ -19,7 +19,7 @@ from agno.learn import LearnedKnowledgeConfig, LearningMachine, LearningMode
 from agno.models.base import Model
 
 from kma.agents.instructions import BASE_INSTRUCTIONS, EXA_INSTRUCTIONS, WIKI_INSTRUCTIONS
-from kma.agents.settings import get_agent_db, get_kma_knowledge, get_kma_learnings
+from kma.agents.settings import get_agent_db, get_kma_knowledge, get_kma_learnings, get_kma_wiki
 from kma.config import kma_agent_reasoning_enabled, kma_stream_events_enabled
 from kma.llm_factory import build_default_llm_model
 from kma.tools.builder import build_navigator_tools
@@ -70,7 +70,7 @@ def build_navigator_agent(
             knowledge=lr,
             learned_knowledge=LearnedKnowledgeConfig(mode=LearningMode.AGENTIC),
         ),
-        tools=build_navigator_tools(kn, context_dir=ctx),
+        tools=build_navigator_tools(kn, context_dir=ctx, wiki_knowledge=get_kma_wiki()),
         enable_agentic_memory=True,
         search_past_sessions=True,
         num_past_sessions_to_search=5,

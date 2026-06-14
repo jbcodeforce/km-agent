@@ -33,5 +33,12 @@
     "source": "flink-studies",
     "ingested": "2026-06-08T00:00:00Z",
     "compiled": false
+  },
+  {
+    "file": "apache-kafka-foundational-concepts-overview.md",
+    "title": "Apache Kafka Foundational Concepts Overview",
+    "source": "Multiple sources: kafka.apache.org, dev.to, medium.com",
+    "ingested": "2026-06-13T17:20:49Z",
+    "compiled": false
   }
 ]
