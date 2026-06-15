@@ -34,19 +34,14 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from agno.run.base import RunStatus  # noqa: E402
-
-from kma.agents.compiler import build_compile_file_prompt, build_compiler_agent  # noqa: E402
-from kma.agents.linter import build_lint_prompt, build_linter_agent  # noqa: E402
-from kma.agents.settings import kma_knowledge  # noqa: E402
 from kma.config import get_kma_context_dir  # noqa: E402
 from kma.tools.ingest import (  # noqa: E402
     _build_frontmatter,
     _read_manifest,
     _write_manifest,
     manifest_entry_compiled,
-    mark_manifest_compiled,
 )
+from kma.workflows.wiki_refresh import compile_raw_files, run_linter  # noqa: E402
 
 _EXCLUDE_DIR_NAMES = frozenset(
     {".git", "node_modules", ".venv", ".venvs", "__pycache__", ".tox", "dist", "build"}
@@ -289,12 +284,9 @@ def main() -> int:
         return 0
 
     ingested_root = ctx / "raw"
+    raw_roots = [(args.label, docs), ("ingested", ingested_root)]
     if not args.skip_compiler:
-        compiler_agent = build_compiler_agent(
-            context_dir=ctx,
-            raw_roots=[(args.label, docs), ("ingested", ingested_root)],
-            knowledge=kma_knowledge,
-        )
+        file_ids: list[str] = []
         skipped = 0
         for p in md_files:
             rel = p.relative_to(docs).as_posix()
@@ -303,15 +295,9 @@ def main() -> int:
                 print(f"skip already compiled: {file_id}")
                 skipped += 1
                 continue
-            print(f"process file {file_id}")
-            prompt = build_compile_file_prompt(file_id, automated=True)
-            out = compiler_agent.run(prompt)
-            if out.status != RunStatus.completed:
-                print(f"compiler run failed: {out.status} {out.content!r}", file=sys.stderr)
-                return 1
-            if not mark_manifest_compiled(docs, rel):
-                print(f"warning: manifest entry not found for {file_id}", file=sys.stderr)
-            print(f"done processing {file_id}")
+            file_ids.append(file_id)
+        if file_ids:
+            compile_raw_files(ctx, file_ids, raw_roots=raw_roots)
         if skipped:
             print(f"skipped {skipped} already-compiled file(s)")
         print("compiler run completed")
@@ -322,11 +308,8 @@ def main() -> int:
         print("skip linter (--skip-linter)")
         return 0
 
-    linter_agent = build_linter_agent(context_dir=ctx, knowledge=kma_knowledge)
     print("running linter")
-    lint_out = linter_agent.run(build_lint_prompt(automated=True))
-    if lint_out.status != RunStatus.completed:
-        print(f"linter run failed: {lint_out.status} {lint_out.content!r}", file=sys.stderr)
+    if not run_linter(ctx):
         return 1
     print("linter run completed")
     return 0

@@ -68,6 +68,7 @@ Intent classification determines which sources to check:
 | `retrieve` | Wiki + SQL + Files + Knowledge | Query, present results |
 | `connect` | Wiki + SQL + Files  | Multi-source synthesis |
 | `research` | Exa (+ raw/ to save) | Search, summarize, optionally ingest |
+| `enrich` / search news | Team: Researcher → Navigator → background compile+lint | See enrichment workflow below |
 | `ingest` | raw/ | Save article/URL/text to raw/ |
 | `compile` | raw/ → wiki/ | Process uncompiled sources into articles |
 | `lint` | wiki/ | Health check, find gaps |
@@ -138,15 +139,26 @@ context/
 
 ### kma (Team Leader)
 
-Routes requests to specialists or responds directly for simple things.
+Primary chat entry point (`POST /teams/kma/runs`). Routes requests to specialists or responds directly for simple things.
 
 | Request Type | Agent |
 |-------------|-------|
 | Knowledge queries, SQL, files | Navigator |
-| "Ingest this", research a topic | Researcher |
+| Research, enrich knowledge, search news, ingest topic | Researcher → Navigator → background wiki refresh |
 | "Compile the wiki" | Compiler |
 | "Lint the wiki", "find gaps" | Linter |
 | Greetings, thanks, "what can you do?" | Direct response |
+
+#### Enrichment workflow (research / news / enrich)
+
+When the user asks for new external material, the team leader:
+
+1. Delegates to **Researcher** — web search, ingest to `context/raw/`.
+2. Delegates to **Navigator** — synthesize an answer from ingested raw + existing wiki (no repeat live search).
+3. Returns the answer to the user (streaming).
+4. Calls **`trigger_wiki_refresh`** — background compile (per new raw file) then lint. User is not blocked.
+
+Controlled by `KMA_AUTO_COMPILE_AFTER_RESEARCH` (default on when `PARALLEL_API_KEY` is set). Implementation: `src/kma/workflows/background.py`, `src/kma/agents/team_instructions.py`.
 
 
 ### Navigator
@@ -200,7 +212,8 @@ Push is event-driven (chained by leader after work). Pull is scheduled (every 30
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/teams/kma/runs` | POST | Run the KMA team with a prompt |
+| `/teams/kma/runs` | POST | **Primary chat** — run the KMA team with a prompt (Vue UI) |
+| `/agents/{id}/runs` | POST | Direct agent runs (Compiler, Navigator, etc.) |
 | `/context/reload` | POST | Re-index context files |
 | `/wiki/compile` | POST | Trigger wiki compilation |
 | `/wiki/lint` | POST | Trigger wiki health check |

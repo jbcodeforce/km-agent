@@ -134,13 +134,15 @@ We will keep adding steps, examples, troubleshooting, and screenshots. When you 
 - **`PARALLEL_API_KEY`** set so the **Researcher** agent is enabled (see `example.env` and `src/kma/agents/researcher.py`).
 - Same database and LLM setup as other use cases.
 
-**Steps (outline):**
+**Steps:**
 
 1. Start the stack (`./scripts/starter.sh --dev --frontend`).
-2. In chat, issue a **research / ingest** style request aligned with your team instructions (gather sources on topic X, save to raw with tags, etc.).
-3. Run compilation (via team instruction to the Compiler, or **`compile_docs_folder.py`**, or a dedicated compile workflow) so new raw files become wiki content.
+2. In chat (via **kma team**), ask for research on a topic — e.g. "Search news on Flink 2.2 and enrich the wiki."
+3. The team leader delegates to **Researcher** (ingest to `raw/`), then **Navigator** (answer), then schedules **background compile + lint** automatically.
 
-**Success:** New files appear under `context/raw/` with YAML front matter and `compiled: false` until processed; wiki updates after compile.
+**Success:** New files under `context/raw/` with YAML front matter; user gets an immediate answer; wiki updates in the background (`wiki/index.md`, concepts, lint report).
+
+**Manual compile** (if auto-compile is off): set `KMA_AUTO_COMPILE_AFTER_RESEARCH=0` or use **`compile_docs_folder.py`** / ask the Compiler agent explicitly.
 
 **Next (to expand):**
 

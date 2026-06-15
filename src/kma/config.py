@@ -49,6 +49,7 @@ class Env:
     KMA_AGENT_REASONING: Final = "KMA_AGENT_REASONING"
     KMA_STREAM_EVENTS: Final = "KMA_STREAM_EVENTS"
     KMA_SHOW_TEAM_MEMBERS: Final = "KMA_SHOW_TEAM_MEMBERS"
+    KMA_AUTO_COMPILE_AFTER_RESEARCH: Final = "KMA_AUTO_COMPILE_AFTER_RESEARCH"
     AGNO_DEBUG: Final = "AGNO_DEBUG"
     AGNO_DEBUG_LEVEL: Final = "AGNO_DEBUG_LEVEL"
 
@@ -254,4 +255,12 @@ def get_parallel_max_chars_per_result() -> int:
 def get_parallel_ingest_max_chars() -> int:
     """Max chars saved per ``ingest_url`` Parallel extract."""
     return _env_positive_int(Env.KMA_PARALLEL_INGEST_MAX_CHARS, 8000)
+
+
+def kma_auto_compile_after_research_enabled() -> bool:
+    """When True, team enrichment workflow schedules compile+lint after research ingest."""
+    raw = os.getenv(Env.KMA_AUTO_COMPILE_AFTER_RESEARCH)
+    if raw is None or not str(raw).strip():
+        return get_parallel_api_key() is not None
+    return _env_truthy(Env.KMA_AUTO_COMPILE_AFTER_RESEARCH)
 

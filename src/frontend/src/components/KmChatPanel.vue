@@ -146,7 +146,7 @@
 import { ref, watch, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  createAgentRunStream,
+  createTeamRunStream,
   getSession,
   chatHistoryToMessages
 } from '@/services/agentOs.js'
@@ -154,7 +154,7 @@ import { consumeLeadingNewlines } from '@/utils/streamText.js'
 import { renderMarkdown } from '@/utils/messageRender.js'
 
 const props = defineProps({
-  agentId: { type: String, required: true },
+  teamId: { type: String, required: true },
   userId: { type: String, required: true }
 })
 
@@ -251,7 +251,7 @@ onMounted(() => {
 /** POST a streaming agent run; append assistant chunks and emit run-complete on done. */
 async function sendMessage() {
   const message = inputMessage.value.trim()
-  if (!message || isLoading.value || !props.agentId) return
+  if (!message || isLoading.value || !props.teamId) return
 
   messages.value.push({ role: 'user', content: message })
   inputMessage.value = ''
@@ -265,8 +265,8 @@ async function sendMessage() {
   let streamLeadBuffer = ''
   let streamTextStarted = false
 
-  await createAgentRunStream(
-    props.agentId,
+  await createTeamRunStream(
+    props.teamId,
     {
       message,
       sessionId: sid || undefined,

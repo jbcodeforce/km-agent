@@ -28,6 +28,7 @@ The Compiler may use **multiple raw roots** on disk; agents then see virtual pat
 | `build_navigator_tools` | Navigator | SQL, files, `update_knowledge`, read-only wiki index/state, `read_manifest` |
 | `build_researcher_tools` | Researcher | Files, Parallel search/extract, `update_knowledge`, ingest + manifest |
 | `build_linter_tools` | Linter | Files, `update_knowledge`, wiki index/state (read + update state) |
+| `build_team_tools` | kma team leader | `trigger_wiki_refresh` — background compile + lint after research ingest |
 
 ### `wiki.py`
 

@@ -8,8 +8,11 @@ from kma.agents.compiler import get_compiler
 from kma.agents.navigator import get_navigator
 from kma.agents.researcher import get_researcher
 from kma.agents.linter import get_linter
+from kma.agents.team_instructions import TEAM_INSTRUCTIONS
+from kma.tools.builder import build_team_tools
 
 from kma.config import (
+    get_kma_context_dir,
     kma_show_team_member_responses_enabled,
     kma_stream_events_enabled,
 )
@@ -28,8 +31,8 @@ def build_kma_team() -> Team:
         model=build_default_llm_model(),
         members=_build_members(),
         db=get_agent_db(),
-        instructions=[],
-        tools=[],
+        instructions=TEAM_INSTRUCTIONS,
+        tools=build_team_tools(get_kma_context_dir()),
         learning=LearningMachine(
             knowledge=get_kma_knowledge(),
             learned_knowledge=LearnedKnowledgeConfig(mode=LearningMode.AGENTIC),

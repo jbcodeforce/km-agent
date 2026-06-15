@@ -88,6 +88,25 @@ export async function listAgents() {
   return jsonFetch('/agents')
 }
 
+/** @returns {Promise<unknown>} Team list from AgentOS. */
+export async function listTeams() {
+  return jsonFetch('/teams')
+}
+
+/**
+ * @param {{ userId?: string, teamId: string, page?: number, limit?: number }} params
+ */
+export async function listTeamSessions({ userId, teamId, page = 1, limit = 20 }) {
+  const q = new URLSearchParams({
+    type: 'team',
+    component_id: teamId,
+    page: String(page),
+    limit: String(limit)
+  })
+  if (userId) q.set('user_id', userId)
+  return jsonFetch(`/sessions?${q.toString()}`)
+}
+
 /**
  * @param {{ userId?: string, agentId: string, page?: number, limit?: number }} params
  */
@@ -121,6 +140,18 @@ export async function getSession(sessionId, opts = {}) {
 export async function cancelAgentRun(agentId, runId) {
   return jsonFetch(
     `/agents/${encodeURIComponent(agentId)}/runs/${encodeURIComponent(runId)}/cancel`,
+    { method: 'POST' }
+  )
+}
+
+/**
+ * Cancel an in-flight team run.
+ * @param {string} teamId
+ * @param {string} runId
+ */
+export async function cancelTeamRun(teamId, runId) {
+  return jsonFetch(
+    `/teams/${encodeURIComponent(teamId)}/runs/${encodeURIComponent(runId)}/cancel`,
     { method: 'POST' }
   )
 }
@@ -317,6 +348,89 @@ export function createAgentRunStream(agentId, input, handlers) {
 }
 
 /**
+ * @param {string} teamId
+ * @param {{ message: string, sessionId?: string | null, userId?: string | null }} input
+ * @param {{
+ *   onTextChunk?: (s: string) => void,
+ *   onSessionId?: (id: string) => void,
+ *   onRunId?: (id: string) => void,
+ *   onRunMeta?: (meta: object) => void,
+ *   onTrace?: (s: string) => void,
+ *   onError?: (err: Error) => void,
+ *   onDone?: () => void
+ * }} handlers
+ * @returns {{ promise: Promise<void>, stop: () => Promise<void> }}
+ */
+export function createTeamRunStream(teamId, input, handlers) {
+  const abortController = new AbortController()
+  let runId = null
+
+  const promise = (async () => {
+    const form = new FormData()
+    form.set('message', input.message)
+    form.set('stream', 'true')
+    if (input.sessionId) form.set('session_id', input.sessionId)
+    if (input.userId) form.set('user_id', input.userId)
+
+    let res
+    try {
+      res = await fetch(url(`/teams/${encodeURIComponent(teamId)}/runs`), {
+        method: 'POST',
+        body: form,
+        signal: abortController.signal
+      })
+    } catch (e) {
+      if (e?.name === 'AbortError') return
+      handlers.onError?.(e instanceof Error ? e : new Error(String(e)))
+      handlers.onDone?.()
+      return
+    }
+
+    if (!res.ok) {
+      const text = await res.text()
+      let detail = res.statusText
+      try {
+        const j = JSON.parse(text)
+        if (j.detail != null) detail = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail)
+      } catch {
+        if (text) detail = text.slice(0, 500)
+      }
+      handlers.onError?.(new Error(detail))
+      handlers.onDone?.()
+      return
+    }
+
+    if (!res.body) {
+      handlers.onError?.(new Error('Empty response body'))
+      handlers.onDone?.()
+      return
+    }
+
+    await consumeAgentRunSse(res.body, {
+      ...handlers,
+      onRunId: (id) => {
+        runId = id
+        handlers.onRunId?.(id)
+      }
+    })
+  })()
+
+  return {
+    promise,
+    stop: async () => {
+      if (runId) {
+        try {
+          await cancelTeamRun(teamId, runId)
+        } catch {
+          /* run may have already finished */
+        }
+      }
+      abortController.abort()
+    }
+  }
+}
+
+/**
  * Choose agent id from AgentOS list response, preferring `fallback` when present.
  * @param {unknown} agentsResponse - Array or `{ agents: [...] }`
  * @param {string} [fallback]
@@ -330,4 +444,20 @@ export function pickAgentId(agentsResponse, fallback = 'expert-agent') {
   if (byId) return byId.id ?? byId.agent_id ?? fallback
   const first = list[0]
   return first.id ?? first.agent_id ?? fallback
+}
+
+/**
+ * Choose team id from AgentOS list response, preferring `fallback` when present.
+ * @param {unknown} teamsResponse - Array or `{ teams: [...] }`
+ * @param {string} [fallback]
+ * @returns {string}
+ */
+export function pickTeamId(teamsResponse, fallback = 'kma') {
+  if (!teamsResponse) return fallback
+  const list = Array.isArray(teamsResponse) ? teamsResponse : teamsResponse.teams
+  if (!Array.isArray(list) || list.length === 0) return fallback
+  const byId = list.find((t) => t.id === fallback || t.team_id === fallback)
+  if (byId) return byId.id ?? byId.team_id ?? fallback
+  const first = list[0]
+  return first.id ?? first.team_id ?? fallback
 }

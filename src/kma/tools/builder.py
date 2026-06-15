@@ -1,8 +1,10 @@
 from collections.abc import Sequence
 from pathlib import Path
+import json
 import os
 from typing import Tuple
 from agno.knowledge import Knowledge
+from agno.tools import tool
 from agno.tools.file import FileTools
 from agno.tools.sql import SQLTools
 from agno.tools.parallel import ParallelTools
@@ -15,11 +17,10 @@ from kma.config import (
     get_parallel_max_results,
 )
 from kma.tools.compiler_fs import create_compiler_file_tools, use_labelled_raw_paths
-from kma.tools.ingest import create_compiler_manifest_tools
+from kma.tools.ingest import create_compiler_manifest_tools, create_ingest_tools, list_uncompiled_file_ids
 from kma.tools.knowledge import create_update_knowledge, create_search_wiki
 from kma.tools.wiki import create_wiki_tools
 from kma.db import KMA_SCHEMA, get_sql_engine
-from kma.tools.ingest import create_ingest_tools
 
 
 def _get_paths(context_dir: Path | str | None = None, raw_roots: Sequence[tuple[str, Path]] | None = None) -> tuple[Path, list[tuple[str, Path]], Path]:
@@ -141,3 +142,46 @@ def build_linter_tools(knowledge: Knowledge,
         read_wiki_state,
         update_wiki_state,
     ]
+
+
+def _parse_wiki_refresh_file_ids(raw: str) -> list[str]:
+    text = raw.strip()
+    if not text:
+        return []
+    if text.startswith("["):
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, list):
+                return [str(x).strip() for x in parsed if str(x).strip()]
+        except json.JSONDecodeError:
+            pass
+    return [part.strip() for part in text.split(",") if part.strip()]
+
+
+def build_team_tools(context_dir: Path | str | None = None) -> list:
+    """Tools for the kma team leader — background wiki refresh after research ingest."""
+    ctx = Path(context_dir).resolve() if context_dir is not None else get_kma_context_dir().resolve()
+    raw_dir = ctx / "raw"
+
+    @tool
+    def trigger_wiki_refresh(file_ids: str = "") -> str:
+        """Schedule background compile + lint for newly ingested raw files.
+
+        Call after Researcher ingests content. Pass comma-separated filenames
+        (e.g. ``flink-2-news.md,another.md``) or a JSON array string.
+        When ``file_ids`` is empty, all uncompiled entries under ``raw/`` are refreshed.
+
+        Args:
+            file_ids: New raw manifest file names from Researcher, or empty for all uncompiled.
+
+        Returns:
+            Scheduling status (compile and lint run in background; user is not blocked).
+        """
+        ids = _parse_wiki_refresh_file_ids(file_ids)
+        if not ids:
+            ids = list_uncompiled_file_ids(raw_dir)
+        from kma.workflows.background import schedule_wiki_refresh
+
+        return schedule_wiki_refresh(ctx, ids)
+
+    return [trigger_wiki_refresh]

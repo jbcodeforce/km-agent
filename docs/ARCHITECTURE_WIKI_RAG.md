@@ -120,6 +120,21 @@ Current Navigator priority (see `WIKI_INSTRUCTIONS` in `src/kma/agents/instructi
 
 For flink-studies local expert chat, embedding is documented as a second phase after compile — not a hard prerequisite for chat.
 
+## Research → raw → wiki refresh (team workflow)
+
+When chat runs through the **kma team** (`POST /teams/kma/runs`), research and enrichment requests follow:
+
+```
+User → Team leader → Researcher (ingest raw/) → Navigator (answer) → user
+                              └→ trigger_wiki_refresh (background: compile each file → lint)
+```
+
+- **User-facing latency:** Researcher + Navigator only; compile and lint do not block the response.
+- **Compile then lint:** Background job compiles each new raw file sequentially, then runs the linter once.
+- **Toggle:** `KMA_AUTO_COMPILE_AFTER_RESEARCH=0` disables automatic background refresh.
+
+After background compile completes, re-run `./assistants/index_wiki.sh` in flink-studies if semantic `search_wiki` is enabled.
+
 ## How Knowledge relates to Wiki (avoid duplication)
 
 | Action | Correct store | Example |

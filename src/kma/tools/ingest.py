@@ -50,6 +50,18 @@ def mark_manifest_compiled(raw_dir: Path, file_rel: str) -> bool:
     return False
 
 
+def list_uncompiled_file_ids(raw_dir: Path) -> list[str]:
+    """Return manifest ``file`` values where ``compiled`` is false."""
+    out: list[str] = []
+    for entry in _read_manifest(raw_dir):
+        rel = entry.get("file")
+        if not rel:
+            continue
+        if not entry.get("compiled"):
+            out.append(str(rel))
+    return out
+
+
 def _parse_frontmatter_lines(block: str) -> dict[str, str]:
     """Parse a YAML-ish frontmatter block into string keys (values stripped, quotes removed)."""
     meta: dict[str, str] = {}

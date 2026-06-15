@@ -47,10 +47,10 @@
  * Exposes refreshList() for the parent after a new run creates or updates a session.
  */
 import { ref, watch, onMounted, computed } from 'vue'
-import { listSessions } from '@/services/agentOs.js'
+import { listTeamSessions } from '@/services/agentOs.js'
 
 const props = defineProps({
-  agentId: { type: String, required: true },
+  teamId: { type: String, required: true },
   userId: { type: String, required: true },
   selectedSessionId: { type: String, default: null }
 })
@@ -80,13 +80,13 @@ const hasMore = computed(
  * @param {boolean} append - If true, append to sessions; else replace list
  */
 async function fetchSessions(append) {
-  if (!props.agentId) return
+  if (!props.teamId) return
   listError.value = null
   loading.value = true
   try {
-    const res = await listSessions({
+    const res = await listTeamSessions({
       userId: props.userId || undefined,
-      agentId: props.agentId,
+      teamId: props.teamId,
       page: nextPage.value,
       limit: 25
     })
@@ -129,7 +129,7 @@ function onUserIdCommit() {
 }
 
 watch(
-  () => [props.agentId, props.userId],
+  () => [props.teamId, props.userId],
   () => {
     refreshList()
   }

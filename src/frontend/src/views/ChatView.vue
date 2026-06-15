@@ -6,7 +6,7 @@
     <div class="layout">
     <SessionSidebar
       ref="sidebarRef"
-      :agent-id="agentId"
+      :team-id="teamId"
       :user-id="userId"
       :selected-session-id="selectedSessionId"
       @select="onSelectSession"
@@ -15,8 +15,8 @@
     />
     <main class="main">
       <KmChatPanel
-        v-if="agentReady"
-        :agent-id="agentId"
+        v-if="chatReady"
+        :team-id="teamId"
         :user-id="userId"
         @run-complete="onRunComplete"
       />
@@ -35,7 +35,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SessionSidebar from '@/components/SessionSidebar.vue'
 import KmChatPanel from '@/components/KmChatPanel.vue'
-import { listAgents, pickAgentId } from '@/services/agentOs.js'
+import { listTeams, pickTeamId } from '@/services/agentOs.js'
 
 const STORAGE_KEY = 'km_agno_user_id'
 
@@ -53,8 +53,8 @@ const staticSiteLabel = computed(() => {
 const route = useRoute()
 const router = useRouter()
 const sidebarRef = ref(null)
-const agentId = ref('expert-agent')
-const agentReady = ref(false)
+const teamId = ref('kma')
+const chatReady = ref(false)
 
 const userId = ref('local')
 
@@ -142,12 +142,12 @@ onMounted(async () => {
   document.title = 'Expert Agent — Flink Studies'
   syncUserFromRouteAndStorage()
   try {
-    const agents = await listAgents()
-    agentId.value = pickAgentId(agents)
+    const teams = await listTeams()
+    teamId.value = pickTeamId(teams)
   } catch {
-    agentId.value = 'expert-agent'
+    teamId.value = 'kma'
   }
-  agentReady.value = true
+  chatReady.value = true
 })
 </script>
 

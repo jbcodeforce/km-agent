@@ -22,6 +22,7 @@ from kma.config import (
     kma_agent_reasoning_enabled,
     kma_stream_events_enabled,
     kma_show_team_member_responses_enabled,
+    kma_auto_compile_after_research_enabled,
     get_kma_context_dir,
 )
 
@@ -73,4 +74,13 @@ def test_parallel_config_defaults(monkeypatch) -> None:
     assert get_parallel_max_results() == 2
     assert get_parallel_max_chars_per_result() == 3000
     assert get_parallel_ingest_max_chars() == 8000
-    
+
+
+def test_auto_compile_after_research(monkeypatch) -> None:
+    monkeypatch.setenv(Env.KMA_AUTO_COMPILE_AFTER_RESEARCH, "0")
+    monkeypatch.delenv(Env.KMA_PARALLEL_API_KEY, raising=False)
+    assert kma_auto_compile_after_research_enabled() is False
+
+    monkeypatch.delenv(Env.KMA_AUTO_COMPILE_AFTER_RESEARCH, raising=False)
+    monkeypatch.setenv(Env.KMA_PARALLEL_API_KEY, "key")
+    assert kma_auto_compile_after_research_enabled() is True
