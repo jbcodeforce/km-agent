@@ -160,6 +160,23 @@ When the user asks for new external material, the team leader:
 
 Controlled by `KMA_AUTO_COMPILE_AFTER_RESEARCH` (default on when `PARALLEL_API_KEY` is set). Implementation: `src/kma/workflows/background.py`, `src/kma/agents/team_instructions.py`.
 
+#### CLI: `run_search.py`
+
+For scripted research + synchronous compile + lint (blocking, unlike chat):
+
+```bash
+uv run python scripts/run_search.py \
+  "what are the difference between flink 2.1 and 2.2" \
+  --context ./context \
+  --src-file web_site_ref.json
+```
+
+- **`web_site_ref.json`**: JSON array (or `{"sites": [...]}`) of `{name, url, description}` entries. Researcher reads these via `read_web_site_refs` and biases search/ingest toward listed domains. Default path: `<context>/web_site_ref.json`.
+- **Pipeline**: `src/kma/workflows/enrichment.py` — research → `compile_raw_files` → `run_linter`.
+- **Flags**: `--skip-research`, `--skip-compile`, `--skip-lint`, `--dry-run`.
+
+Chat uses the same Researcher + site refs; compile/lint stays async via `trigger_wiki_refresh`.
+
 
 ### Navigator
 
@@ -173,7 +190,7 @@ Wiki retrieval priority: `search_wiki` (if indexed) → `wiki/index.md` + `read_
 
 Gathers sources from the web, extracts content, converts to clean markdown, saves to `raw/`.
 
-Tools: FileTools, ParallelTools (parallel_search, parallel_extract), update_knowledge, ingest_url (auto-fetches via Parallel), ingest_text, read_manifest.
+Tools: FileTools, ParallelTools (parallel_search, parallel_extract), update_knowledge, read_web_site_refs, ingest_url (auto-fetches via Parallel), ingest_text, read_manifest.
 
 Conditional — only instantiated when `PARALLEL_API_KEY` is set. Without it, Navigator handles basic web search via Exa.
 

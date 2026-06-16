@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Apache Flink Blog",
+    "url": "https://flink.apache.org/blog/",
+    "description": "Official release announcements and version migration notes"
+  },
+  {
+    "name": "Apache Flink Documentation",
+    "url": "https://nightlies.apache.org/flink/flink-docs-release-2.2/",
+    "description": "Release documentation for Flink 2.x features and API changes"
+  },
+  {
+    "name": "Confluent Flink Blog",
+    "url": "https://www.confluent.io/blog/",
+    "description": "Managed Flink product updates and streaming platform comparisons"
+  }
+]

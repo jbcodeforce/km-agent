@@ -19,6 +19,7 @@ from kma.config import (
 from kma.tools.compiler_fs import create_compiler_file_tools, use_labelled_raw_paths
 from kma.tools.ingest import create_compiler_manifest_tools, create_ingest_tools, list_uncompiled_file_ids
 from kma.tools.knowledge import create_update_knowledge, create_search_wiki
+from kma.tools.site_refs import create_read_web_site_refs_tool
 from kma.tools.wiki import create_wiki_tools
 from kma.db import KMA_SCHEMA, get_sql_engine
 
@@ -106,7 +107,7 @@ def build_researcher_tools(
     knowledge: Knowledge,
     context_dir: Path  | None = None) -> list:
     """Tools for the Researcher agent — Parallel search/extract + ingest to raw/."""
-    ctx_dir = context_dir or get_kma_context_dir()
+    ctx_dir = Path(context_dir or get_kma_context_dir()).resolve()
     raw_dir = ctx_dir / "raw"
     ingest_url, ingest_text, read_manifest, _, sync_raw_manifest_from_disk = create_ingest_tools(raw_dir)
     parallel_key = get_parallel_api_key()
@@ -120,6 +121,7 @@ def build_researcher_tools(
             max_chars_per_result=get_parallel_max_chars_per_result(),
         ),
         create_update_knowledge(knowledge),
+        create_read_web_site_refs_tool(ctx_dir),
         ingest_url,
         ingest_text,
         read_manifest,

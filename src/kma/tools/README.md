@@ -26,7 +26,7 @@ The Compiler may use **multiple raw roots** on disk; agents then see virtual pat
 |----------|-------|---------------------------|
 | `build_compiler_tools` | Compiler | File I/O (wiki + raw), `update_knowledge`, manifest read/update, full wiki tools |
 | `build_navigator_tools` | Navigator | SQL, files, `update_knowledge`, read-only wiki index/state, `read_manifest` |
-| `build_researcher_tools` | Researcher | Files, Parallel search/extract, `update_knowledge`, ingest + manifest |
+| `build_researcher_tools` | Researcher | Files, Parallel search/extract, `update_knowledge`, `read_web_site_refs`, ingest + manifest |
 | `build_linter_tools` | Linter | Files, `update_knowledge`, wiki index/state (read + update state) |
 | `build_team_tools` | kma team leader | `trigger_wiki_refresh` — background compile + lint after research ingest |
 
@@ -58,6 +58,16 @@ Shared by Compiler, Navigator, Researcher, and Linter.
 - `sync_raw_manifest_from_disk` — Rebuild manifest from existing `*.md` frontmatter
 
 `create_compiler_manifest_tools` merges manifests across **multiple raw roots** for the Compiler (`file_id` as `label:relpath` when needed).
+
+### `site_refs.py`
+
+**Intent:** Load trusted web sources from `web_site_ref.json` for research bias.
+
+- `load_web_site_refs(path)` — parse JSON array or `{"sites": [...]}`
+- `format_site_refs_for_prompt(refs)` — bullet list for researcher prompts
+- `create_read_web_site_refs_tool(context_dir)` → `read_web_site_refs(path="")` — Researcher tool
+
+Used by `scripts/run_search.py` and the team enrichment workflow (Researcher instructions).
 
 ### `compiler_fs.py`
 

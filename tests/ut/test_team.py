@@ -8,6 +8,7 @@ from kma.agents.team_instructions import TEAM_INSTRUCTIONS
 def test_team_instructions_cover_enrichment() -> None:
     assert "Researcher" in TEAM_INSTRUCTIONS
     assert "trigger_wiki_refresh" in TEAM_INSTRUCTIONS
+    assert "read_web_site_refs" in TEAM_INSTRUCTIONS
     assert "background" in TEAM_INSTRUCTIONS.lower()
 
 
