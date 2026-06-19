@@ -50,6 +50,9 @@ class Env:
     KMA_STREAM_EVENTS: Final = "KMA_STREAM_EVENTS"
     KMA_SHOW_TEAM_MEMBERS: Final = "KMA_SHOW_TEAM_MEMBERS"
     KMA_AUTO_COMPILE_AFTER_RESEARCH: Final = "KMA_AUTO_COMPILE_AFTER_RESEARCH"
+    KMA_STUDIES_ROOT: Final = "KMA_STUDIES_ROOT"
+    KMA_ONTOLOGY_ENABLED: Final = "KMA_ONTOLOGY_ENABLED"
+    KMA_ONTOLOGY_ENRICH: Final = "KMA_ONTOLOGY_ENRICH"
     AGNO_DEBUG: Final = "AGNO_DEBUG"
     AGNO_DEBUG_LEVEL: Final = "AGNO_DEBUG_LEVEL"
 
@@ -263,4 +266,23 @@ def kma_auto_compile_after_research_enabled() -> bool:
     if raw is None or not str(raw).strip():
         return get_parallel_api_key() is not None
     return _env_truthy(Env.KMA_AUTO_COMPILE_AFTER_RESEARCH)
+
+
+def get_kma_studies_root() -> Path | None:
+    """Optional flink-studies (or similar) repo root for code/ scanning."""
+    raw = os.getenv(Env.KMA_STUDIES_ROOT)
+    if raw is None or not raw.strip():
+        return None
+    p = Path(raw.strip()).expanduser()
+    return p if p.is_dir() else None
+
+
+def kma_ontology_enabled() -> bool:
+    """When True, rebuild OWL/RDF graph after wiki compile+lint."""
+    return _env_truthy(Env.KMA_ONTOLOGY_ENABLED)
+
+
+def kma_ontology_enrich_enabled() -> bool:
+    """When True, run gap-triggered enrichment into proposed.ttl after ontology build."""
+    return _env_truthy(Env.KMA_ONTOLOGY_ENRICH)
 

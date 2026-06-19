@@ -20,6 +20,7 @@ from kma.tools.compiler_fs import create_compiler_file_tools, use_labelled_raw_p
 from kma.tools.ingest import create_compiler_manifest_tools, create_ingest_tools, list_uncompiled_file_ids
 from kma.tools.knowledge import create_update_knowledge, create_search_wiki
 from kma.tools.site_refs import create_read_web_site_refs_tool
+from kma.tools.ontology_tools import create_ontology_tools
 from kma.tools.wiki import create_wiki_tools
 from kma.db import KMA_SCHEMA, get_sql_engine
 
@@ -93,6 +94,7 @@ def build_navigator_tools(
     # create_wiki_tools returns: [read_index, update_index, read_state, update_state]
     read_wiki_index, _, read_wiki_state, _ = create_wiki_tools(wiki_dir)
     tools.extend([read_wiki_index, read_wiki_state])
+    tools.extend(create_ontology_tools(base))
     if wiki_knowledge is not None:
         tools.append(create_search_wiki(wiki_knowledge))
 
@@ -143,6 +145,7 @@ def build_linter_tools(knowledge: Knowledge,
         read_wiki_index,
         read_wiki_state,
         update_wiki_state,
+        *create_ontology_tools(Path(ctx_dir).resolve()),
     ]
 
 

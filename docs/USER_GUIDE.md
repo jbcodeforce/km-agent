@@ -1,8 +1,9 @@
 # User guide
 
-This document is for user leveraging km-agent day to day: what to install, how to bring the stack up, and **use cases** you can follow or extend. Technical deep dives (Postgres volumes, integration tests, frontend proxy details) live in [`DEVELOPER_PRACTICES.md`](./DEVELOPER_PRACTICES.md). Product and architecture background are in [`SPEC.md`](./SPEC.md).
+This document is for user leveraging `km-agent` for day to day knowledge management activities: what to install, how to bring the stack up, and how to run the different **use cases**. 
 
-We continue to grow the use cases below—each section has a short outline today and a [next block](#where-to-go-next) so contributors know what to add next.
+Technical deep dives (Postgres volumes, integration tests, frontend proxy details) live in [`DEVELOPER_PRACTICES.md`](./DEVELOPER_PRACTICES.md). Product and architecture background are in [`SPEC.md`](./SPEC.md).
+
 
 ## Getting started
 
@@ -40,23 +41,21 @@ Optional:
 
 Adjust model names to match `KMA_MODEL_ID` and `KMA_EMBED_MODEL` in `.env`.
 
-* Run setup.sh
+* Verify your configuration (before or after starting components):
   ```sh
-  ./scripts/setup.sh
+  ./scripts/verify_config.sh
+  ./scripts/verify_config.sh --frontend   # also check the Vite dev server
   ```
 
 ### 2- Start the Knowledge Management Agent components
 
-In a separate terminal, from the repo root, start Postgresql, km-agent container, ollama server:
+In a separate terminal, from the repo root, start the Postgresql server, the km-agent server:
 
 ```bash
 ./scripts/starter.sh
 ```
 
-* Validate your environment:
-  ```sh
-  ./scripts/verify_agent_env.sh --frontend
-  ```
+After the stack is up, re-run `./scripts/verify_config.sh --frontend` to confirm Postgres, AgentOS, LLM models, and the chat UI are reachable.
 
 ### Where to go next
 
@@ -72,7 +71,20 @@ In a separate terminal, from the repo root, start Postgresql, km-agent container
 
 ## Use cases
 
-We will keep adding steps, examples, troubleshooting, and screenshots. When you extend a use case, preserve the **Goal / Preconditions / Steps / Success / Next** shape so the guide stays scannable.
+### UC-1 Add annotation to sources file
+
+*Goal:** The source knowledge may not have the frontmatter manifest in each markdown file, and it is needed for metadata managment of the wiki.
+
+#### Preconditions
+
+* python and uv
+
+#### Steps (outline)
+
+```bash
+uv run python scripts/add_raw_frontmatter.py /path/to/your-studies/docs \
+    --context ./context --source your-studies --label studies
+```
 
 ### UC-1 — Attach a studies repository and compile documentation into the wiki
 
@@ -87,7 +99,7 @@ We will keep adding steps, examples, troubleshooting, and screenshots. When you 
 #### Steps (outline)
 
 1. Reference the docs folder on your disk.
-2. From the km-agent repo root, run the crawler and knowledge Compiler agent:
+2. From the km-agent repo folder, run the crawler and knowledge Compiler agent:
 
    ```bash
    uv run python scripts/compile_docs_folder.py /path/to/your-studies/docs \

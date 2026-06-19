@@ -55,7 +55,8 @@ title: "Concept Name"
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 sources: [raw/source-file.md, raw/another-source.md]
-related: [related-concept, another-concept]
+related: [related-concept-slug, another-concept-slug]
+code: [code/flink-sql/04-joins/]
 tags: [tag1, tag2]
 ---
 
@@ -69,6 +70,9 @@ Clear explanation of the concept...
 ## Related
 - [Related Concept](related-concept.md)
 ```
+
+Use **kebab-case slugs** in ``related`` (matching ``wiki/concepts/{slug}.md`` filenames), not display titles.
+Optional ``code:`` lists studies-repo paths to executable artifacts linked by ``implements`` in the ontology graph.
 
 ## Summary Format
 Summaries in wiki/summaries/ should be concise (200-500 words) and capture:

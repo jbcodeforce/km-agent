@@ -1,0 +1,70 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix kma: <http://km-agent.local/ontology#> .
+
+kma:Concept a rdfs:Class ;
+    rdfs:label "Wiki concept article" .
+
+kma:Summary a rdfs:Class ;
+    rdfs:label "Wiki source summary" .
+
+kma:RawDocument a rdfs:Class ;
+    rdfs:label "Raw or studies markdown source" .
+
+kma:CodeArtifact a rdfs:Class ;
+    rdfs:label "Executable code or SQL file" .
+
+kma:Statement a rdfs:Class ;
+    rdfs:label "Named deploy statement from manifest" .
+
+kma:Tag a rdfs:Class ;
+    rdfs:label "Topic tag" .
+
+kma:relatedTo a rdf:Property ;
+    rdfs:label "Related concept" ;
+    rdfs:domain kma:Concept ;
+    rdfs:range kma:Concept .
+
+kma:derivedFrom a rdf:Property ;
+    rdfs:label "Derived from source" ;
+    rdfs:domain kma:Concept ;
+    rdfs:range kma:RawDocument .
+
+kma:documents a rdf:Property ;
+    rdfs:label "Document describes artifact" ;
+    rdfs:domain kma:Summary ;
+    rdfs:range kma:CodeArtifact .
+
+kma:implements a rdf:Property ;
+    rdfs:label "Concept implemented by code" ;
+    rdfs:domain kma:Concept ;
+    rdfs:range kma:CodeArtifact .
+
+kma:compiledInto a rdf:Property ;
+    rdfs:label "Raw compiled into wiki" ;
+    rdfs:domain kma:RawDocument ;
+    rdfs:range kma:Summary .
+
+kma:indexedIn a rdf:Property ;
+    rdfs:label "Listed in wiki index" ;
+    rdfs:domain kma:Concept ;
+    rdfs:range rdfs:Resource .
+
+kma:hasTag a rdf:Property ;
+    rdfs:domain kma:Concept ;
+    rdfs:range kma:Tag .
+
+kma:hasStatement a rdf:Property ;
+    rdfs:domain kma:CodeArtifact ;
+    rdfs:range kma:Statement .
+
+kma:statementFile a rdf:Property ;
+    rdfs:domain kma:Statement ;
+    rdfs:range kma:CodeArtifact .
+
+kma:extractionMethod a rdf:Property ;
+    rdfs:label "How this triple was produced" .
+
+kma:wikiPath a rdf:Property ;
+    rdfs:label "Relative wiki or context path" .

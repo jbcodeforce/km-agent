@@ -11,6 +11,9 @@ For pipeline overview and agent roles, see [`SPEC.md`](./SPEC.md).
 | **Knowledge** (`kma_knowledge`) | pgvector table | Routing metadata only — file locations, SQL schemas, source capabilities, cross-source discoveries | The map |
 | **Learnings** (`kma_learnings`) | pgvector table | Operational memory — retrieval strategies, user patterns, explicit corrections | The compass |
 | **Wiki** (`context/wiki/`) | Git-tracked markdown (+ optional `kma_wiki` vectors) | Domain content — compiled concepts, source summaries, filed outputs | The territory |
+| **Ontology** (`context/ontology/`) | Git-tracked TTL + JSON (derived) | Formal typed graph — concepts, provenance, code artifacts, optional inferred closure | The formal map |
+
+See [`ONTOLOGY.md`](./ONTOLOGY.md) for build commands and agent tools.
 
 ### Knowledge — the map
 

@@ -12,6 +12,11 @@ from agno.run.base import RunStatus
 from kma.agents.compiler import build_compile_file_prompt, build_compiler_agent
 from kma.agents.linter import build_lint_prompt, build_linter_agent
 from kma.agents.settings import get_kma_knowledge
+from kma.config import (
+    get_kma_studies_root,
+    kma_ontology_enabled,
+    kma_ontology_enrich_enabled,
+)
 from kma.tools.ingest import manifest_entry_compiled, mark_manifest_compiled
 
 logger = logging.getLogger(__name__)
@@ -118,8 +123,33 @@ def refresh_wiki_from_raw(
     *,
     raw_roots: Sequence[tuple[str, Path]] | None = None,
     skip_linter: bool = False,
+    studies_root: Path | None = None,
 ) -> None:
     """Compile listed raw files, then lint the wiki once."""
     compile_raw_files(context_dir, file_ids, raw_roots=raw_roots)
     if not skip_linter:
         run_linter(context_dir)
+    _maybe_rebuild_ontology(context_dir, studies_root=studies_root)
+
+
+def _maybe_rebuild_ontology(context_dir: Path, *, studies_root: Path | None = None) -> None:
+    if not kma_ontology_enabled():
+        return
+    try:
+        from kma.ontology import rebuild_ontology
+
+        root = studies_root or get_kma_studies_root()
+        studies_docs = (root / "docs") if root and (root / "docs").is_dir() else None
+        result = rebuild_ontology(
+            context_dir.resolve(),
+            studies_root=root,
+            studies_docs_dir=studies_docs,
+            run_enrichment=kma_ontology_enrich_enabled(),
+        )
+        logger.info(
+            "ontology rebuilt: ok=%s counts=%s",
+            result.validation.ok,
+            result.counts,
+        )
+    except Exception:
+        logger.exception("ontology rebuild failed")

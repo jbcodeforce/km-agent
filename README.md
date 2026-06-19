@@ -12,7 +12,7 @@ Technical notes, knowledge repos (for example my [flink-studies](https://github.
 
 Also tool like NotebookLM has a tendency to forget what was asked before. Vector Store with embeddings has some challenge with the quality of the embeddings: the size of the vector and how the text chunck was build while parsing the documents. Markdown files have the advantage to provide structured sections to help chunking. Wiki approach has the advantage to let the LLM, vias tools to search for indexing then content, so more a tree navigation that pure <vector-text> mapping approach. 
 
-Knowledge management retrieval with Graph may perform better, by adding indexing, concepts, entities, links between concepts and entities. That Wiki LLM tries to address. The next level will be ontology. 
+Knowledge management retrieval with Graph may perform better, by adding indexing, concepts, entities, links between concepts and entities. That Wiki LLM tries to address. The next level is a **formal OWL/RDF layer** on top of the wiki — see [`docs/ONTOLOGY.md`](docs/ONTOLOGY.md). 
 
 ### Why not using existing agent like Hermes and llm-wiki skill
 

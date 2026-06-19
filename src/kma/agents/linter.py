@@ -28,6 +28,7 @@ Run health checks on the wiki and produce a lint report.
 3. **Orphaned articles**: Find articles not referenced by any other article or the index.
 4. **Thin articles**: Flag articles under 200 words that could use enrichment.
 5. **Gap analysis**: Based on the concept graph, suggest topics that would strengthen connections.
+6. **Ontology validation**: Call ``read_ontology_validation`` when present. Report dangling ``relatedTo`` refs and validation issues from ``context/ontology/.state.json`` under a ``### Ontology`` section in the lint report.
 
 ### Process
 1. Read the wiki index (`read_wiki_index`) for the full inventory

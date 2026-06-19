@@ -1,0 +1,11 @@
+{
+  "user_agent": "km-agent-test/0.1",
+  "groups": {
+    "ddl": [
+      {
+        "name": "test-ddl-orders",
+        "file": "ddl.orders.sql"
+      }
+    ]
+  }
+}

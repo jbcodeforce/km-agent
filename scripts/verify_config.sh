@@ -1,48 +1,44 @@
 #!/usr/bin/env bash
-# Verify local agent stack: Postgres (Docker + TCP), DB endpoint, AgentOS backend, th LLM local server
-# and optionally the Vite frontend.
+# Verify km-agent configuration and local stack health.
 #
 # From repository root (loads .env when present):
-#   ./scripts/verify_agent_env.sh
-#   ./scripts/verify_agent_env.sh --frontend
-#   ./scripts/verify_agent_env.sh --trace-env   # also print matching process env (secrets redacted)
+#   ./scripts/verify_config.sh
+#   ./scripts/verify_config.sh --frontend
+#   ./scripts/verify_config.sh --trace-env
 #
-# Environment (after optional .env load; prefer ``KMA_*``, legacy names still accepted):
-#   KMA_DB_HOST, KMA_DB_PORT, KMA_DB_USER, KMA_DB_DATABASE, KMA_DB_PASS  (or legacy DB_*)
-#   KMA_BACKEND_URL   Full base URL for AgentOS (overrides host/port below)
-#   KMA_AGENT_OS_HOST, KMA_AGENT_OS_PORT  (or legacy AGENT_OS_* / PORT) — backend listen address
-#   KMA_VITE_PORT     Frontend dev server port (or legacy VITE_PORT; default: 5174)
-#   KMA_FRONTEND_URL  Full URL for frontend check (overrides default origin from KMA_VITE_PORT)
-#   KMA_VERIFY_AGENT_DB_CONTAINER  Set to 0 to skip the docker compose agent-db check (legacy: VERIFY_AGENT_DB_CONTAINER).
-#   KMA_VERIFY_TRACE_ENV           Set to 1 to dump all KMA_* process env (legacy: VERIFY_TRACE_ENV).
-#   KMA_LLM_HOST                   The host of the LLM local server (default: http://127.0.0.1:7999)
-#   KMA_LLM_PORT                   The port of the LLM local server (default: 7999)
-#   KMA_LLM_MODEL
-#   KMA_LLM_EMBED_MODEL
-# OMLX_PORT         Host port for `omlx serve` when not already running (default: 7999)
+# Checks: resolved KMA_* settings, Postgres (Docker + TCP), AgentOS backend,
+# LLM /v1/models (mlx/ollama), and optionally the Vite frontend.
+
 set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Verify local agent stack: Postgres (Docker + TCP), DB endpoint, AgentOS backend,
-and optionally the Vite frontend.
+Verify km-agent configuration and local stack health.
 
 Usage:
-  ./scripts/verify_agent_env.sh [--frontend|-f] [--trace-env]
+  ./scripts/verify_config.sh [--frontend|-f] [--trace-env]
 
 Options:
-  --frontend, -f   Also GET the Vite dev server (default http://127.0.0.1:<KMA_VITE_PORT>/; falls back to VITE_PORT; default port 5174).
-  --trace-env        After the resolved summary, print every process variable whose name starts with KMA_ (secrets redacted).
+  --frontend, -f   Also GET the Vite dev server (default http://127.0.0.1:<KMA_VITE_PORT>/).
+  --trace-env      After the resolved summary, print every KMA_* process variable (secrets redacted).
   -h, --help       Show this help.
 
-Always prints a short resolved-configuration trace using **KMA_** names (effective values; secrets redacted).
+Always prints resolved configuration (KMA_* names; secrets redacted), then runs connectivity checks.
+Loads REPO_ROOT/.env when present (same variables as example.env / kma.config).
 
-Loads REPO_ROOT/.env when present (same variables as example.env / kma.db).
+Environment (prefer KMA_*; legacy names still accepted):
+  KMA_DB_HOST, KMA_DB_PORT, KMA_DB_USER, KMA_DB_DATABASE, KMA_DB_PASS  (or DB_*)
+  KMA_BACKEND_URL, KMA_AGENT_OS_HOST, KMA_AGENT_OS_PORT
+  KMA_VITE_PORT, KMA_FRONTEND_URL
+  KMA_LLM_PROVIDER, KMA_LLM_MODEL_ID, KMA_LLM_BASE_URL, KMA_LLM_HOST, KMA_LLM_PORT, KMA_LLM_API_KEY
+  KMA_EMBED_PROVIDER, KMA_EMBED_MODEL, KMA_EMBED_BASE_URL, KMA_EMBED_DIMENSIONS
+  KMA_VERIFY_AGENT_DB_CONTAINER  Set to 0 to skip docker compose agent-db check.
+  KMA_VERIFY_TRACE_ENV           Set to 1 to dump all KMA_* process env.
 EOF
 }
 
 die() {
-  echo "verify_agent_env.sh: $*" >&2
+  echo "verify_config.sh: $*" >&2
   exit 1
 }
 
@@ -52,6 +48,7 @@ have_cmd() {
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${REPO_ROOT}/compose.yaml"
+ENV_FILE="${REPO_ROOT}/.env"
 
 CHECK_FRONTEND=0
 TRACE_ENV_FULL=0
@@ -69,12 +66,26 @@ for arg in "$@"; do
   esac
 done
 
-if [[ -f "${REPO_ROOT}/.env" ]]; then
+load_env_file() {
+  if [[ ! -f "${1}" ]]; then
+    echo "verify_config.sh: no ${1} (using defaults / inherited shell only)."
+    return 0
+  fi
+  echo "verify_config.sh: loading ${1}..."
   set -a
-  # shellcheck source=/dev/null
-  source "${REPO_ROOT}/.env"
+  # shellcheck disable=SC1090
+  source "${1}"
   set +a
-fi
+}
+
+strip_quotes() {
+  local v="$1"
+  v="${v#\"}"
+  v="${v%\"}"
+  v="${v#\'}"
+  v="${v%\'}"
+  printf '%s' "$v"
+}
 
 DB_HOST="${KMA_DB_HOST:-${DB_HOST:-localhost}}"
 DB_PORT="${KMA_DB_PORT:-${DB_PORT:-5432}}"
@@ -97,16 +108,65 @@ else
   FRONTEND_BASE="http://127.0.0.1:${FRONTEND_PORT}"
 fi
 
-LLM_HOST="${KMA_LLM_HOST:-${LLM_HOST:-127.0.0.1}}"
-LLM_PORT="${KMA_LLM_PORT:-${LLM_PORT:-7999}}"
-LLM_MODEL="${KMA_LLM_MODEL:-${LLM_MODEL:-qwen3.6:27b-4bit}}"
-LLM_EMBED_MODEL="${KMA_LLM_EMBED_MODEL:-${LLM_EMBED_MODEL:-embeddinggemma-300m-6bit}}"
+resolve_llm_base_url() {
+  local raw host port base
+  raw="${KMA_LLM_BASE_URL:-${KMA_MLX_BASE_URL:-}}"
+  if [[ -n "$raw" ]]; then
+    base="$(strip_quotes "$raw")"
+    base="${base%/}"
+    if [[ "$base" != */v1 ]]; then
+      base="${base}/v1"
+    fi
+    printf '%s' "$base"
+    return 0
+  fi
+  host="$(strip_quotes "${KMA_LLM_HOST:-${LLM_HOST:-127.0.0.1}}")"
+  port="$(strip_quotes "${KMA_LLM_PORT:-${LLM_PORT:-7999}}")"
+  if [[ "$host" == http://* || "$host" == https://* ]]; then
+    base="${host%/}"
+    if [[ "$base" != */v1 ]]; then
+      base="${base}/v1"
+    fi
+  else
+    base="http://${host}:${port}/v1"
+  fi
+  printf '%s' "$base"
+}
+
+resolve_embed_base_url() {
+  local raw base
+  raw="${KMA_EMBED_BASE_URL:-}"
+  if [[ -n "$raw" ]]; then
+    base="$(strip_quotes "$raw")"
+    base="${base%/}"
+    if [[ "$base" != */v1 ]]; then
+      base="${base}/v1"
+    fi
+    printf '%s' "$base"
+    return 0
+  fi
+  resolve_llm_base_url
+}
+
+resolve_models_base_url() {
+  local llm_provider="${KMA_LLM_PROVIDER:-ollama}"
+  case "$llm_provider" in
+    mlx | ollama)
+      resolve_llm_base_url
+      return 0
+      ;;
+  esac
+  if [[ "${KMA_EMBED_PROVIDER:-}" == "mlx" ]]; then
+    resolve_embed_base_url
+    return 0
+  fi
+  resolve_llm_base_url
+}
 
 mask_db_url() {
   echo "postgresql+psycopg://${DB_USER}:***@${DB_HOST}:${DB_PORT}/${DB_DATABASE}"
 }
 
-# True if env var NAME should not print raw values (passwords, tokens, API keys).
 is_secret_env_name() {
   local n="$1"
   case "$n" in
@@ -117,7 +177,6 @@ is_secret_env_name() {
   return 1
 }
 
-# Print a placeholder for secret values (length only) or the raw value for non-secrets.
 format_env_value_for_trace() {
   local name="$1" val="$2"
   if is_secret_env_name "$name"; then
@@ -132,9 +191,12 @@ format_env_value_for_trace() {
 }
 
 trace_resolved_configuration() {
+  local llm_base embed_base
+  llm_base="$(resolve_llm_base_url)"
+  embed_base="$(resolve_embed_base_url)"
   echo "== Resolved configuration (KMA_* names; secrets redacted) =="
-  if [[ -f "${REPO_ROOT}/.env" ]]; then
-    echo "  .env: loaded from ${REPO_ROOT}/.env"
+  if [[ -f "${ENV_FILE}" ]]; then
+    echo "  .env: loaded from ${ENV_FILE}"
   else
     echo "  .env: absent (using defaults / inherited shell only)"
   fi
@@ -147,12 +209,17 @@ trace_resolved_configuration() {
   echo "  KMA_AGENT_OS_HOST=${BACKEND_HOST}  KMA_AGENT_OS_PORT=${BACKEND_PORT}"
   echo "  KMA_FRONTEND_URL=${KMA_FRONTEND_URL:-<unset>}  effective FRONTEND_BASE=${FRONTEND_BASE}  KMA_VITE_PORT=${FRONTEND_PORT}"
   echo "  frontend_check=${CHECK_FRONTEND}  (1 = --frontend was passed)"
-  echo "  KMA_LLM_PROVIDER=${KMA_LLM_PROVIDER:-<unset>}  KMA_EMBED_PROVIDER=${KMA_EMBED_PROVIDER:-<unset>}"
-  echo "  LLM_HOST=${LLM_HOST:-<unset>}"
-  echo "  KMA_MLX_BASE_URL=${KMA_MLX_BASE_URL:-<unset>}  KMA_EMBED_MODEL=${KMA_EMBED_MODEL:-<unset>}  KMA_EMBED_DIMENSIONS=${KMA_EMBED_DIMENSIONS:-<unset>}"
+  echo "  KMA_LLM_PROVIDER=${KMA_LLM_PROVIDER:-<unset>}"
+  echo "  KMA_LLM_MODEL_ID=${KMA_LLM_MODEL_ID:-${KMA_COMPILER_MODEL_ID:-${KMA_MODEL_ID:-<unset>}}}"
+  echo "  KMA_LLM_BASE_URL=${KMA_LLM_BASE_URL:-<unset>}  effective LLM_BASE=${llm_base}"
+  echo "  KMA_LLM_HOST=${KMA_LLM_HOST:-${LLM_HOST:-<unset>}}  KMA_LLM_PORT=${KMA_LLM_PORT:-${LLM_PORT:-<unset>}}"
+  echo "  KMA_LLM_API_KEY=$(format_env_value_for_trace KMA_LLM_API_KEY "${KMA_LLM_API_KEY:-${OMLX_API_KEY:-}}")"
+  echo "  KMA_EMBED_PROVIDER=${KMA_EMBED_PROVIDER:-<unset>}"
+  echo "  KMA_EMBED_MODEL=${KMA_EMBED_MODEL:-<unset>}"
+  echo "  KMA_EMBED_BASE_URL=${KMA_EMBED_BASE_URL:-<unset>}  effective EMBED_BASE=${embed_base}"
+  echo "  KMA_EMBED_DIMENSIONS=${KMA_EMBED_DIMENSIONS:-<unset>}"
 }
 
-# Optional: dump every process variable whose name starts with KMA_ (values masked when sensitive).
 trace_matching_process_env() {
   echo "== Process environment (KMA_* only; secrets redacted) =="
   local line key val
@@ -182,7 +249,6 @@ tcp_open() {
     nc -z -w 2 "$host" "$port" >/dev/null 2>&1
     return $?
   fi
-  # bash /dev/tcp (no extra dependency)
   if bash -c "exec 3<>/dev/tcp/${host}/${port}" 2>/dev/null; then
     exec 3<&- 3>&- 2>/dev/null || true
     return 0
@@ -275,53 +341,118 @@ check_frontend() {
   fi
 }
 
-check_omlx() {
-  # Only runs when chat or embeddings use the OMLX (mlx) provider.
-  if [[ "${KMA_LLM_PROVIDER:-}" != "mlx" && "${KMA_EMBED_PROVIDER:-}" != "mlx" ]]; then
+list_models_from_json() {
+  # Use -c (not a heredoc): a heredoc replaces stdin and would swallow piped JSON.
+  python3 -c '
+import json
+import sys
+
+raw = sys.stdin.read().strip()
+if not raw:
+    print("  (empty response body)")
+    raise SystemExit(0)
+
+try:
+    payload = json.loads(raw)
+except json.JSONDecodeError as exc:
+    print(f"  (could not parse JSON: {exc})")
+    raise SystemExit(0)
+
+items = payload.get("data")
+if items is None and isinstance(payload, list):
+    items = payload
+if not items:
+    print("  (no models reported)")
+    raise SystemExit(0)
+
+for item in items:
+    if isinstance(item, dict):
+        model_id = item.get("id") or item.get("name") or item.get("model")
+        if model_id:
+            print(f"  - {model_id}")
+            continue
+    print(f"  - {item}")
+'
+}
+
+needs_llm_models_check() {
+  local llm_provider="${KMA_LLM_PROVIDER:-ollama}"
+  case "$llm_provider" in
+    mlx | ollama) return 0 ;;
+  esac
+  [[ "${KMA_EMBED_PROVIDER:-}" == "mlx" ]]
+}
+
+check_llm_models() {
+  local llm_provider models_base models_url api_key response body code
+  local chat_id embed_id ok=0
+
+  if ! needs_llm_models_check; then
+    echo "== LLM models (${KMA_LLM_PROVIDER:-<unset>}) =="
+    echo "  skipped (/v1/models applies to mlx, ollama, or KMA_EMBED_PROVIDER=mlx)."
     return 0
   fi
-  local base="${KMA_MLX_BASE_URL:-http://127.0.0.1:7999/v1}"
-  echo "== OMLX (${base}) =="
-  have_cmd curl || die "curl not found (needed for HTTP checks)."
-  local body code
-  body=$(curl -sS --max-time 10 "${base}/models" 2>/dev/null) || body=""
-  code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "${base}/models" 2>/dev/null) || code="000"
+
+  have_cmd curl || die "curl not found (needed for LLM model check)."
+  llm_provider="${KMA_LLM_PROVIDER:-ollama}"
+  models_base="$(resolve_models_base_url)"
+  models_url="${models_base}/models"
+  api_key="$(strip_quotes "${KMA_LLM_API_KEY:-${OMLX_API_KEY:-not-needed}}")"
+
+  echo "== LLM models (${models_url}) =="
+  response=""
+  body=""
+  code="000"
+  response="$(curl -sS --max-time 10 -w $'\n%{http_code}' -H "Authorization: Bearer ${api_key}" "${models_url}" 2>/dev/null)" || response=""
+  if [[ -n "$response" ]]; then
+    code="${response##*$'\n'}"
+    body="${response%$'\n'*}"
+  fi
   if [[ "$code" != "200" ]]; then
-    echo "  GET ${base}/models → HTTP ${code} (is OMLX running?)." >&2
+    echo "  GET ${models_url} → HTTP ${code} (is the LLM server running?)." >&2
     return 1
   fi
-  echo "  GET ${base}/models → HTTP 200"
-  if [[ "${KMA_LLM_PROVIDER:-}" == "mlx" ]]; then
-    local chat_id="${KMA_COMPILER_MODEL_ID:-${KMA_MODEL_ID:-Qwen3.6-35B-A3B-UD-MLX-4bit}}"
-    if echo "$body" | grep -qF "\"${chat_id}\""; then
+  echo "  GET ${models_url} → HTTP 200"
+  echo "  Deployed models:"
+  printf '%s\n' "$body" | list_models_from_json
+
+  if [[ "$llm_provider" == "mlx" || "$llm_provider" == "ollama" ]]; then
+    chat_id="$(strip_quotes "${KMA_LLM_MODEL_ID:-${KMA_COMPILER_MODEL_ID:-${KMA_MODEL_ID:-}}}")"
+    if [[ -z "$chat_id" ]]; then
+      echo "  chat model: KMA_LLM_MODEL_ID unset." >&2
+      ok=1
+    elif printf '%s' "$body" | grep -qF "\"${chat_id}\""; then
       echo "  chat model present: ${chat_id}"
     else
       echo "  chat model NOT found in /models: ${chat_id}" >&2
-      return 1
+      ok=1
     fi
   fi
+
   if [[ "${KMA_EMBED_PROVIDER:-}" == "mlx" ]]; then
-    local embed_id="${KMA_EMBED_MODEL:-}"
+    embed_id="$(strip_quotes "${KMA_EMBED_MODEL:-}")"
     if [[ -z "$embed_id" ]]; then
       echo "  embed model: KMA_EMBED_MODEL unset (required for KMA_EMBED_PROVIDER=mlx)." >&2
-      return 1
-    fi
-    if echo "$body" | grep -qF "\"${embed_id}\""; then
+      ok=1
+    elif printf '%s' "$body" | grep -qF "\"${embed_id}\""; then
       echo "  embed model present: ${embed_id}"
     else
       echo "  WARNING: embed model not in /models yet: ${embed_id} (load it into OMLX)." >&2
     fi
   fi
+
+  return "$ok"
 }
 
 main() {
+  load_env_file "${ENV_FILE}"
   trace_environment
   local ok=0
   check_postgres_container || ok=1
   check_db_tcp || ok=1
   pg_ready_if_available || ok=1
   check_backend || ok=1
-  check_omlx || ok=1
+  check_llm_models || ok=1
   if [[ "$CHECK_FRONTEND" -eq 1 ]]; then
     check_frontend || ok=1
   fi

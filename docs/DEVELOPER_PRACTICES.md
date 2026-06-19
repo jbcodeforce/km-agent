@@ -29,6 +29,11 @@ src
         ...
 ```
 
+## Bootstrap CLI (`scripts/validate_config.sh`)
+
+From the repo root, `validate_config.sh` downloads `compose.yaml`, ensures environment variables are set, Docker is available, LLM server is reachable.
+
+
 ## Start the solution in dev mode
 
 ```sh
@@ -36,35 +41,6 @@ src
 ```
 
 Go to [http://localhost:5174](http://localhost:5174/) for UI or [http://localhost:8000/docs](http://localhost:8000/docs) for AgentOS API backend.
-
-
----
-## Agents
-
-When user interacts with the chat user interface, it goes to `/agents/${agentId}/runs` and run the team agent.
-
-* [Team](../src/kma/agents/team.py) 
-* [Compiler](../src/kma/agents/compiler.py) agent is used to process indexing of raw data. It is used by the docs crawler. It can be integrated in tools via the factory function: `build_compiler_agent()`. As an example it is used to index existing docs folder:
-
-  ![](./images/docs_compiler.drawio.png)
-
-* [Linter](../src/kma/agents/linter.py) to keep integrity within the wiki content and propose researches. 
-
-## Local PostgreSQL (Docker Compose only)
-
-The database service in `compose.yaml` is named `agent-db` (image `agnohq/pgvector:18`). During development, it is recommended to start that container from the repository root:
-
-```bash
-docker compose up -d agent-db
-```
-
-Compose reads `.env` when present. Postgres is published on the host as `KMA_DB_POST` → `5432` inside the container. See `compose.yaml` under `agent-db.ports`. 
-
-To stop just that service:
-
-```bash
-docker compose stop agent-db
-```
 
 ### Where data lives
 
@@ -99,45 +75,29 @@ docker compose down -v
 docker compose up -d agent-db
 ```
 
+---
+## Agents
+
+When user interacts with the chat user interface, it goes to `/agents/${agentId}/runs` and run the team agent.
+
+* [Team](../src/kma/agents/team.py) 
+* [Compiler](../src/kma/agents/compiler.py) agent is used to process indexing of raw data. It is used by the docs crawler. It can be integrated in tools via the factory function: `build_compiler_agent()`. As an example it is used to index existing docs folder:
+
+  ![](./images/docs_compiler.drawio.png)
+
+* [Linter](../src/kma/agents/linter.py) to keep integrity within the wiki content and propose researches. 
+
+
+
 ## LLM local server (native on the host)
 
-when using ollama:
-* Ollama does not run in Docker Compose Models because it consumes more memory than native. The binaries live in the default Ollama locations on your machine (for example `~/.ollama` on macOS/Linux). 
 * The `km-agent` service in `compose.yaml` talks to the host via `LLM_HOST`, defaulting to `http://host.docker.internal:11434` so the container can reach a server bound on the host.
+* For oMLX the server is on port 7999
 
-For oMLX the server is on port 7999
+### Bootstrap CLI (`scripts/validate_config.sh`)
 
-### Bootstrap CLI (`scripts/setup.sh`)
+From the repo root, `validate_config.sh` downloads `compose.yaml`, ensures environment variables are set, Docker is available, LLM server is reachable.
 
-From the repo root, `setup.sh` downloads `compose.yaml`, ensures Docker is available, and installs the Ollama CLI when it is missing (official `https://ollama.com/install.sh`). Set `SKIP_OLLAMA_INSTALL=1` to skip the installer (for example in automation that only refreshes Compose).
-
-### Start the server (`scripts/starter.sh`)
-
-In a separate terminal, leave the Ollama API running while you develop or run integration tests. The same script first ensures Postgres (`agent-db`) is up via `docker compose` when `compose.yaml` is present and Docker is available:
-
-```bash
-./scripts/starter.sh
-# or in development mode
-./scripts/starter.sh --dev
-```
-
-If something is already listening on `http://127.0.0.1:${LLM_PORT:-11434}/api/tags`, the script exits without starting a second server. Override the port with `LLM_PORT` (and keep `LLM_HOST` consistent in `.env` / clients).
-
-Pull at least one chat model before using the Compiler or integration tests, for example with ollama:
-
-```bash
-ollama pull qwen3.6:35b-a3b
-```
-
-for OMLX uses the user interface.
-
-Embeddings: `kma.db.create_knowledge` uses `build_default_embedder()` from `KMA_EMBED_PROVIDER`: `ollama` (Agno `OllamaEmbedder` with `KMA_EMBED_MODEL` / `KMA_EMBED_DIMENSIONS`, defaults `nomic-embed-text:latest` / `768`) or `openai` (`OpenAIEmbedder`, defaults `text-embedding-3-small` / `1536`, requires `OPENAI_API_KEY`). Pull the Ollama embedding model when using Ollama:
-
-```bash
-ollama pull nomic-embed-text:latest
-```
-
-If you previously used a different embedding size in Postgres, drop the old `kma_knowledge` / `kma_learnings` vector tables or use a fresh database volume so vector dimensions match the configured embedder.
 
 ## Frontend (Vue + Vite)
 
@@ -202,81 +162,6 @@ The ASGI app in `src/app/main.py` wires Agno AgentOS to shared Postgres session 
 
 Shared `agent_db`, `kma_knowledge`, and `kma_learnings` are created in `src/kma/agents/settings.py` via `kma.db.get_postgres_db` and `kma.db.create_knowledge`. `build_default_llm_model()` in `src/kma/llm_factory.py` supplies the chat Model for each agent. Tool lists are assembled in `src/kma/tools/builder.py` (`build_compiler_tools`, `build_navigator_tools`, `build_researcher_tools`) and delegate to `kma.tools.compiler_fs`, `kma.tools.ingest`, `kma.tools.wiki`, `kma.tools.knowledge`, and Agno’s `FileTools`, `SQLTools`, `ParallelTools`, etc.
 
-```mermaid
-classDiagram
-  direction TB
-
-  class AgentOS {
-    <<Agno>>
-    app.main agent_os
-  }
-  class Team {
-    <<Agno>>
-    kma_team coordinate
-  }
-  class PostgresDb {
-    <<Agno>>
-    agent_db
-  }
-  class Knowledge {
-    <<Agno>>
-    vector bases
-  }
-  class Model {
-    <<Agno>>
-    chat LLM
-  }
-  class LearningMachine {
-    <<Agno>>
-    agentic memory
-  }
-  class navigator {
-    <<Agent instance>>
-    kma.agents.navigator
-  }
-  class compiler {
-    <<Agent instance>>
-    kma.agents.compiler
-  }
-  class researcher {
-    <<Agent optional>>
-    if PARALLEL_API_KEY
-  }
-
-  AgentOS "1" --> "1" PostgresDb : db
-  AgentOS "1" --> "1" Team : teams
-  AgentOS "1" --> "2" Knowledge : kma_knowledge kma_learnings
-  AgentOS "1" --> "1" compiler : agents for HTTP
-
-  Team "1" --> "1" navigator : members
-  Team "1" --> "1" compiler : members
-  Team "0..1" ..> researcher : members
-
-  Team ..> LearningMachine : team learning config
-  Team ..> Model : leader model
-
-  navigator ..> PostgresDb
-  navigator ..> Knowledge
-  navigator ..> Model
-  navigator ..> LearningMachine
-
-  compiler ..> PostgresDb
-  compiler ..> Knowledge
-  compiler ..> Model
-
-  researcher ..> PostgresDb
-  researcher ..> Knowledge
-  researcher ..> Model
-  researcher ..> LearningMachine
-```
-
-**Reading the diagram**
-
-- **`app`** (FastAPI ASGI) is `agent_os.get_app()`; the Vue dev proxy talks to this app’s routes under `/agent-os` (see Frontend section).
-- **`AgentOS`** is constructed with `teams=[kma_team]` and `agents=[compiler]`: the Compiler is both a member of `kma_team` and the only agent listed in `agents` so it stays reachable for direct HTTP runs as well as coordinated team work.
-- **`researcher`** is `None` unless `PARALLEL_API_KEY` is set; `kma.team.members` is built with `[m for m in [navigator, researcher, compiler] if m is not None]`.
-- The two `Knowledge` links from `AgentOS` are `kma_knowledge` and `kma_learnings` (pgvector-backed, from `kma.db.create_knowledge`).
-
 ## Unit tests
 
 Install dependencies (once per clone or after dependency changes):
@@ -316,25 +201,6 @@ uv run pytest tests/it -m integration -v
 ```
 
 Running `uv run pytest tests` also collects `tests/it/`; those tests may skip (Ollama down, wrong model, insufficient RAM) or pass, depending on your machine.
-
-### Environment variables
-
-| Variable | Role |
-|----------|------|
-| `KMA_LLM_PROVIDER` | Compiler chat backend: `ollama` (default), `openai`, or `anthropic`. |
-| `KMA_MODEL_ID` | Model id for the active compiler provider (optional; defaults per provider in `kma/config.py`). |
-| `LLM_HOST` | Base URL for Ollama when the compiler or embeddings use Ollama (default `http://127.0.0.1:11434`). |
-| `OPENAI_API_KEY` | Required when `KMA_LLM_PROVIDER=openai` or `KMA_EMBED_PROVIDER=openai`. |
-| `OPENAI_BASE_URL` | Optional; forwarded to OpenAI chat and OpenAI embed clients when set. |
-| `ANTHROPIC_API_KEY` | Required when `KMA_LLM_PROVIDER=anthropic`. |
-| `KMA_EMBED_PROVIDER` | Embeddings: `ollama` (default) or `openai`. |
-| `KMA_EMBED_MODEL` | Embedding model id (Ollama) or name (OpenAI); defaults depend on `KMA_EMBED_PROVIDER`. |
-| `KMA_EMBED_DIMENSIONS` | Vector length; must match the model (defaults per provider in `kma/config.py`). |
-| `KMA_IT_OLLAMA_MODEL` | Optional override for which pulled Ollama model the compiler integration test uses for chat (`OllamaResponses`). If unset, the suite prefers `get_compiler_model_id()` when that id appears in `GET {LLM_HOST}/api/tags` and `KMA_LLM_PROVIDER=ollama`; otherwise the first pulled model name (lexicographic). Use a small model if your default is too large for RAM. |
-| `OLLAMA_EMBED_HOST` | Optional; Ollama embed host when `KMA_EMBED_PROVIDER=ollama`. If unset, `LLM_HOST` is used (`/v1` stripped when present). |
-| `KMA_IT_COMPILER` | Set to `1` to enable the compiler agent integration test (`tests/it/test_compiler_agent_integration.py`). Without it, that test is skipped so default `pytest tests` stays lighter. |
-
-Model selection order for Ollama chat in `tests/it/conftest.py` (`ollama_model_id_for_integration`): `KMA_IT_OLLAMA_MODEL` (if listed) → `get_compiler_model_id()` when `KMA_LLM_PROVIDER=ollama` and that id is listed → first pulled model name (lexicographic).
 
 ### OMLX (mlx) provider and integration suite
 

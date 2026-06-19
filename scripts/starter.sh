@@ -52,10 +52,6 @@ have_cmd() {
   command -v "$1" >/dev/null 2>&1
 }
 
-require_curl() {
-  have_cmd curl || die "curl not found (needed to probe the OMLX endpoint)."
-}
-
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${REPO_ROOT}/compose.yaml"
 ENV_FILE="${REPO_ROOT}/.env"
@@ -186,7 +182,7 @@ prepare_dev_backend() {
     die "Docker service km-agent is running and would conflict with the uv backend on port 8000. Stop it with: (cd ${REPO_ROOT} && docker compose stop km-agent)"
   fi
   have_cmd uv || die "uv not found; install uv and run 'uv sync' from the repo root."
-  require_curl
+  
   if ! omlx_models_reachable; then
     die "OMLX is not responding at ${mlx_base}. Start it first (e.g. ./scripts/starter.sh in another terminal), then retry --dev."
   fi
@@ -279,7 +275,7 @@ if ! have_cmd omlx; then
   exit 0
 fi
 
-require_curl
+
 if omlx_models_reachable; then
   echo "OMLX is already responding at ${mlx_base}. Docker stack is up; nothing else to start."
   exit 0
