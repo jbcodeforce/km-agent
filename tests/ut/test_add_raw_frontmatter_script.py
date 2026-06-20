@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -60,3 +61,45 @@ def test_add_frontmatter_then_refuse_second_run(tmp_path: Path) -> None:
     )
     assert r2.returncode == 1
     assert "already has YAML frontmatter" in r2.stderr
+
+
+def test_check_folder_reports_frontmatter_status(tmp_path: Path) -> None:
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "with.md").write_text("---\ntitle: T\n---\n\n# With\n", encoding="utf-8")
+    (docs / "without.md").write_text("# Without\n", encoding="utf-8")
+    env = {**__import__("os").environ, "PYTHONPATH": str(REPO_ROOT / "src")}
+    r = subprocess.run(
+        [sys.executable, str(SCRIPT), str(docs), "--check"],
+        cwd=str(REPO_ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert r.returncode == 1
+    assert "with frontmatter: with.md" in r.stdout
+    assert "without frontmatter: without.md" in r.stdout
+
+
+def test_crawl_folder_adds_frontmatter_to_missing_only(tmp_path: Path) -> None:
+    docs = tmp_path / "docs"
+    sub = docs / "sub"
+    sub.mkdir(parents=True)
+    (docs / "ready.md").write_text("---\ntitle: T\nsource: s\ncompiled: false\n---\n\n# Ready\n", encoding="utf-8")
+    (sub / "needs.md").write_text("# Needs Frontmatter\n", encoding="utf-8")
+    env = {**__import__("os").environ, "PYTHONPATH": str(REPO_ROOT / "src")}
+    r = subprocess.run(
+        [sys.executable, str(SCRIPT), str(docs), "--source", "test-import"],
+        cwd=str(REPO_ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert (sub / "needs.md").read_text(encoding="utf-8").startswith("---\n")
+    assert "compiled: false" in (sub / "needs.md").read_text(encoding="utf-8")
+    manifest = json.loads((docs / ".manifest.json").read_text(encoding="utf-8"))
+    files = {entry["file"] for entry in manifest}
+    assert "sub/needs.md" in files

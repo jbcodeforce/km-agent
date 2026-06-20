@@ -21,10 +21,18 @@ from kma.tools.ingest import (
     _read_manifest,
     _slugify,
     _write_manifest,
+    apply_raw_frontmatter_to_text,
+    append_manifest_entry,
     create_ingest_tools,
+    first_h1_title,
+    has_km_raw_frontmatter,
+    has_yaml_frontmatter,
+    iter_markdown_files,
     manifest_entry_compiled,
     mark_manifest_compiled,
+    strip_yaml_frontmatter,
     sync_manifest_from_raw_markdown,
+    title_from_markdown,
 )
 
 
@@ -232,3 +240,76 @@ def test_sync_raw_manifest_from_disk_tool(tmp_path: Path) -> None:
     out = sync_tool.entrypoint()
     assert "Synced" in out
     assert _read_manifest(raw)[0]["compiled"] is True
+
+
+def test_has_yaml_frontmatter() -> None:
+    assert has_yaml_frontmatter("---\ntitle: x\n---\n\n# Hi\n") is True
+    assert has_yaml_frontmatter("# No frontmatter\n") is False
+
+
+def test_has_km_raw_frontmatter() -> None:
+    raw = "---\ntitle: T\nsource: s\ningested: 2026-01-01\ncompiled: false\n---\n\n# Body\n"
+    assert has_km_raw_frontmatter(raw) is True
+    assert has_km_raw_frontmatter("---\ntitle: wiki only\n---\n") is False
+
+
+def test_strip_yaml_frontmatter() -> None:
+    text = "---\ntitle: T\n---\n\n# Body\n"
+    assert strip_yaml_frontmatter(text) == "# Body\n"
+    assert strip_yaml_frontmatter("# Plain\n") == "# Plain\n"
+
+
+def test_first_h1_title_and_title_from_markdown() -> None:
+    assert first_h1_title("# Hello World\n") == "Hello World"
+    assert first_h1_title("no heading") is None
+    assert title_from_markdown("# Kafka\n", fallback_stem="fallback") == "Kafka"
+    assert title_from_markdown("plain", fallback_stem="my-doc") == "My Doc"
+
+
+def test_iter_markdown_files_skips_excluded_dirs(tmp_path: Path) -> None:
+    root = tmp_path / "docs"
+    root.mkdir()
+    (root / "a.md").write_text("# A\n", encoding="utf-8")
+    (root / "sub").mkdir()
+    (root / "sub" / "b.md").write_text("# B\n", encoding="utf-8")
+    (root / "node_modules").mkdir()
+    (root / "node_modules" / "c.md").write_text("# C\n", encoding="utf-8")
+    paths = iter_markdown_files(root)
+    rels = {p.relative_to(root).as_posix() for p in paths}
+    assert rels == {"a.md", "sub/b.md"}
+
+
+def test_apply_raw_frontmatter_to_text() -> None:
+    new_text, title, skip = apply_raw_frontmatter_to_text(
+        "# Hello\n",
+        source="local",
+        tags=["a"],
+        doc_type="article",
+        fallback_title="Fallback",
+    )
+    assert skip is None
+    assert title == "Hello"
+    assert new_text is not None
+    assert new_text.startswith("---\n")
+    assert "compiled: false" in new_text
+    assert "# Hello" in new_text
+
+    _, _, skip2 = apply_raw_frontmatter_to_text(
+        "---\ntitle: x\n---\n\n# Body\n",
+        source="s",
+        tags=[],
+        doc_type="article",
+        force=False,
+    )
+    assert skip2 == "already has YAML frontmatter"
+
+
+def test_append_manifest_entry_updates_existing(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    _write_manifest(raw, [{"file": "a.md", "title": "Old", "source": "s", "ingested": "t", "compiled": True}])
+    append_manifest_entry(raw, "a.md", "New", "src", reset_compiled=True)
+    entry = _read_manifest(raw)[0]
+    assert entry["title"] == "New"
+    assert entry["source"] == "src"
+    assert entry["compiled"] is False

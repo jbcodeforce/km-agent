@@ -174,6 +174,136 @@ def _build_frontmatter(title: str, source: str, tags: list[str], doc_type: str) 
     )
 
 
+DEFAULT_EXCLUDE_DIR_NAMES = frozenset(
+    {".git", "node_modules", ".venv", ".venvs", "__pycache__", ".tox", "dist", "build"}
+)
+
+
+def has_yaml_frontmatter(text: str) -> bool:
+    """Return True when ``text`` begins with a closed YAML ``---`` block."""
+    if not text.startswith("---\n"):
+        return False
+    close = text.find("\n---\n", 4)
+    return close != -1
+
+
+def has_km_raw_frontmatter(text: str) -> bool:
+    """Return True when ``text`` has km-agent raw frontmatter (title, source, compiled)."""
+    if not has_yaml_frontmatter(text):
+        return False
+    close = text.find("\n---\n", 4)
+    block = text[:close] if close != -1 else ""
+    return "compiled:" in block and "title:" in block and "source:" in block
+
+
+def strip_yaml_frontmatter(text: str) -> str:
+    """Return markdown body after removing a leading YAML frontmatter block."""
+    if not has_yaml_frontmatter(text):
+        return text
+    end = text.find("\n---\n", 4)
+    return text[end + len("\n---\n") :].lstrip("\n")
+
+
+def first_h1_title(body: str) -> str | None:
+    """Return the first ``# heading`` text in ``body``, if any."""
+    for line in body.splitlines():
+        m = re.match(r"^#\s+(.+)$", line.strip())
+        if m:
+            return m.group(1).strip()
+    return None
+
+
+def title_from_markdown(body: str, *, fallback_stem: str) -> str:
+    """Resolve a document title from the first H1 or a filename stem."""
+    return first_h1_title(body) or fallback_stem.replace("-", " ").replace("_", " ").title()
+
+
+def should_skip_markdown_path(path: Path, root: Path, exclude_dir_names: frozenset[str] = DEFAULT_EXCLUDE_DIR_NAMES) -> bool:
+    """Skip hidden files and paths under excluded directory names."""
+    if path.name.startswith("."):
+        return True
+    try:
+        rel = path.relative_to(root)
+    except ValueError:
+        return True
+    return any(part in exclude_dir_names for part in rel.parts)
+
+
+def iter_markdown_files(
+    root: Path,
+    *,
+    exclude_dir_names: frozenset[str] = DEFAULT_EXCLUDE_DIR_NAMES,
+) -> list[Path]:
+    """Return sorted ``*.md`` files under ``root``, skipping excluded directories."""
+    docs_root = root.resolve()
+    out: list[Path] = []
+    for path in sorted(docs_root.rglob("*.md")):
+        if not path.is_file():
+            continue
+        if should_skip_markdown_path(path, docs_root, exclude_dir_names):
+            continue
+        out.append(path)
+    return out
+
+
+def append_manifest_entry(
+    raw_dir: Path,
+    file_rel: str,
+    title: str,
+    source: str,
+    *,
+    reset_compiled: bool = False,
+) -> None:
+    """Insert or update one row in ``raw_dir/.manifest.json``."""
+    manifest = _read_manifest(raw_dir)
+    ingested = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    for entry in manifest:
+        if entry.get("file") == file_rel:
+            entry["title"] = title
+            entry["source"] = source
+            entry["ingested"] = ingested
+            if reset_compiled:
+                entry["compiled"] = False
+            _write_manifest(raw_dir, manifest)
+            return
+    manifest.append(
+        {
+            "file": file_rel,
+            "title": title,
+            "source": source,
+            "ingested": ingested,
+            "compiled": False,
+        }
+    )
+    _write_manifest(raw_dir, manifest)
+
+
+def apply_raw_frontmatter_to_text(
+    text: str,
+    *,
+    source: str,
+    tags: list[str],
+    doc_type: str,
+    title: str | None = None,
+    fallback_title: str = "Untitled",
+    force: bool = False,
+) -> tuple[str | None, str, str | None]:
+    """Prepend km-agent raw frontmatter when missing (or when ``force``).
+
+    Returns ``(new_text, resolved_title, skip_reason)``. ``new_text`` is ``None`` when skipped.
+    """
+    if has_yaml_frontmatter(text) and not force:
+        return None, "", "already has YAML frontmatter"
+
+    body = strip_yaml_frontmatter(text) if force and has_yaml_frontmatter(text) else text
+    resolved_title = title or title_from_markdown(body, fallback_stem=fallback_title)
+    front = _build_frontmatter(resolved_title, source, tags, doc_type)
+    new_text = front + body.lstrip("\n")
+    if not new_text.endswith("\n"):
+        new_text += "\n"
+    return new_text, resolved_title, None
+
+
 def _do_ingest_url(raw_dir: Path, url: str, title: str, tags: list[str] | None = None, doc_type: str = "article") -> str:
     """Core ingest-URL logic (callable directly and via @tool wrapper)."""
 

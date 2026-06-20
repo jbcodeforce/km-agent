@@ -71,39 +71,50 @@ After the stack is up, re-run `./scripts/verify_config.sh --frontend` to confirm
 
 ## Use cases
 
-### UC-1 Add annotation to sources file
+### UC-1 Add annotation to sources file(s)
 
 *Goal:** The source knowledge may not have the frontmatter manifest in each markdown file, and it is needed for metadata managment of the wiki.
 
+* Files that already have km-agent raw frontmatter get a manifest sync only (no rewrite unless --force).
+* When specifying a directory, it crawls **/*.md, skips excluded dirs, writes manifest at the folder root with paths like sub/needs.md.
+* Files with non-km YAML frontmatter are skipped unless --force.
+* Batch runs print a summary line at the end.
+
 #### Preconditions
 
-* python and uv
+* python and uv available.
 
 #### Steps (outline)
 
-```bash
-uv run python scripts/add_raw_frontmatter.py /path/to/your-studies/docs \
-    --context ./context --source your-studies --label studies
+```sh
+# Audit only — report which files have frontmatter (exit 1 if any are missing)
+uv run python scripts/add_raw_frontmatter.py /path/to/docs --check
+
+# Single file (unchanged behavior)
+uv run python scripts/add_raw_frontmatter.py path/to/doc.md --source flink-studies
+# Crawl a folder — adds frontmatter to files missing it, updates manifest with relative paths
+uv run python scripts/add_raw_frontmatter.py /path/to/docs --source flink-studies
 ```
 
-### UC-1 — Attach a studies repository and compile documentation into the wiki
 
-**Goal:** Point km-agent at an existing Markdown tree (for example a `docs/` folder of the [flink-studies](https://github.com/jbcodeforce/flink-studies)), normalize front matter and manifest entries, and run the **Compiler** and **linter** agents so **`context/wiki/`** gains summaries, concept pages, and an updated **`index.md`**.
+### UC-2 — Attach a studies repository and compile and lint documentation into the wiki
+
+**Goal:** From an existing Markdown tree (for example a `docs/` folder of the [flink-studies](https://github.com/jbcodeforce/flink-studies)), update a tracking manifest entries, and run the **Compiler** and **linter** agents so **`context/wiki/`** gains summaries, concept pages, and an updated **`index.md`**.
 
 #### Preconditions
 
 - Postgres running; LLM and embedder configured (`KMA_LLM_PROVIDER`, `KMA_EMBED_*`).
 - OMLX server (or cloud) models pulled for chat.
 - Embedding model will be pulled on the first calls
+- Input files have frontmatter information
 
 #### Steps (outline)
 
-1. Reference the docs folder on your disk.
-2. From the km-agent repo folder, run the crawler and knowledge Compiler agent:
+1. From the km-agent repo folder, run the crawler and knowledge Compiler agent:
 
    ```bash
-   uv run python scripts/compile_docs_folder.py /path/to/your-studies/docs \
-     --context ./context --source your-studies --label studies
+   uv run python scripts/compile_docs_folder.py /path/to/docs \
+     --context ./context  --label studies
    ```
 
    Use `--dry-run` or `--skip-compiler` to only prepare manifests and front matter without invoking the agent.
@@ -112,7 +123,9 @@ uv run python scripts/add_raw_frontmatter.py /path/to/your-studies/docs \
 
 **Success:** Uncompiled sources in the manifest move to **compiled**, and the wiki index reflects new or updated articles.
 
-### UC-2 — Ask questions using the wiki, files, and SQL
+### UC-3 - Build ontology
+
+### UC-4 — Ask questions using the wiki, files, and SQL
 
 **Goal:** Use chat to answer a question by combining the wiki index and articles, files under `context/`, structured data in the **`kma`** schema, and vector-backed knowledge where configured.
 
@@ -137,7 +150,7 @@ uv run python scripts/add_raw_frontmatter.py /path/to/your-studies/docs \
 
 ---
 
-### UC-3 — Ingest new material from the web
+### UC-5 — Ingest new material from the web
 
 **Goal:** Gather sources from the web, normalize them as markdown under **`context/raw/`** with proper front matter, and optionally hand them to the **Compiler** so the wiki stays current.
 
@@ -164,7 +177,7 @@ uv run python scripts/add_raw_frontmatter.py /path/to/your-studies/docs \
 
 ---
 
-### UC-4 — Incremental compile after editing raw notes
+### UC-6 — Incremental compile after editing raw notes
 
 **Goal:** After you add or edit markdown in **`context/raw/`**, refresh only **uncompiled** entries and avoid rewriting the whole wiki.
 
