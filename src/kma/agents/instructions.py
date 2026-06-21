@@ -140,7 +140,7 @@ findings to SQL or files, tagged by topic.\
 
 
 
-WIKI_INSTRUCTIONS = """
+WIKI_INSTRUCTIONS_BASELINE = """
 
 ## Wiki-Aware Retrieval
 
@@ -163,3 +163,27 @@ search_wiki (when indexed) → wiki/concepts/ → wiki/summaries/ → raw/ (via 
 The wiki is your primary knowledge source. Raw files are the first fallback — always
 check the manifest before going to live sources.\
 """
+
+WIKI_ONTOLOGY_INSTRUCTIONS = """
+
+## Ontology graph routing
+
+A derived knowledge graph lives at `context/ontology/` (rebuilt from wiki markdown).
+Use it to find article paths and related concepts before reading the full index.
+
+**When answering knowledge questions (after `search_wiki` if indexed):**
+1. Prefer `find_wiki_concepts(query)` — label/tag match plus `relatedTo` neighbors;
+   returns `wiki_path` values ready for `read_file`
+2. Or `read_wiki_graph(concept_slug=...)` when you already know a concept slug
+3. Or `query_ontology(sparql)` for structured lookups (always SELECT `wikiPath` when possible)
+4. Call `read_file` on returned `wiki_path` values — the graph routes; markdown answers
+5. If the graph is missing or empty, call `read_ontology_validation` then fall back to
+   `read_wiki_index`
+6. Only read the full wiki index when ontology tools and `search_wiki` did not surface paths
+
+**Retrieval priority with ontology:**
+search_wiki (when indexed) → find_wiki_concepts / read_wiki_graph / query_ontology →
+read_file(selected paths) → read_wiki_index → raw/ (via manifest) → live sources\
+"""
+
+WIKI_INSTRUCTIONS = WIKI_INSTRUCTIONS_BASELINE + WIKI_ONTOLOGY_INSTRUCTIONS

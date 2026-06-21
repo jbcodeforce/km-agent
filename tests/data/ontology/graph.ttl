@@ -1,0 +1,217 @@
+@prefix kma: <http://km-agent.local/ontology#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+kma:CodeArtifact a rdfs:Class ;
+    rdfs:label "Executable code or SQL file" .
+
+kma:Concept a rdfs:Class ;
+    rdfs:label "Wiki concept article" .
+
+kma:RawDocument a rdfs:Class ;
+    rdfs:label "Raw or studies markdown source" .
+
+kma:Statement a rdfs:Class ;
+    rdfs:label "Named deploy statement from manifest" .
+
+kma:Summary a rdfs:Class ;
+    rdfs:label "Wiki source summary" .
+
+kma:Tag a rdfs:Class ;
+    rdfs:label "Topic tag" .
+
+<http://km-agent.local/id/raw/studies:apache-kafka-foundational-concepts-overview.md> a kma:RawDocument ;
+    rdfs:label "Apache Kafka Foundational Concepts Overview" ;
+    kma:wikiPath "raw/studies:apache-kafka-foundational-concepts-overview.md" .
+
+<http://km-agent.local/id/raw/studies:data_as_a_product.md> a kma:RawDocument ;
+    rdfs:label "Data as a Product" ;
+    kma:wikiPath "raw/studies:data_as_a_product.md" .
+
+<http://km-agent.local/id/raw/studies:fitforpurpose.md> a kma:RawDocument ;
+    rdfs:label "Fit For Purpose" ;
+    kma:compiledInto <http://km-agent.local/id/summary/fitforpurpose> ;
+    kma:wikiPath "raw/studies:fitforpurpose.md" .
+
+<http://km-agent.local/id/raw/studies:governance.md> a kma:RawDocument ;
+    rdfs:label "Data Governance" ;
+    kma:wikiPath "raw/studies:governance.md" .
+
+<http://km-agent.local/id/raw/studies:job_lifecycle.md> a kma:RawDocument ;
+    rdfs:label "Flink Job Lifecycle" ;
+    kma:wikiPath "raw/studies:job_lifecycle.md" .
+
+<http://km-agent.local/id/raw/studies:kafka.md> a kma:RawDocument ;
+    rdfs:label "Kafka for Flink" ;
+    kma:wikiPath "raw/studies:kafka.md" .
+
+kma:compiledInto a rdf:Property ;
+    rdfs:label "Raw compiled into wiki" ;
+    rdfs:domain kma:RawDocument ;
+    rdfs:range kma:Summary .
+
+kma:derivedFrom a rdf:Property ;
+    rdfs:label "Derived from source" ;
+    rdfs:domain kma:Concept ;
+    rdfs:range kma:RawDocument .
+
+kma:documents a rdf:Property ;
+    rdfs:label "Document describes artifact" ;
+    rdfs:domain kma:Summary ;
+    rdfs:range kma:CodeArtifact .
+
+kma:extractionMethod a rdf:Property ;
+    rdfs:label "How this triple was produced" .
+
+kma:hasStatement a rdf:Property ;
+    rdfs:domain kma:CodeArtifact ;
+    rdfs:range kma:Statement .
+
+kma:hasTag a rdf:Property ;
+    rdfs:domain kma:Concept ;
+    rdfs:range kma:Tag .
+
+kma:implements a rdf:Property ;
+    rdfs:label "Concept implemented by code" ;
+    rdfs:domain kma:Concept ;
+    rdfs:range kma:CodeArtifact .
+
+kma:indexedIn a rdf:Property ;
+    rdfs:label "Listed in wiki index" ;
+    rdfs:domain kma:Concept ;
+    rdfs:range rdfs:Resource .
+
+kma:relatedTo a rdf:Property ;
+    rdfs:label "Related concept" ;
+    rdfs:domain kma:Concept ;
+    rdfs:range kma:Concept .
+
+kma:statementFile a rdf:Property ;
+    rdfs:domain kma:Statement ;
+    rdfs:range kma:CodeArtifact .
+
+kma:wikiPath a rdf:Property ;
+    rdfs:label "Relative wiki or context path" .
+
+<http://km-agent.local/id/summary/fitforpurpose> a kma:Summary ;
+    rdfs:label "fitforpurpose" ;
+    kma:wikiPath "wiki/summaries/fitforpurpose.md" .
+
+<http://km-agent.local/id/tag/architecture> a kma:Tag ;
+    rdfs:label "architecture" .
+
+<http://km-agent.local/id/tag/business-logic> a kma:Tag ;
+    rdfs:label "business-logic" .
+
+<http://km-agent.local/id/tag/cep> a kma:Tag ;
+    rdfs:label "cep" .
+
+<http://km-agent.local/id/tag/computation> a kma:Tag ;
+    rdfs:label "computation" .
+
+<http://km-agent.local/id/tag/data-ingestion> a kma:Tag ;
+    rdfs:label "data-ingestion" .
+
+<http://km-agent.local/id/tag/data-routes> a kma:Tag ;
+    rdfs:label "data-routes" .
+
+<http://km-agent.local/id/tag/event-processing> a kma:Tag ;
+    rdfs:label "event-processing" .
+
+<http://km-agent.local/id/tag/expert-systems> a kma:Tag ;
+    rdfs:label "expert-systems" .
+
+<http://km-agent.local/id/tag/flink> a kma:Tag ;
+    rdfs:label "flink" .
+
+<http://km-agent.local/id/tag/java> a kma:Tag ;
+    rdfs:label "java" .
+
+<http://km-agent.local/id/tag/kafka-streams> a kma:Tag ;
+    rdfs:label "kafka-streams" .
+
+<http://km-agent.local/id/tag/library> a kma:Tag ;
+    rdfs:label "library" .
+
+<http://km-agent.local/id/tag/logistics> a kma:Tag ;
+    rdfs:label "logistics" .
+
+<http://km-agent.local/id/tag/nifi> a kma:Tag ;
+    rdfs:label "nifi" .
+
+<http://km-agent.local/id/tag/pattern-detection> a kma:Tag ;
+    rdfs:label "pattern-detection" .
+
+<http://km-agent.local/id/tag/rete-algorithm> a kma:Tag ;
+    rdfs:label "rete-algorithm" .
+
+<http://km-agent.local/id/tag/rule-engine> a kma:Tag ;
+    rdfs:label "rule-engine" .
+
+<http://km-agent.local/id/concept/apache-nifi> a kma:Concept ;
+    rdfs:label "Apache NiFi" ;
+    kma:derivedFrom <http://km-agent.local/id/raw/fitforpurpose.md> ;
+    kma:hasTag <http://km-agent.local/id/tag/data-ingestion>,
+        <http://km-agent.local/id/tag/data-routes>,
+        <http://km-agent.local/id/tag/logistics>,
+        <http://km-agent.local/id/tag/nifi> ;
+    kma:indexedIn <http://km-agent.local/id/wiki-index> ;
+    kma:relatedTo <http://km-agent.local/id/concept/apache-flink> ;
+    kma:wikiPath "wiki/concepts/apache-nifi.md" .
+
+<http://km-agent.local/id/concept/rule-engines> a kma:Concept ;
+    rdfs:label "Rule Engines" ;
+    kma:derivedFrom <http://km-agent.local/id/raw/fitforpurpose.md> ;
+    kma:hasTag <http://km-agent.local/id/tag/business-logic>,
+        <http://km-agent.local/id/tag/expert-systems>,
+        <http://km-agent.local/id/tag/rete-algorithm>,
+        <http://km-agent.local/id/tag/rule-engine> ;
+    kma:indexedIn <http://km-agent.local/id/wiki-index> ;
+    kma:relatedTo <http://km-agent.local/id/concept/apache-flink>,
+        <http://km-agent.local/id/concept/complex-event-processing>,
+        <http://km-agent.local/id/concept/kafka-streams> ;
+    kma:wikiPath "wiki/concepts/rule-engines.md" .
+
+<http://km-agent.local/id/concept/complex-event-processing> a kma:Concept ;
+    rdfs:label "Complex Event Processing" ;
+    kma:derivedFrom <http://km-agent.local/id/raw/fitforpurpose.md> ;
+    kma:hasTag <http://km-agent.local/id/tag/cep>,
+        <http://km-agent.local/id/tag/event-processing>,
+        <http://km-agent.local/id/tag/pattern-detection>,
+        <http://km-agent.local/id/tag/streaming> ;
+    kma:indexedIn <http://km-agent.local/id/wiki-index> ;
+    kma:relatedTo <http://km-agent.local/id/concept/apache-flink>,
+        <http://km-agent.local/id/concept/kafka-streams>,
+        <http://km-agent.local/id/concept/rule-engines> ;
+    kma:wikiPath "wiki/concepts/complex-event-processing.md" .
+
+<http://km-agent.local/id/concept/kafka-streams> a kma:Concept ;
+    rdfs:label "Kafka Streams" ;
+    kma:derivedFrom <http://km-agent.local/id/raw/fitforpurpose.md> ;
+    kma:hasTag <http://km-agent.local/id/tag/java>,
+        <http://km-agent.local/id/tag/kafka-streams>,
+        <http://km-agent.local/id/tag/library>,
+        <http://km-agent.local/id/tag/streaming> ;
+    kma:indexedIn <http://km-agent.local/id/wiki-index> ;
+    kma:relatedTo <http://km-agent.local/id/concept/apache-flink>,
+        <http://km-agent.local/id/concept/apache-nifi>,
+        <http://km-agent.local/id/concept/complex-event-processing> ;
+    kma:wikiPath "wiki/concepts/kafka-streams.md" .
+
+<http://km-agent.local/id/tag/streaming> a kma:Tag ;
+    rdfs:label "streaming" .
+
+<http://km-agent.local/id/concept/apache-flink> a kma:Concept ;
+    rdfs:label "Apache Flink" ;
+    kma:derivedFrom <http://km-agent.local/id/raw/fitforpurpose.md> ;
+    kma:hasTag <http://km-agent.local/id/tag/architecture>,
+        <http://km-agent.local/id/tag/computation>,
+        <http://km-agent.local/id/tag/flink>,
+        <http://km-agent.local/id/tag/streaming> ;
+    kma:indexedIn <http://km-agent.local/id/wiki-index> ;
+    kma:relatedTo <http://km-agent.local/id/concept/apache-nifi>,
+        <http://km-agent.local/id/concept/complex-event-processing>,
+        <http://km-agent.local/id/concept/kafka-streams>,
+        <http://km-agent.local/id/concept/rule-engines> ;
+    kma:wikiPath "wiki/concepts/apache-flink.md" .
+

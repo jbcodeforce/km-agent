@@ -1,0 +1,650 @@
+{
+  "nodes": [
+    {
+      "id": "http://km-agent.local/id/tag/rete-algorithm",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "rete-algorithm"
+    },
+    {
+      "id": "http://km-agent.local/id/concept/kafka-streams",
+      "types": [
+        "http://km-agent.local/ontology#Concept"
+      ],
+      "label": "Kafka Streams"
+    },
+    {
+      "id": "http://km-agent.local/id/concept/rule-engines",
+      "types": [
+        "http://km-agent.local/ontology#Concept"
+      ],
+      "label": "Rule Engines"
+    },
+    {
+      "id": "http://km-agent.local/id/concept/complex-event-processing",
+      "types": [
+        "http://km-agent.local/ontology#Concept"
+      ],
+      "label": "Complex Event Processing"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/flink",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "flink"
+    },
+    {
+      "id": "http://km-agent.local/ontology#derivedFrom",
+      "types": [
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"
+      ],
+      "label": "Derived from source"
+    },
+    {
+      "id": "http://km-agent.local/id/raw/studies:kafka.md",
+      "types": [
+        "http://km-agent.local/ontology#RawDocument"
+      ],
+      "label": "Kafka for Flink"
+    },
+    {
+      "id": "http://km-agent.local/id/concept/apache-flink",
+      "types": [
+        "http://km-agent.local/ontology#Concept"
+      ],
+      "label": "Apache Flink"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/data-ingestion",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "data-ingestion"
+    },
+    {
+      "id": "http://km-agent.local/ontology#RawDocument",
+      "types": [
+        "http://www.w3.org/2000/01/rdf-schema#Class"
+      ],
+      "label": "Raw or studies markdown source"
+    },
+    {
+      "id": "http://km-agent.local/id/concept/apache-nifi",
+      "types": [
+        "http://km-agent.local/ontology#Concept"
+      ],
+      "label": "Apache NiFi"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/architecture",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "architecture"
+    },
+    {
+      "id": "http://km-agent.local/id/raw/studies:data_as_a_product.md",
+      "types": [
+        "http://km-agent.local/ontology#RawDocument"
+      ],
+      "label": "Data as a Product"
+    },
+    {
+      "id": "http://km-agent.local/ontology#relatedTo",
+      "types": [
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"
+      ],
+      "label": "Related concept"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/pattern-detection",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "pattern-detection"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/kafka-streams",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "kafka-streams"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/java",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "java"
+    },
+    {
+      "id": "http://km-agent.local/id/raw/studies:fitforpurpose.md",
+      "types": [
+        "http://km-agent.local/ontology#RawDocument"
+      ],
+      "label": "Fit For Purpose"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/cep",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "cep"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/rule-engine",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "rule-engine"
+    },
+    {
+      "id": "http://km-agent.local/ontology#extractionMethod",
+      "types": [
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"
+      ],
+      "label": "How this triple was produced"
+    },
+    {
+      "id": "http://km-agent.local/ontology#implements",
+      "types": [
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"
+      ],
+      "label": "Concept implemented by code"
+    },
+    {
+      "id": "http://km-agent.local/ontology#hasStatement",
+      "types": [
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"
+      ],
+      "label": "ontology#hasStatement"
+    },
+    {
+      "id": "http://km-agent.local/ontology#Tag",
+      "types": [
+        "http://www.w3.org/2000/01/rdf-schema#Class"
+      ],
+      "label": "Topic tag"
+    },
+    {
+      "id": "http://km-agent.local/ontology#hasTag",
+      "types": [
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"
+      ],
+      "label": "ontology#hasTag"
+    },
+    {
+      "id": "http://km-agent.local/ontology#statementFile",
+      "types": [
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"
+      ],
+      "label": "ontology#statementFile"
+    },
+    {
+      "id": "http://km-agent.local/ontology#compiledInto",
+      "types": [
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"
+      ],
+      "label": "Raw compiled into wiki"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/computation",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "computation"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/business-logic",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "business-logic"
+    },
+    {
+      "id": "http://km-agent.local/ontology#indexedIn",
+      "types": [
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"
+      ],
+      "label": "Listed in wiki index"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/logistics",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "logistics"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/event-processing",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "event-processing"
+    },
+    {
+      "id": "http://km-agent.local/id/raw/studies:apache-kafka-foundational-concepts-overview.md",
+      "types": [
+        "http://km-agent.local/ontology#RawDocument"
+      ],
+      "label": "Apache Kafka Foundational Concepts Overview"
+    },
+    {
+      "id": "http://km-agent.local/id/raw/studies:job_lifecycle.md",
+      "types": [
+        "http://km-agent.local/ontology#RawDocument"
+      ],
+      "label": "Flink Job Lifecycle"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/library",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "library"
+    },
+    {
+      "id": "http://km-agent.local/ontology#Statement",
+      "types": [
+        "http://www.w3.org/2000/01/rdf-schema#Class"
+      ],
+      "label": "Named deploy statement from manifest"
+    },
+    {
+      "id": "http://km-agent.local/ontology#wikiPath",
+      "types": [
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"
+      ],
+      "label": "Relative wiki or context path"
+    },
+    {
+      "id": "http://km-agent.local/ontology#documents",
+      "types": [
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"
+      ],
+      "label": "Document describes artifact"
+    },
+    {
+      "id": "http://km-agent.local/ontology#Summary",
+      "types": [
+        "http://www.w3.org/2000/01/rdf-schema#Class"
+      ],
+      "label": "Wiki source summary"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/expert-systems",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "expert-systems"
+    },
+    {
+      "id": "http://km-agent.local/ontology#CodeArtifact",
+      "types": [
+        "http://www.w3.org/2000/01/rdf-schema#Class"
+      ],
+      "label": "Executable code or SQL file"
+    },
+    {
+      "id": "http://km-agent.local/id/summary/fitforpurpose",
+      "types": [
+        "http://km-agent.local/ontology#Summary"
+      ],
+      "label": "fitforpurpose"
+    },
+    {
+      "id": "http://km-agent.local/ontology#Concept",
+      "types": [
+        "http://www.w3.org/2000/01/rdf-schema#Class"
+      ],
+      "label": "Wiki concept article"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/data-routes",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "data-routes"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/nifi",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "nifi"
+    },
+    {
+      "id": "http://km-agent.local/id/raw/studies:governance.md",
+      "types": [
+        "http://km-agent.local/ontology#RawDocument"
+      ],
+      "label": "Data Governance"
+    },
+    {
+      "id": "http://km-agent.local/id/tag/streaming",
+      "types": [
+        "http://km-agent.local/ontology#Tag"
+      ],
+      "label": "streaming"
+    }
+  ],
+  "edges": [
+    {
+      "from": "http://km-agent.local/id/concept/rule-engines",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/expert-systems"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/complex-event-processing",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/pattern-detection"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/rule-engines",
+      "predicate": "http://km-agent.local/ontology#indexedIn",
+      "to": "http://km-agent.local/id/wiki-index"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-flink",
+      "predicate": "http://km-agent.local/ontology#relatedTo",
+      "to": "http://km-agent.local/id/concept/complex-event-processing"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/kafka-streams",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/kafka-streams"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/kafka-streams",
+      "predicate": "http://km-agent.local/ontology#relatedTo",
+      "to": "http://km-agent.local/id/concept/complex-event-processing"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-flink",
+      "predicate": "http://km-agent.local/ontology#relatedTo",
+      "to": "http://km-agent.local/id/concept/rule-engines"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/kafka-streams",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/java"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/complex-event-processing",
+      "predicate": "http://km-agent.local/ontology#relatedTo",
+      "to": "http://km-agent.local/id/concept/apache-flink"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-nifi",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/nifi"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/rule-engines",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/rule-engine"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-nifi",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/data-ingestion"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-flink",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/architecture"
+    },
+    {
+      "from": "http://km-agent.local/ontology#implements",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#domain",
+      "to": "http://km-agent.local/ontology#Concept"
+    },
+    {
+      "from": "http://km-agent.local/ontology#hasStatement",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#domain",
+      "to": "http://km-agent.local/ontology#CodeArtifact"
+    },
+    {
+      "from": "http://km-agent.local/ontology#hasTag",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#domain",
+      "to": "http://km-agent.local/ontology#Concept"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-nifi",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/logistics"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/kafka-streams",
+      "predicate": "http://km-agent.local/ontology#derivedFrom",
+      "to": "http://km-agent.local/id/raw/fitforpurpose.md"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-flink",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/flink"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-flink",
+      "predicate": "http://km-agent.local/ontology#relatedTo",
+      "to": "http://km-agent.local/id/concept/kafka-streams"
+    },
+    {
+      "from": "http://km-agent.local/ontology#relatedTo",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#range",
+      "to": "http://km-agent.local/ontology#Concept"
+    },
+    {
+      "from": "http://km-agent.local/ontology#indexedIn",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#range",
+      "to": "http://www.w3.org/2000/01/rdf-schema#Resource"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/complex-event-processing",
+      "predicate": "http://km-agent.local/ontology#indexedIn",
+      "to": "http://km-agent.local/id/wiki-index"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-nifi",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/data-routes"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-flink",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/computation"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/rule-engines",
+      "predicate": "http://km-agent.local/ontology#relatedTo",
+      "to": "http://km-agent.local/id/concept/kafka-streams"
+    },
+    {
+      "from": "http://km-agent.local/ontology#hasStatement",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#range",
+      "to": "http://km-agent.local/ontology#Statement"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/rule-engines",
+      "predicate": "http://km-agent.local/ontology#relatedTo",
+      "to": "http://km-agent.local/id/concept/complex-event-processing"
+    },
+    {
+      "from": "http://km-agent.local/ontology#statementFile",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#range",
+      "to": "http://km-agent.local/ontology#CodeArtifact"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/kafka-streams",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/streaming"
+    },
+    {
+      "from": "http://km-agent.local/ontology#hasTag",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#range",
+      "to": "http://km-agent.local/ontology#Tag"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/complex-event-processing",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/event-processing"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/rule-engines",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/business-logic"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/complex-event-processing",
+      "predicate": "http://km-agent.local/ontology#relatedTo",
+      "to": "http://km-agent.local/id/concept/rule-engines"
+    },
+    {
+      "from": "http://km-agent.local/ontology#implements",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#range",
+      "to": "http://km-agent.local/ontology#CodeArtifact"
+    },
+    {
+      "from": "http://km-agent.local/ontology#indexedIn",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#domain",
+      "to": "http://km-agent.local/ontology#Concept"
+    },
+    {
+      "from": "http://km-agent.local/ontology#compiledInto",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#domain",
+      "to": "http://km-agent.local/ontology#RawDocument"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-flink",
+      "predicate": "http://km-agent.local/ontology#derivedFrom",
+      "to": "http://km-agent.local/id/raw/fitforpurpose.md"
+    },
+    {
+      "from": "http://km-agent.local/ontology#relatedTo",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#domain",
+      "to": "http://km-agent.local/ontology#Concept"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-nifi",
+      "predicate": "http://km-agent.local/ontology#relatedTo",
+      "to": "http://km-agent.local/id/concept/apache-flink"
+    },
+    {
+      "from": "http://km-agent.local/ontology#statementFile",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#domain",
+      "to": "http://km-agent.local/ontology#Statement"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/kafka-streams",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/library"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/rule-engines",
+      "predicate": "http://km-agent.local/ontology#derivedFrom",
+      "to": "http://km-agent.local/id/raw/fitforpurpose.md"
+    },
+    {
+      "from": "http://km-agent.local/ontology#documents",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#domain",
+      "to": "http://km-agent.local/ontology#Summary"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/rule-engines",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/rete-algorithm"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/rule-engines",
+      "predicate": "http://km-agent.local/ontology#relatedTo",
+      "to": "http://km-agent.local/id/concept/apache-flink"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/kafka-streams",
+      "predicate": "http://km-agent.local/ontology#relatedTo",
+      "to": "http://km-agent.local/id/concept/apache-flink"
+    },
+    {
+      "from": "http://km-agent.local/ontology#derivedFrom",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#domain",
+      "to": "http://km-agent.local/ontology#Concept"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-nifi",
+      "predicate": "http://km-agent.local/ontology#derivedFrom",
+      "to": "http://km-agent.local/id/raw/fitforpurpose.md"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-flink",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/streaming"
+    },
+    {
+      "from": "http://km-agent.local/id/raw/studies:fitforpurpose.md",
+      "predicate": "http://km-agent.local/ontology#compiledInto",
+      "to": "http://km-agent.local/id/summary/fitforpurpose"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/kafka-streams",
+      "predicate": "http://km-agent.local/ontology#indexedIn",
+      "to": "http://km-agent.local/id/wiki-index"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/complex-event-processing",
+      "predicate": "http://km-agent.local/ontology#relatedTo",
+      "to": "http://km-agent.local/id/concept/kafka-streams"
+    },
+    {
+      "from": "http://km-agent.local/ontology#compiledInto",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#range",
+      "to": "http://km-agent.local/ontology#Summary"
+    },
+    {
+      "from": "http://km-agent.local/ontology#documents",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#range",
+      "to": "http://km-agent.local/ontology#CodeArtifact"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/complex-event-processing",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/cep"
+    },
+    {
+      "from": "http://km-agent.local/ontology#derivedFrom",
+      "predicate": "http://www.w3.org/2000/01/rdf-schema#range",
+      "to": "http://km-agent.local/ontology#RawDocument"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-flink",
+      "predicate": "http://km-agent.local/ontology#relatedTo",
+      "to": "http://km-agent.local/id/concept/apache-nifi"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-nifi",
+      "predicate": "http://km-agent.local/ontology#indexedIn",
+      "to": "http://km-agent.local/id/wiki-index"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/kafka-streams",
+      "predicate": "http://km-agent.local/ontology#relatedTo",
+      "to": "http://km-agent.local/id/concept/apache-nifi"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/complex-event-processing",
+      "predicate": "http://km-agent.local/ontology#hasTag",
+      "to": "http://km-agent.local/id/tag/streaming"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/apache-flink",
+      "predicate": "http://km-agent.local/ontology#indexedIn",
+      "to": "http://km-agent.local/id/wiki-index"
+    },
+    {
+      "from": "http://km-agent.local/id/concept/complex-event-processing",
+      "predicate": "http://km-agent.local/ontology#derivedFrom",
+      "to": "http://km-agent.local/id/raw/fitforpurpose.md"
+    }
+  ]
+}

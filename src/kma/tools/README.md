@@ -25,7 +25,7 @@ The Compiler may use **multiple raw roots** on disk; agents then see virtual pat
 | Function | Agent | Tools included (summary) |
 |----------|-------|---------------------------|
 | `build_compiler_tools` | Compiler | File I/O (wiki + raw), `update_knowledge`, manifest read/update, full wiki tools |
-| `build_navigator_tools` | Navigator | SQL, files, `update_knowledge`, read-only wiki index/state, `read_manifest` |
+| `build_navigator_tools` | Navigator | SQL, files, `update_knowledge`, read-only wiki index/state, ontology graph tools, `read_manifest`, optional `search_wiki` |
 | `build_researcher_tools` | Researcher | Files, Parallel search/extract, `update_knowledge`, `read_web_site_refs`, ingest + manifest |
 | `build_linter_tools` | Linter | Files, `update_knowledge`, wiki index/state (read + update state) |
 | `build_team_tools` | kma team leader | `trigger_wiki_refresh` — background compile + lint after research ingest |

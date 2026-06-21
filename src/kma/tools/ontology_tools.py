@@ -8,11 +8,19 @@ from pathlib import Path
 from agno.tools import tool
 from rdflib import Graph
 
+from kma.ontology.retrieval import find_wiki_concepts_in_graph, load_graph_ttl
+
 
 def create_ontology_tools(context_dir: Path) -> list:
     """Tools to read graph.json and run simple SPARQL."""
     base = context_dir.resolve()
     ontology_dir = base / "ontology"
+
+    def _load_graph_ttl() -> Graph | None:
+        ttl = ontology_dir / "graph.ttl"
+        if not ttl.exists():
+            return None
+        return load_graph_ttl(ttl)
 
     @tool
     def read_wiki_graph(concept_slug: str = "", max_neighbors: int = 20) -> str:
@@ -53,16 +61,39 @@ def create_ontology_tools(context_dir: Path) -> list:
         return json.dumps({"concept_slug": concept_slug, "nodes": list(nodes.values()), "edges": edges}, indent=2)
 
     @tool
+    def find_wiki_concepts(query: str, expand_neighbors: int = 1, max_results: int = 10) -> str:
+        """Find wiki article paths by matching the ontology graph (labels, tags, neighbors).
+
+        Prefer this over writing SPARQL for routing. Returns ``wiki_path`` values for
+        ``read_file`` (e.g. ``wiki/concepts/apache-flink.md``).
+
+        Args:
+            query: Natural language question or topic keywords.
+            expand_neighbors: How many ``relatedTo`` hops to include (default 1).
+            max_results: Max paths to return (default 10).
+        """
+        g = _load_graph_ttl()
+        if g is None:
+            return "Ontology graph not built yet. Run scripts/build_ontology.py or enable KMA_ONTOLOGY_ENABLED."
+        results = find_wiki_concepts_in_graph(
+            g,
+            query,
+            expand_neighbors=expand_neighbors,
+            max_results=max_results,
+        )
+        if not results:
+            return "[]"
+        return json.dumps(results, indent=2)
+
+    @tool
     def query_ontology(sparql: str) -> str:
         """Run a read-only SPARQL query against context/ontology/graph.ttl.
 
         Example: SELECT ?c ?label WHERE { ?c a <http://km-agent.local/ontology#Concept> ; rdfs:label ?label } LIMIT 10
         """
-        ttl = ontology_dir / "graph.ttl"
-        if not ttl.exists():
+        g = _load_graph_ttl()
+        if g is None:
             return "Ontology graph not built yet."
-        g = Graph()
-        g.parse(ttl, format="turtle")
         try:
             rows = list(g.query(sparql))
         except Exception as e:
@@ -78,4 +109,4 @@ def create_ontology_tools(context_dir: Path) -> list:
             return "No ontology state yet."
         return state_path.read_text(encoding="utf-8")
 
-    return [read_wiki_graph, query_ontology, read_ontology_validation]
+    return [read_wiki_graph, find_wiki_concepts, query_ontology, read_ontology_validation]

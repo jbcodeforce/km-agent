@@ -1,0 +1,53 @@
+{
+  "last_built": "2026-06-21T00:28:07Z",
+  "counts": {
+    "concepts": 5,
+    "summaries": 1,
+    "edges": 44,
+    "manifest_edges": 1,
+    "code_statements": 0,
+    "doc_code_edges": 0
+  },
+  "validation_ok": true,
+  "validation_issues": [],
+  "dangling_related": [
+    "Apache Flink:related:Apache Kafka",
+    "Apache Flink:related:State Management",
+    "Apache Flink:related:Streaming Architecture",
+    "Apache Flink:wikilink:Fit for Purpose",
+    "Apache NiFi:related:Data Ingestion",
+    "Apache NiFi:related:Data Routing",
+    "Apache NiFi:related:Event-Driven Architecture",
+    "Apache NiFi:wikilink:Fit for Purpose",
+    "Apache NiFi:wikilink:Event-Driven Architecture",
+    "Complex Event Processing:related:Event-Driven Architecture",
+    "Complex Event Processing:related:Time Windowing",
+    "Complex Event Processing:wikilink:Fit for Purpose",
+    "Kafka Streams:related:Apache Kafka",
+    "Kafka Streams:related:Streaming Architecture",
+    "Kafka Streams:wikilink:Fit for Purpose",
+    "Rule Engines:related:Expert Systems",
+    "Rule Engines:related:Event-Driven Architecture",
+    "Rule Engines:wikilink:Fit for Purpose"
+  ],
+  "gap_queue": [
+    "Apache Flink:related:Apache Kafka",
+    "Apache Flink:related:State Management",
+    "Apache Flink:related:Streaming Architecture",
+    "Apache Flink:wikilink:Fit for Purpose",
+    "Apache NiFi:related:Data Ingestion",
+    "Apache NiFi:related:Data Routing",
+    "Apache NiFi:related:Event-Driven Architecture",
+    "Apache NiFi:wikilink:Fit for Purpose",
+    "Apache NiFi:wikilink:Event-Driven Architecture",
+    "Complex Event Processing:related:Event-Driven Architecture",
+    "Complex Event Processing:related:Time Windowing",
+    "Complex Event Processing:wikilink:Fit for Purpose",
+    "Kafka Streams:related:Apache Kafka",
+    "Kafka Streams:related:Streaming Architecture",
+    "Kafka Streams:wikilink:Fit for Purpose",
+    "Rule Engines:related:Expert Systems",
+    "Rule Engines:related:Event-Driven Architecture",
+    "Rule Engines:wikilink:Fit for Purpose"
+  ]
+}

@@ -52,6 +52,7 @@ uv run python scripts/approve_ontology_proposals.py --context ./context
 
 | Tool | Agent | Role |
 |------|-------|------|
+| `find_wiki_concepts` | Navigator | Label/tag match + `relatedTo` neighbors → `wiki_path` list |
 | `read_wiki_graph` | Navigator | Neighbors / graph summary from `graph.json` |
 | `query_ontology` | Navigator | SPARQL over `graph.ttl` |
 | `read_ontology_validation` | Navigator, Linter | Validation state from `.state.json` |
