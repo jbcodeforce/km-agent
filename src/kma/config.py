@@ -1,9 +1,26 @@
 import os
 from pathlib import Path
 from typing import Final, Literal
-
+import logging
 from dotenv import load_dotenv
 load_dotenv()
+
+
+_LOG_FORMAT = "%(asctime)s %(levelname)s [%(name)s] %(filename)s:%(lineno)d %(message)s"
+
+def setup_logging() -> logging.Logger:
+    _LOGGER = logging.getLogger("kma")
+    _LOGGER.setLevel(logging.INFO)
+    if not _LOGGER.handlers:
+        log_path = Path("logs/kma.logs")
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path = log_path.with_suffix(".log")
+        handler = logging.FileHandler(log_path)
+        handler.setFormatter(logging.Formatter(_LOG_FORMAT))
+        _LOGGER.addHandler(handler)
+    return _LOGGER
+
+setup_logging()
 class Env:
     """Environment variable names (sync with repository ``.env``)."""
 

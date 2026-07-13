@@ -40,7 +40,36 @@ From the repo root, `validate_config.sh` downloads `compose.yaml`, ensures envir
 ./scripts/starter.sh --dev --frontend
 ```
 
+On macOS with Apple's native [`container` CLI](https://github.com/apple/container) (no Docker Compose), use:
+
+```sh
+./scripts/starter-mac.sh --dev --frontend
+```
+
 Go to [http://localhost:5174](http://localhost:5174/) for UI or [http://localhost:8000/docs](http://localhost:8000/docs) for AgentOS API backend.
+
+### Mac native containers
+
+When Docker Compose is unavailable (Apple `container` CLI on macOS 26+, Apple Silicon), [`scripts/starter-mac.sh`](../scripts/starter-mac.sh) starts only Postgres (`agent-db`, image `agnohq/pgvector:18`) and runs AgentOS on the host via `uv`. There is no containerized `km-agent` service on this path.
+
+| Command | Behavior |
+|---------|----------|
+| `./scripts/starter-mac.sh` | Start `agent-db`; foreground `omlx serve` if OMLX is down |
+| `./scripts/starter-mac.sh --dev` | `agent-db` + AgentOS (uv, foreground) |
+| `./scripts/starter-mac.sh --dev --frontend` | Same + Vite chat UI |
+
+Postgres data is stored under `.container-data/postgres` in the repo (override with `KMA_CONTAINER_POSTGRES_DATA`). The volume is bind-mounted at `/var/lib/postgresql` inside the container (parent path; required for Apple container virtiofs).
+
+To wipe the database and start clean:
+
+```bash
+container stop agent-db
+container delete agent-db
+rm -rf .container-data/postgres
+./scripts/starter-mac.sh --dev
+```
+
+If you also use Docker Compose, stop its `agent-db` first to avoid port conflicts on `${KMA_DB_PORT:-5432}`.
 
 ### Where data lives
 
@@ -152,7 +181,7 @@ From `src/frontend` after `npm ci` (or `npm install`):
 npm run dev
 ```
 
-From the repository root, `./scripts/starter.sh --dev --frontend` starts AgentOS in the background, sets `VITE_AGENT_OS_ORIGIN` to match `AGENT_OS_PORT` (default `8000`), waits for `GET /agents`, then runs `npm run dev` in `src/frontend`. Use `./scripts/starter.sh --dev` for backend only. See comments at the top of `scripts/starter.sh` for `KMA_AGENT_OS_HOST`, `KMA_AGENT_OS_PORT`, and `KMA_VITE_PORT`.
+From the repository root, `./scripts/starter.sh --dev --frontend` starts AgentOS in the background, sets `VITE_AGENT_OS_ORIGIN` to match `AGENT_OS_PORT` (default `8000`), waits for `GET /agents`, then runs `npm run dev` in `src/frontend`. Use `./scripts/starter.sh --dev` for backend only. On macOS with Apple's native `container` CLI, use `./scripts/starter-mac.sh --dev --frontend` instead (see [Mac native containers](#mac-native-containers)). See comments at the top of `scripts/starter.sh` for `KMA_AGENT_OS_HOST`, `KMA_AGENT_OS_PORT`, and `KMA_VITE_PORT`.
 
 Other npm scripts: `npm run build` (production bundle), `npm run preview` (serve the built app), `npm run test` (Vitest).
 

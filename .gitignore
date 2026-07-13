@@ -1,5 +1,7 @@
 # Local Postgres files (compose bind mount default)
 /data/postgres/
+# Apple container CLI Postgres data (scripts/starter-mac.sh)
+.container-data/
 # Legacy bind mount if you still keep ./data/ollama; native Ollama uses ~/.ollama
 /data/ollama/
 .env
@@ -14,3 +16,4 @@ context/
 .vscode/
 .claude/
 CLAUDE.md
+**/logs/

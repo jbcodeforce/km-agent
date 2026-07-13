@@ -16,5 +16,6 @@ def test_infer_closure_without_owlapy(tmp_path: Path) -> None:
         format="turtle",
     )
     out = infer_closure(ontology_dir, g)
+    print(out)
     assert out is not None
     assert out.exists()

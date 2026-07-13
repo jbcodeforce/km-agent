@@ -58,11 +58,7 @@ def main() -> int:
 
     context_dir = (args.context or get_kma_context_dir()).resolve()
     studies_root = args.studies_root or get_kma_studies_root()
-    studies_docs = args.studies_docs
-    if studies_docs is None and studies_root is not None:
-        candidate = studies_root / "docs"
-        studies_docs = candidate if candidate.is_dir() else None
-
+    studies_docs = args.studies_docs or studies_root / "docs"
     result = rebuild_ontology(
         context_dir,
         studies_root=studies_root,

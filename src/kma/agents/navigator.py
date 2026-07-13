@@ -37,6 +37,8 @@ def build_navigator_agent(
     model: Model | None = None,
     knowledge: Knowledge | None = None,
     learnings: Knowledge | None = None,
+    wiki_knowledge: Knowledge | None = None,
+    enable_wiki_search: bool = True,
     db: PostgresDb | None = None,
     context_dir: Path | str | None = None,
     instructions: str | None = None,
@@ -47,6 +49,8 @@ def build_navigator_agent(
         model: LLM (default from ``KMA_LLM_PROVIDER``, ``KMA_MODEL_ID``, and provider env).
         knowledge: Primary knowledge base (default ``kma_knowledge``).
         learnings: Knowledge base for agentic learning (default ``kma_learnings``).
+        wiki_knowledge: Optional ``kma_wiki`` base for ``search_wiki`` (overrides default lookup).
+        enable_wiki_search: When True, attach ``search_wiki`` using ``wiki_knowledge`` or ``kma_wiki``.
         db: Session / memory DB (default ``agent_db``).
         context_dir: Root containing ``wiki/`` and ``raw/`` for file and wiki tools.
         instructions: System instructions (default from ``build_navigator_instructions()``).
@@ -57,6 +61,9 @@ def build_navigator_agent(
     pg: PostgresDb = db or get_agent_db()
     instr = instructions if instructions is not None else build_navigator_instructions()
     ctx = Path(context_dir).resolve() if context_dir is not None else None
+    wk: Knowledge | None = wiki_knowledge
+    if enable_wiki_search and wk is None:
+        wk = get_kma_wiki()
     return Agent(
         id="navigator",
         name="Navigator",
@@ -70,7 +77,7 @@ def build_navigator_agent(
             knowledge=lr,
             learned_knowledge=LearnedKnowledgeConfig(mode=LearningMode.AGENTIC),
         ),
-        tools=build_navigator_tools(kn, context_dir=ctx, wiki_knowledge=get_kma_wiki()),
+        tools=build_navigator_tools(kn, context_dir=ctx, wiki_knowledge=wk),
         enable_agentic_memory=True,
         search_past_sessions=True,
         num_past_sessions_to_search=5,

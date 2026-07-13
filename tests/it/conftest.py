@@ -9,6 +9,35 @@ import urllib.request
 
 import pytest
 
+from kma.config import Env, get_embed_provider
+
+
+def _build_it_embedder():
+    """Build embedder from env; skip IT cleanly when optional extras are missing."""
+    from kma.llm_factory import build_default_embedder
+
+    try:
+        return build_default_embedder()
+    except RuntimeError as exc:
+        provider = get_embed_provider()
+        if provider == "local":
+            pytest.skip(
+                f"{Env.KMA_EMBED_PROVIDER}=local requires the local-mlx extra "
+                f"(run: uv sync --extra local-mlx). Original error: {exc}"
+            )
+        if provider == "fastembed":
+            pytest.skip(
+                f"{Env.KMA_EMBED_PROVIDER}=fastembed requires the fastembed extra "
+                f"(run: uv sync --extra fastembed). Original error: {exc}"
+            )
+        raise
+
+
+@pytest.fixture(scope="session")
+def it_embedder():
+    """Session-scoped embedder for IT knowledge bases (matches ``KMA_EMBED_PROVIDER``)."""
+    return _build_it_embedder()
+
 
 @pytest.fixture(scope="session")
 def require_postgres() -> None:
@@ -29,19 +58,19 @@ def require_postgres() -> None:
 
 
 @pytest.fixture(scope="session")
-def kma_knowledge_it(require_postgres: None):
+def kma_knowledge_it(require_postgres: None, it_embedder):
     """Dedicated Knowledge tables for compiler integration (avoid main ``kma_knowledge``)."""
     from kma.db import create_knowledge
 
-    return create_knowledge("kma IT Knowledge", "kma_knowledge_it")
+    return create_knowledge("kma IT Knowledge", "kma_knowledge_it", embedder=it_embedder)
 
 
 @pytest.fixture(scope="session")
-def kma_learnings_it(require_postgres: None):
+def kma_learnings_it(require_postgres: None, it_embedder):
     """Dedicated learnings knowledge for Navigator integration (avoid main ``kma_learnings``)."""
     from kma.db import create_knowledge
 
-    return create_knowledge("kma IT Learnings", "kma_learnings_it")
+    return create_knowledge("kma IT Learnings", "kma_learnings_it", embedder=it_embedder)
 
 
 # --- OMLX (mlx) fixtures -----------------------------------------------------

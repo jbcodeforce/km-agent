@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from kma.agents.team_instructions import TEAM_INSTRUCTIONS
+from kma.agents.team import TEAM_INSTRUCTIONS
 
 
 def test_team_instructions_cover_enrichment() -> None:

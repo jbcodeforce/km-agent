@@ -55,6 +55,8 @@ In a separate terminal, from the repo root, start the Postgresql server, the km-
 ./scripts/starter.sh
 ```
 
+On macOS with Apple's native `container` CLI (no Docker Compose), use `./scripts/starter-mac.sh --dev --frontend` instead — see [`DEVELOPER_PRACTICES.md`](./DEVELOPER_PRACTICES.md#mac-native-containers).
+
 After the stack is up, re-run `./scripts/verify_config.sh --frontend` to confirm Postgres, AgentOS, LLM models, and the chat UI are reachable.
 
 ### Where to go next
@@ -66,6 +68,41 @@ After the stack is up, re-run `./scripts/verify_config.sh --frontend` to confirm
 | Knowledge vs learnings vs wiki, index vs embeddings | [`ARCHITECTURE_WIKI_RAG.md`](./ARCHITECTURE_WIKI_RAG.md) |
 | Docker volumes, tests, frontend proxy | [`DEVELOPER_PRACTICES.md`](./DEVELOPER_PRACTICES.md) |
 | Repo overview and quick links | [`../README.md`](../README.md) |
+
+---
+
+## Attach a studies repository (hosted layout)
+
+Use this when km-agent should run **from inside a studies repo** (for example [ML-studies](https://github.com/jbcodeforce/ML-studies)) while keeping `context/` and configuration in that repo. AgentOS and the chat UI still run from your km-agent clone; the studies repo holds context, `.env`, and wrapper scripts under `assistants/km-agent/`.
+
+### Bootstrap (once)
+
+From the **km-agent** repository:
+
+```bash
+./scripts/setup_studies.sh /path/to/ML-studies
+```
+
+This creates `assistants/km-agent/` with `context/`, `example.env`, `.env`, `.kma-home`, and wrapper scripts. Edit `assistants/km-agent/.env` for LLM keys and ports. The setup uses a dedicated Postgres container name and port (`5433` by default) so it does not clash with a km-agent repo running on `5432`.
+
+### Start from the studies repo
+
+```bash
+cd /path/to/ML-studies
+./assistants/km-agent/starter-mac.sh --dev --frontend
+./assistants/km-agent/verify_config.sh --frontend
+```
+
+### Compile studies docs into the wiki
+
+```bash
+./assistants/km-agent/compile-docs.sh
+./assistants/km-agent/compile-docs.sh --dry-run   # preview only
+```
+
+Output lands in `assistants/km-agent/context/wiki/`. The studies `docs/` tree and `docs/.manifest.json` stay in place; the Compiler reads them via the `studies` raw root label.
+
+See also `assistants/km-agent/README.md` in the studies repo after setup.
 
 ---
 
@@ -93,7 +130,7 @@ uv run python scripts/add_raw_frontmatter.py /path/to/docs --check
 # Single file (unchanged behavior)
 uv run python scripts/add_raw_frontmatter.py path/to/doc.md --source flink-studies
 # Crawl a folder — adds frontmatter to files missing it, updates manifest with relative paths
-uv run python scripts/add_raw_frontmatter.py /path/to/docs --source flink-studies
+mkdir  /path/to/docs --source flink-studies
 ```
 
 
@@ -108,7 +145,11 @@ uv run python scripts/add_raw_frontmatter.py /path/to/docs --source flink-studie
 - Embedding model will be pulled on the first calls
 - Input files have frontmatter information
 
+**Studies-hosted layout:** If you used [`setup_studies.sh`](../scripts/setup_studies.sh), start the stack with `./assistants/km-agent/starter-mac.sh --dev --frontend` and compile with `./assistants/km-agent/compile-docs.sh` from the studies repo root. Context is under `assistants/km-agent/context/`.
+
 #### Steps (outline)
+
+**Option A — from km-agent repo:**
 
 1. From the km-agent repo folder, run the crawler and knowledge Compiler agent:
 
@@ -119,7 +160,15 @@ uv run python scripts/add_raw_frontmatter.py /path/to/docs --source flink-studie
 
    Use `--dry-run` or `--skip-compiler` to only prepare manifests and front matter without invoking the agent.
 
-3. Inspect `context/wiki/index.md` and `context/wiki/concepts/` after a successful run.
+**Option B — studies-hosted layout:**
+
+1. From the studies repo:
+
+   ```bash
+   ./assistants/km-agent/compile-docs.sh
+   ```
+
+2. Inspect `assistants/km-agent/context/wiki/index.md` and `assistants/km-agent/context/wiki/concepts/` after a successful run.
 
 **Success:** Uncompiled sources in the manifest move to **compiled**, and the wiki index reflects new or updated articles.
 

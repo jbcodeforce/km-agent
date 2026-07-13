@@ -19,7 +19,7 @@ from kma.config import (
 )
 from kma.tools.ingest import manifest_entry_compiled, mark_manifest_compiled
 
-logger = logging.getLogger(__name__)
+logger =  logging.getLogger("kma")
 
 
 def _ensure_wiki_dirs(context_dir: Path) -> None:
@@ -95,7 +95,8 @@ def compile_raw_files(
             continue
 
         if not mark_manifest_compiled(raw_home, rel):
-            logger.warning("manifest entry not found after compile: %s", compile_id)
+            logger.warning("manifest entry not updated after compile: %s", compile_id)
+
         compiled.append(compile_id)
         logger.info("compiled: %s", compile_id)
 

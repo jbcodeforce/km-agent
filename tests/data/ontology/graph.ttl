@@ -93,6 +93,15 @@ kma:statementFile a rdf:Property ;
 kma:wikiPath a rdf:Property ;
     rdfs:label "Relative wiki or context path" .
 
+<http://km-agent.local/id/code/code/flink-sql/04-joins/cc/ddl.orders.sql> a kma:CodeArtifact ;
+    rdfs:label "ddl.orders.sql" ;
+    kma:hasStatement <http://km-agent.local/id/statement/codeflink-sql04-joinsccdeploy-manifestjson-ddl-test-ddl-orders> ;
+    kma:wikiPath "code/flink-sql/04-joins/cc/ddl.orders.sql" .
+
+<http://km-agent.local/id/statement/codeflink-sql04-joinsccdeploy-manifestjson-ddl-test-ddl-orders> a kma:Statement ;
+    rdfs:label "test-ddl-orders" ;
+    kma:statementFile <http://km-agent.local/id/code/code/flink-sql/04-joins/cc/ddl.orders.sql> .
+
 <http://km-agent.local/id/summary/fitforpurpose> a kma:Summary ;
     rdfs:label "fitforpurpose" ;
     kma:wikiPath "wiki/summaries/fitforpurpose.md" .

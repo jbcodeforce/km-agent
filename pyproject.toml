@@ -39,6 +39,12 @@ ontology = [
     "owlapy>=1.6.0",
 ]
 
+[dependency-groups]
+# Apple Silicon dev: local MLX embeddings when KMA_EMBED_PROVIDER=local
+dev = [
+    "km-agent[local-mlx]",
+]
+
 [project.scripts]
 km_agno = "km_agno.cli:app"
 

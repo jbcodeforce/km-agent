@@ -59,6 +59,7 @@ def _build_it_navigator(
         learnings=kma_learnings_it,
         context_dir=context_dir,
         instructions=instructions,
+        enable_wiki_search=False,
     )
     assert agent is not None
     assert agent.model is not None

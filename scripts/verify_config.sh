@@ -24,7 +24,7 @@ Options:
   -h, --help       Show this help.
 
 Always prints resolved configuration (KMA_* names; secrets redacted), then runs connectivity checks.
-Loads REPO_ROOT/.env when present (same variables as example.env / kma.config).
+Loads ${KMA_ENV_FILE:-REPO_ROOT/.env} when present (same variables as example.env / kma.config).
 
 Environment (prefer KMA_*; legacy names still accepted):
   KMA_DB_HOST, KMA_DB_PORT, KMA_DB_USER, KMA_DB_DATABASE, KMA_DB_PASS  (or DB_*)
@@ -48,7 +48,7 @@ have_cmd() {
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="${REPO_ROOT}/compose.yaml"
-ENV_FILE="${REPO_ROOT}/.env"
+ENV_FILE="${KMA_ENV_FILE:-${REPO_ROOT}/.env}"
 
 CHECK_FRONTEND=0
 TRACE_ENV_FULL=0
