@@ -188,6 +188,7 @@ mkdir  /path/to/docs --source flink-studies
 1. Open the chat UI (or call AgentOS APIs).
 2. Ask a **specific** question that references your domain (e.g. a concept you know exists in the wiki or a table you use).
 3. For knowledge-heavy questions, the agent should consult the wiki index first, then drill into articles—see [`SPEC.md` — Context navigation](SPEC.md#2-context-navigation).
+4. **Keep an answer:** use **Copy** on a completed reply to put the markdown on the clipboard, or type `/save my-notes.md` to write the latest assistant reply under `context/raw/` (YAML frontmatter + manifest; overwrites the same filename if it already exists).
 
 **Success:** You get an answer grounded in your materials, with paths or citations you can verify under `context/` or in the DB.
 

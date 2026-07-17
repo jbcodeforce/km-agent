@@ -156,7 +156,9 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   createTeamRunStream,
   getSession,
-  chatHistoryToMessages
+  chatHistoryToMessages,
+  parseSaveCommand,
+  saveRawExport
 } from '@/services/agentOs.js'
 import { consumeLeadingNewlines } from '@/utils/streamText.js'
 import { renderMarkdown } from '@/utils/messageRender.js'
@@ -179,6 +181,10 @@ const isLoading = ref(false)
 const error = ref(null)
 const messagesContainer = ref(null)
 const inputField = ref(null)
+/** Index of message whose Copy button shows “Copied”. */
+const copiedIndex = ref(null)
+/** @type {ReturnType<typeof setTimeout> | null} */
+let copiedTimer = null
 /** @type {import('vue').Ref<Record<number, 'text' | 'markdown'>>} */
 const messageViewModes = ref({})
 /** @param {number} index */
@@ -191,6 +197,23 @@ function getViewMode(index) {
 /** @param {number} index @param {'text' | 'markdown'} mode */
 function setViewMode(index, mode) {
   messageViewModes.value = { ...messageViewModes.value, [index]: mode }
+}
+
+/** @param {number} index */
+async function copyMessage(index) {
+  const msg = messages.value[index]
+  if (!msg?.content) return
+  try {
+    await navigator.clipboard.writeText(msg.content)
+    copiedIndex.value = index
+    if (copiedTimer) clearTimeout(copiedTimer)
+    copiedTimer = setTimeout(() => {
+      copiedIndex.value = null
+      copiedTimer = null
+    }, 1500)
+  } catch (e) {
+    error.value = e?.message || 'Copy failed'
+  }
 }
 
 /** Scroll the message container after DOM updates. */
@@ -261,9 +284,49 @@ async function sendMessage() {
   const message = inputMessage.value.trim()
   if (!message || isLoading.value || !props.teamId) return
 
+  const saveName = parseSaveCommand(message)
   messages.value.push({ role: 'user', content: message })
   inputMessage.value = ''
   scrollToBottom()
+
+  if (saveName) {
+    const prior = [...messages.value]
+      .reverse()
+      .find((m) => m.role === 'assistant' && m.streamComplete && m.content?.trim())
+    if (!prior) {
+      messages.value.push({
+        role: 'assistant',
+        content: 'Nothing to save — ask a question first, then use `/save filename`.',
+        streamComplete: true
+      })
+      scrollToBottom()
+      return
+    }
+    isLoading.value = true
+    error.value = null
+    try {
+      const result = await saveRawExport({
+        filename: saveName,
+        content: prior.content,
+        title: saveName.replace(/\.md$/i, '')
+      })
+      messages.value.push({
+        role: 'assistant',
+        content: `Saved to ${result.path || `raw/${result.file}`}.`,
+        streamComplete: true
+      })
+    } catch (e) {
+      messages.value.push({
+        role: 'assistant',
+        content: `Save failed: ${e?.message || 'Request failed'}`,
+        streamComplete: true
+      })
+    } finally {
+      isLoading.value = false
+      scrollToBottom()
+    }
+    return
+  }
 
   isLoading.value = true
   error.value = null
