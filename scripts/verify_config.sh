@@ -26,7 +26,7 @@ Options:
 Always prints resolved configuration (KMA_* names; secrets redacted), then runs connectivity checks.
 Loads ${KMA_ENV_FILE:-REPO_ROOT/.env} when present (same variables as example.env / kma.config).
 
-Environment (prefer KMA_*; legacy names still accepted):
+Environment (prefer KMA_*):
   KMA_DB_HOST, KMA_DB_PORT, KMA_DB_USER, KMA_DB_DATABASE, KMA_DB_PASS  (or DB_*)
   KMA_BACKEND_URL, KMA_AGENT_OS_HOST, KMA_AGENT_OS_PORT
   KMA_VITE_PORT, KMA_FRONTEND_URL
@@ -87,14 +87,14 @@ strip_quotes() {
   printf '%s' "$v"
 }
 
-DB_HOST="${KMA_DB_HOST:-${DB_HOST:-localhost}}"
-DB_PORT="${KMA_DB_PORT:-${DB_PORT:-5432}}"
-DB_USER="${KMA_DB_USER:-${DB_USER:-ai}}"
-DB_DATABASE="${KMA_DB_DATABASE:-${DB_DATABASE:-ai}}"
-DB_PASS="${KMA_DB_PASS:-${DB_PASS:-ai}}"
+DB_HOST="${KMA_DB_HOST:-localhost}}"
+DB_PORT="${KMA_DB_PORT:-5432}}"
+DB_USER="${KMA_DB_USER:-ai}}"
+DB_DATABASE="${KMA_DB_DATABASE:-ai}}"
+DB_PASS="${KMA_DB_PASS:-ai}}"
 
-BACKEND_PORT="${KMA_AGENT_OS_PORT:-${AGENT_OS_PORT:-${PORT:-8000}}}"
-BACKEND_HOST="${KMA_AGENT_OS_HOST:-${AGENT_OS_HOST:-127.0.0.1}}"
+BACKEND_PORT="${KMA_AGENT_OS_PORT:-8000}}"
+BACKEND_HOST="${KMA_AGENT_OS_HOST:-127.0.0.1}}"
 if [[ -n "${KMA_BACKEND_URL:-}" ]]; then
   BACKEND_BASE="${KMA_BACKEND_URL%/}"
 else

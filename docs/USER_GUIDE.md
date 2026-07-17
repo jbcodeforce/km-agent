@@ -4,12 +4,58 @@ This document is for user leveraging `km-agent` for day to day knowledge managem
 
 Technical deep dives (Postgres volumes, integration tests, frontend proxy details) live in [`DEVELOPER_PRACTICES.md`](./DEVELOPER_PRACTICES.md). Product and architecture background are in [`SPEC.md`](./SPEC.md).
 
+## Components View
+
+The following figure illustrates the components involved in the solution:
+
+![](./images/agents_solution.drawio.png)
+
+* User interacts with CLIs and chat interface to the backend system, file system and external systems.
+* Knowledge can come from existing notes in markdown format, but will be created and compiled in wiki folder, with concept, indexing and ontology.
+* Solution interacts with local or Frontier LLMs via agents
+* User preferences, embeddings and learning collection are saved to database
+
+## Use Cases
+
+In this section we present the high level use cases and workflow a user can follow:
+
+### Work on a white page to build knowledge
+
+Once the km-agent repository is cloned, use can add content from the web or create raw markdown file under the context/raw folder and perform deep research to enhance the knowledge content and build a body of knowledge on a given domain.
+
+1. clone the repository to km-agent
+1. Create a folder at the same level as km-agent folder for managing your domain specific knowledge. As a supporting example we will use environment engineering studies.
+  ```sh
+  mkdir env-eng-studies
+  cd env-eng-studies
+  mkdir docs
+  ```
+1. Use the setup studies to add agentic support to help you develop your deep research and knownledge
+  ```sh
+  cd kma-agent
+  # create with default
+  ./scripts/setup_studies.sh ~/Documents/Code/env-eng-studies 
+  # same as 
+  /scripts/setup_studies.sh ~/Documents/Code/env-eng-studies --kma-home $PWD --label env-eng-studies
+  ```
+
+1. Use one of the starter shell to run the km-agent solution:
+  ```sh
+  # under xxxx-studies/assistants/km-agent
+  ./starter_mac.sh --dev --frontend
+  ```
+
+
+### Work from existing content
+
+User has already a set of notes, in the form of markdown files to manage his own knowledge. The tool will help to build semantic search and knowledge graph as wiki, and add more content via deep research.
+
 
 ## Getting started
 
 ### What you need
 
-- Docker
+- Docker engine or Mac contrainer (Tahoe version)
 - curl
 - git cli
 
@@ -29,9 +75,9 @@ Edit **`.env`** at minimum for:
 
 | Area | Variables (examples) | Notes |
 |------|------------------------|--------|
-| Context on disk | `KMA_CONTEXT_DIR` | Default `./context` — here live `raw/`, `wiki/`, and other files agents read and write. You can have different contexts |
+| Context on disk | `KMA_CONTEXT_DIR` | Default `./context` — it will contaign `raw/`, `wiki/`, and other files agents read and write. You can have different contexts |
 | Database | `KMA_DB_HOST`, `KMA_DB_PORT`, `KMA_DB_USER`, `KMA_DB_PASS`, `KMA_DB_DATABASE` | On the **host**, use `localhost`). See [DEVELOPER_PRACTICES — Postgres](DEVELOPER_PRACTICES.md#local-postgresql-docker-compose-only). |
-| Chat model | `KMA_LLM_PROVIDER`, `KMA_MODEL_ID` (or provider-specific keys) | Pull the Ollama model you reference before first chat. |
+| Chat model | `KMA_LLM_PROVIDER`, `KMA_MODEL_ID` (or provider-specific keys) | Pull the LLM model you reference before first chat. |
 | Embeddings | `KMA_EMBED_PROVIDER`, `KMA_EMBED_MODEL`, `KMA_EMBED_DIMENSIONS` | Vector size must match the model; do not change dimensions on an existing DB without a plan (see developer practices). |
 
 Optional:
@@ -39,7 +85,7 @@ Optional:
 - **`PARALLEL_API_KEY`** — enables the **Researcher** agent for web search and richer ingest (see use case *Ingest new material from the web*).
 - **`EXA_API_KEY`** — higher limits for Exa-backed search where configured (see `example.env` comments).
 
-Adjust model names to match `KMA_MODEL_ID` and `KMA_EMBED_MODEL` in `.env`.
+Adjust the model names to match `KMA_MODEL_ID` and `KMA_EMBED_MODEL` in `.env`.
 
 * Verify your configuration (before or after starting components):
   ```sh
@@ -171,6 +217,30 @@ mkdir  /path/to/docs --source flink-studies
 2. Inspect `assistants/km-agent/context/wiki/index.md` and `assistants/km-agent/context/wiki/concepts/` after a successful run.
 
 **Success:** Uncompiled sources in the manifest move to **compiled**, and the wiki index reflects new or updated articles.
+
+### UC-2b — Catalog studies code into the wiki (intent summaries)
+
+**Goal:** From a studies repo **`code/`** (or **`src/`**) tree—for example [flink-studies](https://github.com/jbcodeforce/flink-studies) `code/`—write one wiki concept page per top-level category (`flink-sql`, `dbt`, …) with short **LLM intent** blurbs and `code:` path references so chat search can find demos.
+
+#### Preconditions
+
+- LLM configured (`KMA_LLM_PROVIDER`, …). Use `--no-llm` for README-only blurbs without a model.
+- `--studies-root` or `KMA_STUDIES_ROOT` pointing at the studies clone.
+
+#### Steps
+
+```bash
+uv run python scripts/index_studies_code.py \
+  --studies-root /path/to/flink-studies \
+  --context ./context
+
+# Embed the new wiki pages for semantic chat retrieval
+uv run python scripts/index_wiki.py --context ./context
+```
+
+Use `--dry-run` to list categories/labs without writes; `--force` to re-summarize when packs changed little; `--limit N` for a smoke run.
+
+**Success:** `context/wiki/concepts/code-*.md` exist, `wiki/index.md` has a **Code catalogs** section, and after `index_wiki.py` Navigator/`search_wiki` can retrieve lab intent.
 
 ### UC-3 - Build ontology
 

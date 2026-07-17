@@ -85,7 +85,7 @@ The browser never calls AgentOS directly in dev: all API traffic goes to `/agent
 - **`services/agentOs.js`** — `listAgents`, `listSessions`, `getSession`, `createAgentRunStream`, `consumeAgentRunSse`, `formatTraceLine`, `chatHistoryToMessages`, `pickAgentId`.
 - **`utils/sseParse.js`** — `parseOneSseBlock`, `effectiveEventName` for Agno run events.
 - **`views/ChatView.vue`** — Resolves default agent id on mount, wires sidebar and chat panel.
-- **`components/KmChatPanel.vue`** — Streaming UI, markdown-ish rendering, optional activity trace.
+- **`components/KmChatPanel.vue`** — Streaming UI, markdown-ish rendering, optional progress/reasoning panel.
 - **`components/SessionSidebar.vue`** — Paginated session list; exposes `refreshList()` after a run completes.
 
 ## Tests

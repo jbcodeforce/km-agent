@@ -29,34 +29,33 @@ src
         ...
 ```
 
-## Bootstrap CLI (`scripts/validate_config.sh`)
+## Bootstrap CLI (`scripts/verify_config.sh`)
 
-From the repo root, `validate_config.sh` downloads `compose.yaml`, ensures environment variables are set, Docker is available, LLM server is reachable.
+* Verify the configuration with frontend
+  ```sh
+  ./scripts/verify_config.sh --trace-env
+  ```
+  ensures environment variables are set, Docker is available, LLM server is reachable.
 
+* See [user's specific CLI tools](./USER_GUIDE.md).
 
-## Start the solution in dev mode
+## Start the solution in dev mode 
 
-```sh
-./scripts/starter.sh --dev --frontend
-```
+* Docker based execution
+  ```sh
+  ./scripts/starter.sh --dev --frontend
+  ```
 
-On macOS with Apple's native [`container` CLI](https://github.com/apple/container) (no Docker Compose), use:
+* On macOS with Apple's native [`container` CLI](https://github.com/apple/container) (no Docker Compose), use:
+  ```sh
+  ./scripts/starter_mac.sh --dev --frontend
+  ```
 
-```sh
-./scripts/starter-mac.sh --dev --frontend
-```
+This starts Postgres as `agent-db`, runs AgentOS on the host via `uv`,  a foreground `omlx serve` if OMLX is down.
 
-Go to [http://localhost:5174](http://localhost:5174/) for UI or [http://localhost:8000/docs](http://localhost:8000/docs) for AgentOS API backend.
+Go to [http://localhost:5174](http://localhost:5174/) for chat user interface or [http://localhost:8000/docs](http://localhost:8000/docs) for AgentOS API backend.
 
-### Mac native containers
-
-When Docker Compose is unavailable (Apple `container` CLI on macOS 26+, Apple Silicon), [`scripts/starter-mac.sh`](../scripts/starter-mac.sh) starts only Postgres (`agent-db`, image `agnohq/pgvector:18`) and runs AgentOS on the host via `uv`. There is no containerized `km-agent` service on this path.
-
-| Command | Behavior |
-|---------|----------|
-| `./scripts/starter-mac.sh` | Start `agent-db`; foreground `omlx serve` if OMLX is down |
-| `./scripts/starter-mac.sh --dev` | `agent-db` + AgentOS (uv, foreground) |
-| `./scripts/starter-mac.sh --dev --frontend` | Same + Vite chat UI |
+## Postgres Data
 
 Postgres data is stored under `.container-data/postgres` in the repo (override with `KMA_CONTAINER_POSTGRES_DATA`). The volume is bind-mounted at `/var/lib/postgresql` inside the container (parent path; required for Apple container virtiofs).
 
@@ -66,10 +65,10 @@ To wipe the database and start clean:
 container stop agent-db
 container delete agent-db
 rm -rf .container-data/postgres
-./scripts/starter-mac.sh --dev
+./scripts/starter_mac.sh --dev --frontend
 ```
 
-If you also use Docker Compose, stop its `agent-db` first to avoid port conflicts on `${KMA_DB_PORT:-5432}`.
+If you  use Docker Compose, stop its `agent-db` first to avoid port conflicts on `${KMA_DB_PORT:-5432}`.
 
 ### Where data lives
 

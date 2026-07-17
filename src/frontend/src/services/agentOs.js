@@ -6,6 +6,92 @@ import { parseOneSseBlock, effectiveEventName } from '@/utils/sseParse.js'
 
 const PREFIX = '/agent-os'
 
+/** Soft cap for streamed progress/reasoning text in the chat UI. */
+export const MAX_PROGRESS_CHARS = 8000
+
+/**
+ * Progress/reasoning update for the in-message panel.
+ * `append` streams into the current block; `line` starts a new status line.
+ * @param {string | null} ev
+ * @param {object} payload
+ * @returns {{ mode: 'append' | 'line', text: string } | null}
+ */
+export function formatProgressUpdate(ev, payload) {
+  if (!ev || !payload) return null
+  if (ev.includes('ToolCall') && ev.includes('Started')) {
+    const t = payload.tool?.tool_name || payload.tool?.name || payload.tool_name
+    return { mode: 'line', text: t ? `tool → ${t}` : 'tool started' }
+  }
+  if (ev.includes('ToolCall') && ev.includes('Completed')) {
+    const t = payload.tool?.tool_name || payload.tool?.name || payload.tool_name
+    return { mode: 'line', text: t ? `tool ✓ ${t}` : 'tool completed' }
+  }
+  if (ev.includes('ToolCall') && ev.includes('Error')) {
+    return { mode: 'line', text: `tool error: ${payload.error ?? 'unknown'}` }
+  }
+  if (ev.includes('ReasoningStep')) {
+    const c = payload.reasoning_content ?? payload.content
+    if (c != null && String(c).trim()) {
+      return { mode: 'line', text: `reason: ${String(c).trim().slice(0, 4000)}` }
+    }
+    return { mode: 'line', text: 'reasoning step' }
+  }
+  if (ev.includes('ReasoningContentDelta')) {
+    const c = payload.reasoning_content
+    if (c) return { mode: 'append', text: String(c) }
+    return null
+  }
+  if (ev.includes('ReasoningStarted')) return { mode: 'line', text: 'reasoning…' }
+  if (ev.includes('ReasoningCompleted')) return { mode: 'line', text: 'reasoning done' }
+  if (ev.includes('ModelRequestStarted')) {
+    const m = payload.model
+    return { mode: 'line', text: m ? `model → ${m}` : 'model request…' }
+  }
+  if (ev.includes('ModelRequestCompleted')) {
+    const tok = payload.total_tokens
+    return { mode: 'line', text: tok != null ? `model ✓ tokens=${tok}` : 'model completed' }
+  }
+  return null
+}
+
+/**
+ * Merge a progress update into accumulated text (trim from the start when over cap).
+ * @param {string} current
+ * @param {{ mode: 'append' | 'line', text: string } | null | undefined} update
+ * @param {number} [maxChars]
+ * @returns {string}
+ */
+export function applyProgressUpdate(current, update, maxChars = MAX_PROGRESS_CHARS) {
+  if (!update?.text) return current || ''
+  let next
+  if (update.mode === 'append') {
+    if (!current) {
+      next = update.text
+    } else if (current.endsWith('\n') || !statusLineNeedsBreak(current)) {
+      next = `${current}${update.text}`
+    } else {
+      next = `${current}\n${update.text}`
+    }
+  } else {
+    next = current ? `${current}\n${update.text}` : update.text
+  }
+  if (next.length > maxChars) next = next.slice(next.length - maxChars)
+  return next
+}
+
+/** @param {string} current */
+function statusLineNeedsBreak(current) {
+  const lastLine = current.slice(current.lastIndexOf('\n') + 1)
+  return (
+    lastLine === 'reasoning…' ||
+    lastLine === 'reasoning done' ||
+    lastLine === 'reasoning step' ||
+    lastLine.startsWith('tool ') ||
+    lastLine.startsWith('model ') ||
+    lastLine.startsWith('reason: ')
+  )
+}
+
 /**
  * One-line trace for tool / reasoning / model events (Agno RunEvent & TeamRunEvent).
  * @param {string | null} ev
@@ -13,39 +99,13 @@ const PREFIX = '/agent-os'
  * @returns {string | null}
  */
 export function formatTraceLine(ev, payload) {
-  if (!ev || !payload) return null
-  if (ev.includes('ToolCall') && ev.includes('Started')) {
-    const t = payload.tool?.tool_name || payload.tool?.name || payload.tool_name
-    return t ? `tool → ${t}` : 'tool started'
+  const u = formatProgressUpdate(ev, payload)
+  if (!u) return null
+  if (u.mode === 'append') return u.text.slice(0, 160)
+  if (u.text.startsWith('reason: ') && u.text.length > 288) {
+    return `${u.text.slice(0, 280)}…`
   }
-  if (ev.includes('ToolCall') && ev.includes('Completed')) {
-    const t = payload.tool?.tool_name || payload.tool?.name || payload.tool_name
-    return t ? `tool ✓ ${t}` : 'tool completed'
-  }
-  if (ev.includes('ToolCall') && ev.includes('Error')) {
-    return `tool error: ${payload.error ?? 'unknown'}`
-  }
-  if (ev.includes('ReasoningStep')) {
-    const c = payload.reasoning_content ?? payload.content
-    if (c != null && String(c).trim()) return `reason: ${String(c).trim().slice(0, 280)}`
-    return 'reasoning step'
-  }
-  if (ev.includes('ReasoningContentDelta')) {
-    const c = payload.reasoning_content
-    if (c) return String(c).slice(0, 160)
-    return null
-  }
-  if (ev.includes('ReasoningStarted')) return 'reasoning…'
-  if (ev.includes('ReasoningCompleted')) return 'reasoning done'
-  if (ev.includes('ModelRequestStarted')) {
-    const m = payload.model
-    return m ? `model → ${m}` : 'model request…'
-  }
-  if (ev.includes('ModelRequestCompleted')) {
-    const tok = payload.total_tokens
-    return tok != null ? `model ✓ tokens=${tok}` : 'model completed'
-  }
-  return null
+  return u.text
 }
 
 /**
@@ -218,6 +278,7 @@ export function chatHistoryToMessages(chatHistory) {
  *   onRunMeta?: (meta: object) => void,
  *   onRunId?: (id: string) => void,
  *   onTrace?: (s: string) => void,
+ *   onProgress?: (update: { mode: 'append' | 'line', text: string }) => void,
  *   onError?: (err: Error) => void,
  *   onDone?: () => void
  * }} handlers
@@ -257,8 +318,12 @@ export async function consumeAgentRunSse(body, handlers) {
         handlers.onTextChunk?.(typeof c === 'string' ? c : String(c))
       }
     }
-    const traceLine = formatTraceLine(ev, payload)
-    if (traceLine) handlers.onTrace?.(traceLine)
+    const progress = formatProgressUpdate(ev, payload)
+    if (progress) {
+      handlers.onProgress?.(progress)
+      const traceLine = formatTraceLine(ev, payload)
+      if (traceLine) handlers.onTrace?.(traceLine)
+    }
     if (ev === 'RunError' || ev === 'TeamRunError') {
       handlers.onError?.(new Error(String(payload.content ?? payload.error ?? 'RunError')))
       finish()
@@ -304,6 +369,7 @@ export async function consumeAgentRunSse(body, handlers) {
  *   onRunId?: (id: string) => void,
  *   onRunMeta?: (meta: object) => void,
  *   onTrace?: (s: string) => void,
+ *   onProgress?: (update: { mode: 'append' | 'line', text: string }) => void,
  *   onError?: (err: Error) => void,
  *   onDone?: () => void
  * }} handlers
@@ -387,6 +453,7 @@ export function createAgentRunStream(agentId, input, handlers) {
  *   onRunId?: (id: string) => void,
  *   onRunMeta?: (meta: object) => void,
  *   onTrace?: (s: string) => void,
+ *   onProgress?: (update: { mode: 'append' | 'line', text: string }) => void,
  *   onError?: (err: Error) => void,
  *   onDone?: () => void
  * }} handlers

@@ -163,9 +163,8 @@ def test_ingest_text_as_file_honors_filename_and_overwrites(tmp_path: Path) -> N
     assert manifest_entry_compiled(raw, "My Notes.md") is True
 
     ingest_text_as_file(raw, "My Notes.md", "second", source="chat-export")
-    text = path.read_text(encoding="utf-8")
-    assert "second" in text
-    assert "first" not in text
+    assert "second" in path.read_text(encoding="utf-8")
+    assert "first" not in path.read_text(encoding="utf-8")
     assert manifest_entry_compiled(raw, "My Notes.md") is False
     manifest = _read_manifest(raw)
     assert len(manifest) == 1

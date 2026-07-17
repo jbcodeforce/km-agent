@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Run research, compile, and lint from a query and optional web_site_ref.json.
+"""
+Run research, compile raw content into wiki folder, and lint from a query and optional web_site_ref.json.
 
 Example:
 

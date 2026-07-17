@@ -1,6 +1,6 @@
 # km-agent — tracking
 
-Resume guide for tests, documentation, and `src/kma/` API surface. Use this when returning to the project after a break.
+Tracking document for tests, documentation, and `src/kma/` API surface. Use this when returning to the project after a break.
 
 ## Testing policy
 
@@ -10,7 +10,7 @@ Resume guide for tests, documentation, and `src/kma/` API surface. Use this when
 | **Integration (`tests/it/`)** | Agent runs, DB, embeddings, tool side effects | **OMLX server running** (`KMA_LLM_PROVIDER=mlx`); Postgres via `docker compose up -d agent-db` |
 | **To rework (`tests/to_rework/`)** | Older Ollama/OMLX IT drafts; need import fixes (`get_mlx_*` renamed to `get_llm_*` in `config.py`) before moving back to `tests/it/` |
 
-**Do not add unit tests that call an LLM.** Any behavior that needs a model goes in integration tests with `KMA_IT_MLX=1` (or legacy `KMA_IT_COMPILER=1` for Ollama-based compiler IT).
+**Do not add unit tests that call an LLM.** Any behavior that needs a model goes in integration tests with `KMA_IT_MLX=1` (or legacy `KMA_IT_COMPILER=1` for LLM-based compiler IT).
 
 **Skip unnecessary unit tests** for: Agno `Agent`/`Team` construction beyond model-type wiring, `@tool` closures (cover via the public helper they delegate to), and import-time singletons in `agents/settings.py`.
 

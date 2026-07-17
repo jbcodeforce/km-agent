@@ -87,6 +87,7 @@ mask_secret() {
 
 echo_current_settings() {
   echo "--- Environment (from .env + shell) ---"
+  echo "  KMA_REPO_ROOT=${REPO_ROOT}"
   echo "  KMA_LLM_PROVIDER=${KMA_LLM_PROVIDER:-<unset>}"
   echo "  KMA_LLM_MODEL_ID=${KMA_LLM_MODEL_ID:-<unset>}"
   echo "  KMA_LLM_BASE_URL=${KMA_LLM_BASE_URL:-<unset>}"
@@ -100,7 +101,7 @@ echo_current_settings() {
   echo "  KMA_DB_USER=${KMA_DB_USER:-${DB_USER:-<unset>}}"
   echo "  KMA_CONTAINER_POSTGRES_DATA=${KMA_CONTAINER_POSTGRES_DATA:-${REPO_ROOT}/.container-data/postgres}"
   echo "  KMA_AGENT_OS_HOST=${KMA_AGENT_OS_HOST:-${AGENT_OS_HOST:-<unset>}}"
-  echo "  KMA_AGENT_OS_PORT=${KMA_AGENT_OS_PORT:-${AGENT_OS_PORT:-${PORT:-<unset>}}}"
+  echo "  KMA_AGENT_OS_PORT=${KMA_AGENT_OS_PORT:-${AGENT_OS_PORT:-<unset>}}"
   echo "  KMA_VITE_PORT=${KMA_VITE_PORT:-${VITE_PORT:-<unset>}}"
   echo "  RUNTIME_ENV=${RUNTIME_ENV:-<unset>}"
   echo "  AGNO_DEBUG=${AGNO_DEBUG:-<unset>}"
@@ -192,10 +193,10 @@ ensure_postgres_only() {
   warn_docker_agent_db_conflict
 
   local db_port db_user db_pass db_name
-  db_port="${KMA_DB_PORT:-${DB_PORT:-5432}}"
-  db_user="${KMA_DB_USER:-${DB_USER:-ai}}"
-  db_pass="${KMA_DB_PASS:-${DB_PASS:-ai}}"
-  db_name="${KMA_DB_DATABASE:-${DB_DATABASE:-ai}}"
+  db_port="${KMA_DB_PORT:-5432}"
+  db_user="${KMA_DB_USER:-ai}"
+  db_pass="${KMA_DB_PASS:-ai}"
+  db_name="${KMA_DB_DATABASE:-ai}"
 
   if container list -q 2>/dev/null | grep -qx "${AGENT_DB_NAME}"; then
     echo "Postgres (${AGENT_DB_NAME}) is already running."
@@ -234,8 +235,8 @@ prepare_dev_backend() {
   local venv_py="${REPO_ROOT}/.venv/bin/python"
   [[ -x "${venv_py}" ]] || die "starter-mac.sh: expected ${venv_py} after uv sync"
   export PYTHONPATH="${REPO_ROOT}/src${PYTHONPATH:+:${PYTHONPATH}}"
-  export AGENT_OS_HOST="${KMA_AGENT_OS_HOST:-${AGENT_OS_HOST:-127.0.0.1}}"
-  export AGENT_OS_PORT="${KMA_AGENT_OS_PORT:-${AGENT_OS_PORT:-${PORT:-8000}}}"
+  export AGENT_OS_HOST="${KMA_AGENT_OS_HOST:-127.0.0.1}"
+  export AGENT_OS_PORT="${KMA_AGENT_OS_PORT:-8000}"
   export RUNTIME_ENV="${RUNTIME_ENV:-dev}"
   export AGNO_DEBUG="${AGNO_DEBUG:-True}"
   DEV_VENV_PY="${venv_py}"
