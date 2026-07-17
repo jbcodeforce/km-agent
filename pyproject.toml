@@ -39,11 +39,8 @@ ontology = [
     "owlapy>=1.6.0",
 ]
 
-[dependency-groups]
-# Apple Silicon dev: local MLX embeddings when KMA_EMBED_PROVIDER=local
-dev = [
-    "km-agent[local-mlx]",
-]
+# Do not put local-mlx in a default dependency group — `uv sync` would install it
+# in Docker/CI (linux/arm64 has no miniaudio wheel). Use: uv sync --extra local-mlx
 
 [project.scripts]
 km_agno = "km_agno.cli:app"

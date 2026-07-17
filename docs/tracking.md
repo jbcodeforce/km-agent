@@ -23,8 +23,7 @@ Tracking document for tests, documentation, and `src/kma/` API surface. Use this
 | [SPEC.md](SPEC.md) | Product/system spec: agents, pipeline, knowledge model, intent routing |
 | [DEVELOPER_PRACTICES.md](DEVELOPER_PRACTICES.md) | Setup, Compose, frontend, integration-test env matrix |
 | [USER_GUIDE.md](USER_GUIDE.md) | End-user flows and env vars |
-| [CLAUDE.md](../CLAUDE.md) | Agent-oriented repo guide (commands, architecture) |
-| [example.env](../example.env) | Canonical env template (mlx + OMLX defaults) |
+| [example.env](https://github.com/jbcodeforce/km-agent/blob/main/example.env) | Canonical env template (mlx + OMLX defaults) |
 | [superpowers/specs/2026-06-08-omlx-provider-and-validation-design.md](superpowers/specs/2026-06-08-omlx-provider-and-validation-design.md) | OMLX provider design (some names since unified under `get_llm_*`) |
 | [superpowers/plans/2026-06-08-omlx-provider-and-validation.md](superpowers/plans/2026-06-08-omlx-provider-and-validation.md) | Implementation plan for OMLX IT suite |
 

@@ -29,6 +29,10 @@ src
         ...
 ```
 
+---
+To BE REWORKED
+---
+
 ## Bootstrap CLI (`scripts/verify_config.sh`)
 
 * Verify the configuration with frontend
@@ -108,12 +112,12 @@ docker compose up -d agent-db
 
 When user interacts with the chat user interface, it goes to `/agents/${agentId}/runs` and run the team agent.
 
-* [Team](../src/kma/agents/team.py) 
-* [Compiler](../src/kma/agents/compiler.py) agent is used to process indexing of raw data. It is used by the docs crawler. It can be integrated in tools via the factory function: `build_compiler_agent()`. As an example it is used to index existing docs folder:
+* [Team](https://github.com/jbcodeforce/km-agent/tree/main/src/kma/agents/team.py) 
+* [Compiler](https://github.com/jbcodeforce/km-agent/tree/main/src/kma/agents/compiler.py) agent is used to process indexing of raw data. It is used by the docs crawler. It can be integrated in tools via the factory function: `build_compiler_agent()`. As an example it is used to index existing docs folder:
 
   ![](./images/docs_compiler.drawio.png)
 
-* [Linter](../src/kma/agents/linter.py) to keep integrity within the wiki content and propose researches. 
+* [Linter](https://github.com/jbcodeforce/km-agent/tree/main/src/kma/agents/linter.py) to keep integrity within the wiki content and propose researches. 
 
 
 
@@ -180,7 +184,7 @@ From `src/frontend` after `npm ci` (or `npm install`):
 npm run dev
 ```
 
-From the repository root, `./scripts/starter.sh --dev --frontend` starts AgentOS in the background, sets `VITE_AGENT_OS_ORIGIN` to match `AGENT_OS_PORT` (default `8000`), waits for `GET /agents`, then runs `npm run dev` in `src/frontend`. Use `./scripts/starter.sh --dev` for backend only. On macOS with Apple's native `container` CLI, use `./scripts/starter-mac.sh --dev --frontend` instead (see [Mac native containers](#mac-native-containers)). See comments at the top of `scripts/starter.sh` for `KMA_AGENT_OS_HOST`, `KMA_AGENT_OS_PORT`, and `KMA_VITE_PORT`.
+From the repository root, `./scripts/starter.sh --dev --frontend` starts AgentOS in the background, sets `VITE_AGENT_OS_ORIGIN` to match `AGENT_OS_PORT` (default `8000`), waits for `GET /agents`, then runs `npm run dev` in `src/frontend`. Use `./scripts/starter.sh --dev` for backend only. On macOS with Apple's native `container` CLI, use `./scripts/starter-mac.sh --dev --frontend` instead. See comments at the top of `scripts/starter.sh` for `KMA_AGENT_OS_HOST`, `KMA_AGENT_OS_PORT`, and `KMA_VITE_PORT`.
 
 Other npm scripts: `npm run build` (production bundle), `npm run preview` (serve the built app), `npm run test` (Vitest).
 
@@ -261,7 +265,7 @@ KMA_IT_MLX=1 KMA_LLM_PROVIDER=mlx KMA_EMBED_PROVIDER=mlx \
 
 ### Compiler agent integration test
 
-- **Module:** [`tests/it/test_compiler_agent_integration.py`](file:///Users/jerome/Documents/Code/km-agent/tests/it/test_compiler_agent_integration.py) (gated with `KMA_IT_COMPILER=1`).
+- **Module:** [`tests/it/test_compiler_agent_integration.py`](https://github.com/jbcodeforce/km-agent/tree/main/tests/it/test_compiler_agent_integration.py) (gated with `KMA_IT_COMPILER=1`).
 - **Requires:** reachable Postgres (`kma.db` / `DB_*`); chat still uses a pulled Ollama model in this test (`OllamaResponses` + `ollama_model_id_for_integration`). Embeddings: with `KMA_EMBED_PROVIDER=ollama` (default), the configured `KMA_EMBED_MODEL` must appear in `ollama list` (`ollama_embed_model_available`). With `KMA_EMBED_PROVIDER=openai`, set `OPENAI_API_KEY` (the fixture skips if missing); no Ollama embed check.
 - **Behavior:** builds `build_compiler_agent(..., model=OllamaResponses(...))` for chat, runs one `agent.run(...)`, then asserts manifest `compiled: true`, wiki outputs, and `wiki/index.md`.
 - **Run:**

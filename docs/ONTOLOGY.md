@@ -2,7 +2,7 @@
 
 Formal knowledge graph derived from the markdown wiki, raw manifest, and optional studies-repo code tree. Markdown remains the source of truth; Turtle RDF is a rebuildable view.
 
-See also [`ARCHITECTURE_WIKI_RAG.md`](./ARCHITECTURE_WIKI_RAG.md) for how ontology relates to Knowledge, Learnings, and Wiki.
+See also [`architecture.md`](./architecture.md) for how ontology relates to Knowledge, Learnings, and Wiki.
 
 ## Layout
 
@@ -16,7 +16,7 @@ context/ontology/
   graph-inferred.ttl   # Optional: owlapy StructuralReasoner output
 ```
 
-Bundled TBox source: [`src/kma/ontology/data/tbox.ttl`](../src/kma/ontology/data/tbox.ttl).
+Bundled TBox source: [`src/kma/ontology/data/tbox.ttl`](https://github.com/jbcodeforce/km-agent/tree/main/src/kma/ontology/data/tbox.ttl).
 
 ## Build
 

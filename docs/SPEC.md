@@ -88,7 +88,7 @@ Every interaction follows five steps:
 
 ### 4. Context stores: Knowledge, Learnings, Wiki
 
-Three systems serve different roles (see [`ARCHITECTURE_WIKI_RAG.md`](./ARCHITECTURE_WIKI_RAG.md)):
+Three systems serve different roles (see [`architecture.md`](./architecture.md)):
 
 - **`kma_knowledge`** — Metadata index (routing layer). File manifests (`File:`), table schemas (`Schema:`), source capabilities (`Source:`), cross-source discoveries (`Discovery:`), wiki articles (`Wiki:`), raw sources (`Raw:`). Not domain article bodies.
 - **`kma_learnings`** — Operational memory. Retrieval strategies (`Retrieval:`), recurring patterns (`Pattern:`), explicit user corrections (`Correction:`). Corrections always take priority. Not domain content.

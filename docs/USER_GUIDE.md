@@ -76,7 +76,7 @@ Edit **`.env`** at minimum for:
 | Area | Variables (examples) | Notes |
 |------|------------------------|--------|
 | Context on disk | `KMA_CONTEXT_DIR` | Default `./context` — it will contaign `raw/`, `wiki/`, and other files agents read and write. You can have different contexts |
-| Database | `KMA_DB_HOST`, `KMA_DB_PORT`, `KMA_DB_USER`, `KMA_DB_PASS`, `KMA_DB_DATABASE` | On the **host**, use `localhost`). See [DEVELOPER_PRACTICES — Postgres](DEVELOPER_PRACTICES.md#local-postgresql-docker-compose-only). |
+| Database | `KMA_DB_HOST`, `KMA_DB_PORT`, `KMA_DB_USER`, `KMA_DB_PASS`, `KMA_DB_DATABASE` | On the **host**, use `localhost`). See [DEVELOPER_PRACTICES — Postgres](DEVELOPER_PRACTICES.md#postgres-data). |
 | Chat model | `KMA_LLM_PROVIDER`, `KMA_MODEL_ID` (or provider-specific keys) | Pull the LLM model you reference before first chat. |
 | Embeddings | `KMA_EMBED_PROVIDER`, `KMA_EMBED_MODEL`, `KMA_EMBED_DIMENSIONS` | Vector size must match the model; do not change dimensions on an existing DB without a plan (see developer practices). |
 
@@ -101,25 +101,15 @@ In a separate terminal, from the repo root, start the Postgresql server, the km-
 ./scripts/starter.sh
 ```
 
-On macOS with Apple's native `container` CLI (no Docker Compose), use `./scripts/starter-mac.sh --dev --frontend` instead — see [`DEVELOPER_PRACTICES.md`](./DEVELOPER_PRACTICES.md#mac-native-containers).
+On macOS with Apple's native `container` CLI (no Docker Compose), use `./scripts/starter-mac.sh --dev --frontend` instead — see [`DEVELOPER_PRACTICES.md`](./DEVELOPER_PRACTICES.md#).
 
 After the stack is up, re-run `./scripts/verify_config.sh --frontend` to confirm Postgres, AgentOS, LLM models, and the chat UI are reachable.
-
-### Where to go next
-
-| Topic | Document |
-|--------|----------|
-| Different use cases | [Section below](#use-cases-living-document) |
-| Architecture, agents, pipeline, intents | [`SPEC.md`](./SPEC.md) |
-| Knowledge vs learnings vs wiki, index vs embeddings | [`ARCHITECTURE_WIKI_RAG.md`](./ARCHITECTURE_WIKI_RAG.md) |
-| Docker volumes, tests, frontend proxy | [`DEVELOPER_PRACTICES.md`](./DEVELOPER_PRACTICES.md) |
-| Repo overview and quick links | [`../README.md`](../README.md) |
 
 ---
 
 ## Attach a studies repository (hosted layout)
 
-Use this when km-agent should run **from inside a studies repo** (for example [ML-studies](https://github.com/jbcodeforce/ML-studies)) while keeping `context/` and configuration in that repo. AgentOS and the chat UI still run from your km-agent clone; the studies repo holds context, `.env`, and wrapper scripts under `assistants/km-agent/`.
+Use this when km-agent should run **from inside a studies repo** (for example [flink-studies](https://github.com/jbcodeforce/flink-studies)) while keeping `context/` and configuration in that repo. AgentOS and the chat UI still run from your km-agent clone; the studies repo holds context, `.env`, and wrapper scripts under `assistants/km-agent/`.
 
 ### Bootstrap (once)
 
@@ -191,7 +181,7 @@ mkdir  /path/to/docs --source flink-studies
 - Embedding model will be pulled on the first calls
 - Input files have frontmatter information
 
-**Studies-hosted layout:** If you used [`setup_studies.sh`](../scripts/setup_studies.sh), start the stack with `./assistants/km-agent/starter-mac.sh --dev --frontend` and compile with `./assistants/km-agent/compile-docs.sh` from the studies repo root. Context is under `assistants/km-agent/context/`.
+**Studies-hosted layout:** If you used [`setup_studies.sh`](https://github.com/jbcodeforce/km-agent/tree/main/scripts/setup_studies.sh), start the stack with `./assistants/km-agent/starter-mac.sh --dev --frontend` and compile with `./assistants/km-agent/compile-docs.sh` from the studies repo root. Context is under `assistants/km-agent/context/`.
 
 #### Steps (outline)
 
