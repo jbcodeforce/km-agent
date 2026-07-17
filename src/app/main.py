@@ -3,6 +3,9 @@ from os import getenv
 from pathlib import Path
 
 from agno.os import AgentOS
+from fastapi import HTTPException
+from pydantic import BaseModel, Field
+
 from kma.db import get_postgres_db
 from kma.agents.compiler import get_compiler
 from kma.agents.linter import get_linter
@@ -11,6 +14,8 @@ from kma.agents.researcher import get_researcher
 
 from kma.agents.settings import get_kma_knowledge, get_kma_learnings, get_kma_wiki
 from kma.agents.team import get_kma_team
+from kma.config import get_kma_context_dir
+from kma.tools.ingest import ingest_text_as_file, sanitize_raw_export_filename
 
 
 def _build_agents() -> list:
@@ -28,6 +33,32 @@ agent_os = AgentOS(
 )
 
 _api_app = agent_os.get_app()
+
+
+class SaveRawBody(BaseModel):
+    filename: str = Field(..., min_length=1)
+    content: str
+    title: str | None = None
+
+
+@_api_app.post("/kma/save-raw")
+def save_raw_export(body: SaveRawBody) -> dict:
+    """Save chat export markdown under ``context/raw/`` (frontmatter + manifest)."""
+    try:
+        safe = sanitize_raw_export_filename(body.filename)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    raw_dir = get_kma_context_dir() / "raw"
+    msg = ingest_text_as_file(
+        raw_dir,
+        safe,
+        body.content,
+        title=body.title,
+        source="chat-export",
+        doc_type="notes",
+    )
+    return {"ok": True, "file": safe, "path": f"raw/{safe}", "message": msg}
 
 
 def _serve_ui_enabled() -> bool:

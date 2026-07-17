@@ -358,31 +358,67 @@ def _do_ingest_url(raw_dir: Path, url: str, title: str, tags: list[str] | None =
     return status
 
 
+def sanitize_raw_export_filename(filename: str) -> str:
+    """Return a basename-only ``*.md`` name safe to write under ``raw/``.
+
+    Rejects empty names, ``..``, and absolute/parent path segments.
+    Appends ``.md`` when missing.
+    """
+    raw = (filename or "").strip()
+    if not raw:
+        raise ValueError("filename is required")
+    name = Path(raw).name
+    if not name or name in (".", "..") or name.startswith("."):
+        raise ValueError("invalid filename")
+    if "/" in name or "\\" in name or ".." in name:
+        raise ValueError("invalid filename")
+    if not name.lower().endswith(".md"):
+        name = f"{name}.md"
+    return name
+
+
+def ingest_text_as_file(
+    raw_dir: Path,
+    filename: str,
+    content: str,
+    *,
+    title: str | None = None,
+    source: str = "user",
+    tags: list[str] | None = None,
+    doc_type: str = "notes",
+) -> str:
+    """Write ``content`` to ``raw_dir/filename`` with frontmatter and update the manifest.
+
+    Honors the given filename (after sanitization). Overwrites an existing file and
+    resets ``compiled`` on that manifest row.
+    """
+    raw_path = Path(raw_dir)
+    raw_path.mkdir(parents=True, exist_ok=True)
+    safe = sanitize_raw_export_filename(filename)
+    resolved_title = (title or Path(safe).stem).strip() or Path(safe).stem
+    file_path = raw_path / safe
+    frontmatter = _build_frontmatter(resolved_title, source, tags or [], doc_type)
+    body = content if content.endswith("\n") else f"{content}\n"
+    file_path.write_text(frontmatter + body, encoding="utf-8")
+    append_manifest_entry(raw_path, safe, resolved_title, source, reset_compiled=True)
+    return f"Ingested: {safe} ({len(content)} chars)"
+
+
 def _do_ingest_text(
     raw_dir: Path, title: str, content: str, source: str = "user", tags: list[str] | None = None, doc_type: str = "notes"
 ) -> str:
     """Core ingest-text logic (callable directly and via @tool wrapper)."""
     slug = _slugify(title)
     filename = f"{slug}.md"
-    file_path = raw_dir / filename
-
-    frontmatter = _build_frontmatter(title, source, tags or [], doc_type)
-    file_path.write_text(frontmatter + content + "\n")
-
-    # Update manifest
-    manifest = _read_manifest(raw_dir)
-    manifest.append(
-        {
-            "file": filename,
-            "title": title,
-            "source": source,
-            "ingested": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "compiled": False,
-        }
+    return ingest_text_as_file(
+        raw_dir,
+        filename,
+        content,
+        title=title,
+        source=source,
+        tags=tags,
+        doc_type=doc_type,
     )
-    _write_manifest(raw_dir, manifest)
-
-    return f"Ingested: {filename} ({len(content)} chars)"
 
 
 

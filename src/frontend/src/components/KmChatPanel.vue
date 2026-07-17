@@ -63,6 +63,14 @@
                     Markdown
                   </button>
                 </div>
+                <button
+                  type="button"
+                  class="copy-btn"
+                  :disabled="!msg.content"
+                  @click="copyMessage(index)"
+                >
+                  {{ copiedIndex === index ? 'Copied' : 'Copy' }}
+                </button>
               </div>
               <pre
                 v-if="!msg.streamComplete || getViewMode(index) === 'text'"
@@ -445,6 +453,8 @@ function sendSuggested(text) {
 .message-toolbar {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
   margin: -0.25rem 0 0.5rem;
 }
 
@@ -474,6 +484,29 @@ function sendSuggested(text) {
 
 .view-toggle button:not(.active):hover {
   color: #cbd5e1;
+}
+
+.copy-btn {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #94a3b8;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.copy-btn:hover:not(:disabled) {
+  color: #cbd5e1;
+  border-color: #475569;
+}
+
+.copy-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .message-text.plain,

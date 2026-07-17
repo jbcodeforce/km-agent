@@ -27,9 +27,11 @@ from kma.tools.ingest import (
     first_h1_title,
     has_km_raw_frontmatter,
     has_yaml_frontmatter,
+    ingest_text_as_file,
     iter_markdown_files,
     manifest_entry_compiled,
     mark_manifest_compiled,
+    sanitize_raw_export_filename,
     strip_yaml_frontmatter,
     sync_manifest_from_raw_markdown,
     title_from_markdown,
@@ -128,6 +130,46 @@ def test_do_ingest_text_writes_file_and_manifest(tmp_path: Path) -> None:
     assert manifest[0]["title"] == "Hello Doc"
     assert manifest[0]["source"] == "user"
     assert manifest[0]["compiled"] is False
+
+
+def test_sanitize_raw_export_filename() -> None:
+    assert sanitize_raw_export_filename("notes.md") == "notes.md"
+    assert sanitize_raw_export_filename("notes") == "notes.md"
+    assert sanitize_raw_export_filename("../etc/passwd") == "passwd.md"
+    assert sanitize_raw_export_filename("/tmp/foo.md") == "foo.md"
+    with pytest.raises(ValueError):
+        sanitize_raw_export_filename("")
+    with pytest.raises(ValueError):
+        sanitize_raw_export_filename("..")
+    with pytest.raises(ValueError):
+        sanitize_raw_export_filename(".hidden")
+
+
+def test_ingest_text_as_file_honors_filename_and_overwrites(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    msg = ingest_text_as_file(
+        raw,
+        "My Notes.md",
+        "first",
+        title="My Notes",
+        source="chat-export",
+    )
+    assert "My Notes.md" in msg
+    path = raw / "My Notes.md"
+    assert path.is_file()
+    assert "first" in path.read_text(encoding="utf-8")
+    mark_manifest_compiled(raw, "My Notes.md")
+    assert manifest_entry_compiled(raw, "My Notes.md") is True
+
+    ingest_text_as_file(raw, "My Notes.md", "second", source="chat-export")
+    text = path.read_text(encoding="utf-8")
+    assert "second" in text
+    assert "first" not in text
+    assert manifest_entry_compiled(raw, "My Notes.md") is False
+    manifest = _read_manifest(raw)
+    assert len(manifest) == 1
+    assert manifest[0]["source"] == "chat-export"
 
 
 def test_do_ingest_url_without_parallel_key_writes_stub(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

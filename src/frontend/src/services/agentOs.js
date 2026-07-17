@@ -94,6 +94,37 @@ export async function listTeams() {
 }
 
 /**
+ * Parse `/save filename` slash command. Returns filename or null.
+ * @param {string} message
+ * @returns {string | null}
+ */
+export function parseSaveCommand(message) {
+  const m = String(message || '')
+    .trim()
+    .match(/^\/save\s+(\S+)\s*$/i)
+  return m ? m[1] : null
+}
+
+/**
+ * Save markdown content under context/raw via AgentOS.
+ * @param {{ filename: string, content: string, title?: string }} body
+ * @returns {Promise<{ ok: boolean, file: string, path: string, message?: string }>}
+ */
+export async function saveRawExport(body) {
+  return /** @type {Promise<{ ok: boolean, file: string, path: string, message?: string }>} */ (
+    jsonFetch('/kma/save-raw', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        filename: body.filename,
+        content: body.content,
+        ...(body.title != null ? { title: body.title } : {})
+      })
+    })
+  )
+}
+
+/**
  * @param {{ userId?: string, teamId: string, page?: number, limit?: number }} params
  */
 export async function listTeamSessions({ userId, teamId, page = 1, limit = 20 }) {
