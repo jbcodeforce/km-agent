@@ -10,13 +10,13 @@
 
 Technical notes, knowledge repos (for example my [flink-studies](https://github.com/jbcodeforce/flink-studies)), and ad-hoc web findings usually live in different places: Git folders, bookmarks, Slack threads, and SQL databases. `km-agent` gives you a single pipeline and a coordinated team of agents so that material is ingested, compiled into a wiki, and answered against with context from files, SQL, and vector search—without you manually maintaining a separate “second brain” by hand.
 
-Also tool like NotebookLM has a tendency to forget what was asked before. Vector Store with embeddings has some challenge with the quality of the embeddings: the size of the vector and how the text chunck was build while parsing the documents. Markdown files have the advantage to provide structured sections to help chunking. Wiki approach has the advantage to let the LLM, vias tools to search for indexing then content, so more a tree navigation that pure <vector-text> mapping approach. 
+Also tool like NotebookLM has a tendency to forget what was asked before. Vector Store with embeddings has some challenges with the quality of the embeddings: the size of the vector and how the text chunck was built while parsing the documents. Markdown files have the advantage to provide structured sections to help chunking. Wiki approach has the advantage to let the LLM, vias tools to search for indexing the content, so more a tree navigation, knowledge graph that pure <vector-text> mapping approach. 
 
-Knowledge management retrieval with Graph may perform better, by adding indexing, concepts, entities, links between concepts and entities. That Wiki LLM tries to address. The next level is a **formal OWL/RDF layer** on top of the wiki — see [`docs/ONTOLOGY.md`](docs/ONTOLOGY.md). 
+Knowledge management retrieval with Graph may perform better, by adding indexing, concepts, entities, links between concepts and entities. That Wiki LLM tries to support this approach. The next level is a **formal OWL/RDF layer** on top of the wiki — see [`docs/ONTOLOGY.md`](docs/ONTOLOGY.md). 
 
 ### Why not using existing agent like Hermes and llm-wiki skill
 
-hermes can be used with the llm-wiki SKILL.md to process file by file and it is doing an excellent job. Below is a command that was executed to create the base wiki in the `flink-studies` project.
+Hermes can be used with the llm-wiki SKILL.md to process file by file and it is doing an excellent job. Below is a command that was executed to create the base wiki in the `flink-studies` project.
 
 ```sh
 /llm-wiki start './docs/coding/flink-sql-1.md'
@@ -36,7 +36,7 @@ The high level architectrure view looks like:
 | Outcome | What it means for you |
 |--------|------------------------|
 | **A living wiki** | Raw markdown under `context/raw/` is incrementally compiled into `context/wiki/` (concepts, summaries, index)—not a one-off export. |
-| **One chat surface** | A Navigator-style agent routes questions across wiki index, articles, your `kma` SQL schema, files under `context/`, and Agno Knowledge / learnings stores. |
+| **One chat interface** | A Navigator-style agent routes questions across wiki index, articles, your `kma` SQL schema, files under `context/`, and Agno Knowledge / learnings stores. |
 | **Research → raw → wiki** | With **Parallel** configured (`PARALLEL_API_KEY`), a Researcher agent can gather web sources into `raw/`; the Compiler turns uncompiled sources into wiki updates. |
 | **Direct compiler access** | The Compiler is also exposed on AgentOS for HTTP runs (e.g. automation or `scripts/compile_docs_folder.py`) in addition to team coordination. |
 | **Persistent memory** | Sessions, hybrid vector + keyword search over knowledge tables, and agentic learnings live in Postgres—conversations and retrieval improve over time. |

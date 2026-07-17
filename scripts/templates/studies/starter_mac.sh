@@ -12,9 +12,9 @@ fi
 
 KMA_HOME="$(tr -d '[:space:]' < "${KMA_HOME_FILE}")"
 if [[ ! -d "${KMA_HOME}" ]]; then
-  echo "starter-mac.sh: KMA_HOME not found: ${KMA_HOME}" >&2
+  echo "starter-mac.sh: KMA_HOME env variable not found: ${KMA_HOME}" >&2
   exit 1
 fi
 
 export KMA_ENV_FILE="${STUDIES_KMA_DIR}/.env"
-exec "${KMA_HOME}/scripts/starter-mac.sh" "$@"
+exec "${KMA_HOME}/scripts/starter_mac.sh" "$@"

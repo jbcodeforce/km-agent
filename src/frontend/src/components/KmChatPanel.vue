@@ -46,6 +46,39 @@
           </div>
           <div class="message-content">
             <template v-if="msg.role === 'assistant'">
+              <div
+                v-if="showReasoningPanel(msg)"
+                class="message-progress"
+              >
+                <div class="message-progress-header">
+                  <button
+                    type="button"
+                    class="progress-toggle"
+                    :aria-expanded="isProgressExpanded(index)"
+                    @click="toggleProgressExpanded(index)"
+                  >
+                    <span class="progress-chevron" aria-hidden="true">{{
+                      isProgressExpanded(index) ? '▾' : '▸'
+                    }}</span>
+                    <span>{{
+                      msg.streamComplete ? 'Progress' : 'Thinking…'
+                    }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="progress-dismiss"
+                    aria-label="Remove reasoning"
+                    title="Remove reasoning"
+                    @click="dismissReasoning(index)"
+                  >
+                    ×
+                  </button>
+                </div>
+                <pre
+                  v-show="isProgressExpanded(index)"
+                  class="message-progress-body"
+                >{{ msg.progressText }}</pre>
+              </div>
               <div v-if="msg.streamComplete" class="message-toolbar">
                 <div class="view-toggle" role="group" aria-label="Message view">
                   <button
@@ -65,11 +98,11 @@
                 </div>
               </div>
               <pre
-                v-if="!msg.streamComplete || getViewMode(index) === 'text'"
+                v-if="msg.content && (!msg.streamComplete || getViewMode(index) === 'text')"
                 class="message-text plain"
               >{{ msg.content }}</pre>
               <div
-                v-else
+                v-else-if="msg.content"
                 class="message-text markdown"
                 v-html="renderMarkdown(msg.content)"
               ></div>
@@ -80,7 +113,16 @@
         </div>
       </template>
 
-      <div v-if="isLoading && (messages.length === 0 || messages[messages.length - 1]?.role !== 'assistant')" class="message assistant loading">
+      <div
+        v-if="
+          isLoading &&
+          (messages.length === 0 ||
+            messages[messages.length - 1]?.role !== 'assistant' ||
+            (!messages[messages.length - 1]?.content &&
+              !messages[messages.length - 1]?.progressText))
+        "
+        class="message assistant loading"
+      >
         <div class="message-avatar">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
@@ -107,12 +149,15 @@
       </div>
     </div>
 
-    <details v-if="traceLines.length" class="chat-trace">
-      <summary>Activity <span class="trace-count">({{ traceLines.length }})</span></summary>
-      <pre class="chat-trace-pre">{{ traceLines.join('\n') }}</pre>
-    </details>
-
     <div class="chat-input-area">
+      <label class="reasoning-toggle">
+        <input
+          type="checkbox"
+          :checked="showReasoning"
+          @change="onShowReasoningChange"
+        />
+        Show reasoning
+      </label>
       <div class="input-row">
         <textarea
           ref="inputField"
@@ -140,7 +185,7 @@
 
 <script setup>
 /**
- * Chat UI: message list, streaming assistant replies, optional Agno activity trace.
+ * Chat UI: message list, streaming assistant replies, optional progress/reasoning panel.
  * Hydrates from session chat_history when route.session_id is set.
  */
 import { ref, watch, nextTick, onMounted } from 'vue'
@@ -148,10 +193,13 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   createTeamRunStream,
   getSession,
-  chatHistoryToMessages
+  chatHistoryToMessages,
+  applyProgressUpdate
 } from '@/services/agentOs.js'
 import { consumeLeadingNewlines } from '@/utils/streamText.js'
 import { renderMarkdown } from '@/utils/messageRender.js'
+
+const SHOW_REASONING_KEY = 'km_show_reasoning'
 
 const props = defineProps({
   teamId: { type: String, required: true },
@@ -164,15 +212,19 @@ const route = useRoute()
 const router = useRouter()
 
 const messages = ref([])
-const traceLines = ref([])
-const MAX_TRACE_LINES = 200
 const inputMessage = ref('')
 const isLoading = ref(false)
 const error = ref(null)
 const messagesContainer = ref(null)
 const inputField = ref(null)
+/** Global preference: show progress/reasoning on new runs (default off). */
+const showReasoning = ref(false)
 /** @type {import('vue').Ref<Record<number, 'text' | 'markdown'>>} */
 const messageViewModes = ref({})
+/** Collapsed state for progress panels; missing key = expanded. */
+/** @type {import('vue').Ref<Record<number, boolean>>} */
+const progressCollapsed = ref({})
+
 /** @param {number} index */
 function getViewMode(index) {
   const msg = messages.value[index]
@@ -183,6 +235,58 @@ function getViewMode(index) {
 /** @param {number} index @param {'text' | 'markdown'} mode */
 function setViewMode(index, mode) {
   messageViewModes.value = { ...messageViewModes.value, [index]: mode }
+}
+
+/** @param {{ progressText?: string, reasoningDismissed?: boolean } | null | undefined} msg */
+function showReasoningPanel(msg) {
+  return Boolean(msg?.progressText && !msg.reasoningDismissed)
+}
+
+/** @param {number} index */
+function isProgressExpanded(index) {
+  return progressCollapsed.value[index] !== true
+}
+
+/** @param {number} index */
+function toggleProgressExpanded(index) {
+  progressCollapsed.value = {
+    ...progressCollapsed.value,
+    [index]: isProgressExpanded(index)
+  }
+}
+
+/** @param {number} index */
+function dismissReasoning(index) {
+  const msg = messages.value[index]
+  if (!msg || msg.role !== 'assistant') return
+  msg.reasoningDismissed = true
+  msg.progressText = ''
+}
+
+/** @param {Event} e */
+function onShowReasoningChange(e) {
+  const checked = Boolean(/** @type {HTMLInputElement} */ (e.target).checked)
+  showReasoning.value = checked
+  try {
+    localStorage.setItem(SHOW_REASONING_KEY, checked ? '1' : '0')
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Ensure a streaming assistant message exists; return it. */
+function ensureAssistantMessage() {
+  const last = messages.value[messages.value.length - 1]
+  if (last && last.role === 'assistant' && !last.streamComplete) return last
+  const msg = {
+    role: 'assistant',
+    content: '',
+    streamComplete: false,
+    progressText: '',
+    reasoningDismissed: false
+  }
+  messages.value.push(msg)
+  return msg
 }
 
 /** Scroll the message container after DOM updates. */
@@ -212,6 +316,7 @@ async function hydrateFromSession(sessionId) {
   if (!sessionId) {
     messages.value = []
     messageViewModes.value = {}
+    progressCollapsed.value = {}
     return
   }
   error.value = null
@@ -219,11 +324,13 @@ async function hydrateFromSession(sessionId) {
     const s = await getSession(sessionId, { userId: props.userId })
     messages.value = chatHistoryToMessages(s.chat_history || [])
     messageViewModes.value = {}
+    progressCollapsed.value = {}
     scrollToBottom()
   } catch (e) {
     error.value = e.message || 'Failed to load session'
     messages.value = []
     messageViewModes.value = {}
+    progressCollapsed.value = {}
   }
 }
 
@@ -245,6 +352,11 @@ watch(
 )
 
 onMounted(() => {
+  try {
+    showReasoning.value = localStorage.getItem(SHOW_REASONING_KEY) === '1'
+  } catch {
+    showReasoning.value = false
+  }
   inputField.value?.focus()
 })
 
@@ -259,11 +371,11 @@ async function sendMessage() {
 
   isLoading.value = true
   error.value = null
-  traceLines.value = []
 
   const sid = route.query.session_id || null
   let streamLeadBuffer = ''
   let streamTextStarted = false
+  const captureProgress = showReasoning.value
 
   await createTeamRunStream(
     props.teamId,
@@ -288,17 +400,15 @@ async function sendMessage() {
           streamTextStarted = true
         }
 
-        const last = messages.value[messages.value.length - 1]
-        if (last && last.role === 'assistant') {
-          last.content += toAppend
-        } else {
-          messages.value.push({ role: 'assistant', content: toAppend, streamComplete: false })
-        }
+        const last = ensureAssistantMessage()
+        last.content += toAppend
         scrollToBottom()
       },
-      onTrace: (line) => {
-        if (traceLines.value.length >= MAX_TRACE_LINES) traceLines.value.shift()
-        traceLines.value.push(line)
+      onProgress: (update) => {
+        if (!captureProgress) return
+        const last = ensureAssistantMessage()
+        if (last.reasoningDismissed) return
+        last.progressText = applyProgressUpdate(last.progressText || '', update)
         scrollToBottom()
       },
       onError: (err) => {
@@ -641,36 +751,86 @@ function sendSuggested(text) {
   border-radius: 0 0 16px 16px;
 }
 
-.chat-trace {
-  margin: 0 1rem 0.75rem;
-  padding: 0.5rem 0.75rem;
+.reasoning-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.625rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  user-select: none;
+  cursor: pointer;
+}
+
+.reasoning-toggle input {
+  accent-color: #10b981;
+  cursor: pointer;
+}
+
+.message-progress {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.625rem;
   border-radius: 8px;
   border: 1px solid #334155;
   background: #020617;
-  font-size: 0.75rem;
+}
+
+.message-progress-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.progress-toggle {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: none;
+  border: none;
+  padding: 0;
   color: #94a3b8;
-}
-
-.chat-trace summary {
+  font-size: 0.75rem;
+  font-weight: 500;
   cursor: pointer;
+  text-align: left;
+}
+
+.progress-toggle:hover {
   color: #cbd5e1;
-  user-select: none;
 }
 
-.chat-trace .trace-count {
+.progress-chevron {
+  width: 0.75rem;
   color: #64748b;
-  font-weight: normal;
 }
 
-.chat-trace-pre {
+.progress-dismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 1.125rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  border-radius: 4px;
+}
+
+.progress-dismiss:hover {
+  color: #e2e8f0;
+  background: #1e293b;
+}
+
+.message-progress-body {
   margin: 0.5rem 0 0;
-  max-height: 12rem;
+  max-height: 10rem;
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.7rem;
-  line-height: 1.35;
+  line-height: 1.4;
   color: #a8b8cf;
 }
 
