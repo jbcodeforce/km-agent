@@ -1,20 +1,16 @@
 from collections.abc import Sequence
 from pathlib import Path
 import json
-import os
 from typing import Tuple
 from agno.knowledge import Knowledge
 from agno.tools import tool
 from agno.tools.file import FileTools
 from agno.tools.sql import SQLTools
-from agno.tools.parallel import ParallelTools
+from agno.tools.duckduckgo import DuckDuckGoTools
 
 from kma.config import (
-    Env,
     get_kma_context_dir,
-    get_parallel_api_key,
-    get_parallel_max_chars_per_result,
-    get_parallel_max_results,
+    get_web_search_max_results,
 )
 from kma.tools.compiler_fs import create_compiler_file_tools, use_labelled_raw_paths
 from kma.tools.ingest import create_compiler_manifest_tools, create_ingest_tools, list_uncompiled_file_ids
@@ -75,7 +71,7 @@ def build_navigator_tools(
     context_dir: Path | str | None = None,
     wiki_knowledge: Knowledge | None = None,
 ) -> list:
-    """Tools for the Navigator agent — email, calendar, SQL, files, Exa, wiki reading, manifest.
+    """Tools for the Navigator agent — SQL, files, wiki reading, ontology, manifest.
 
     Args:
         knowledge: Knowledge base for ``update_knowledge``.
@@ -108,19 +104,16 @@ def build_navigator_tools(
 def build_researcher_tools(
     knowledge: Knowledge,
     context_dir: Path  | None = None) -> list:
-    """Tools for the Researcher agent — Parallel search/extract + ingest to raw/."""
+    """Tools for the Researcher agent — DuckDuckGo search + ingest to raw/."""
     ctx_dir = Path(context_dir or get_kma_context_dir()).resolve()
     raw_dir = ctx_dir / "raw"
     ingest_url, ingest_text, read_manifest, _, sync_raw_manifest_from_disk = create_ingest_tools(raw_dir)
-    parallel_key = get_parallel_api_key()
-    if parallel_key:
-        os.environ["PARALLEL_API_KEY"] = parallel_key
     return [
         FileTools(base_dir=ctx_dir, enable_delete_file=False),
-        ParallelTools(
-            api_key=parallel_key,
-            max_results=get_parallel_max_results(),
-            max_chars_per_result=get_parallel_max_chars_per_result(),
+        DuckDuckGoTools(
+            enable_search=True,
+            enable_news=False,
+            fixed_max_results=get_web_search_max_results(),
         ),
         create_update_knowledge(knowledge),
         create_read_web_site_refs_tool(ctx_dir),

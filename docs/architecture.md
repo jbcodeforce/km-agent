@@ -121,7 +121,7 @@ Current Navigator priority (see `WIKI_INSTRUCTIONS` in `src/kma/agents/instructi
 
 **Recommendation:** Treat index-first as the baseline. Add `kma_wiki` embeddings when measurement shows index-only recall failing (missed articles, index too large, or repeated full index reads burning tokens).
 
-For flink-studies local expert chat, embedding is documented as a second phase after compile — not a hard prerequisite for chat.
+For a given domain studies local expert chat, embedding is documented as a second phase after compile — not a hard prerequisite for chat.
 
 ## Research → raw → wiki refresh (team workflow)
 

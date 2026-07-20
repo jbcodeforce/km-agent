@@ -96,7 +96,7 @@ def create_read_web_site_refs_tool(context_dir: Path | None = None):
     def read_web_site_refs(path: str = "") -> str:
         """Read trusted web site references from web_site_ref.json.
 
-        Use before parallel_search to bias toward official or curated sources.
+        Use before web_search to bias toward official or curated sources.
         When ``path`` is empty, reads ``<context>/web_site_ref.json``.
 
         Args:

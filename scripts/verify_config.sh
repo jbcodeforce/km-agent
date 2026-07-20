@@ -87,21 +87,21 @@ strip_quotes() {
   printf '%s' "$v"
 }
 
-DB_HOST="${KMA_DB_HOST:-localhost}}"
-DB_PORT="${KMA_DB_PORT:-5432}}"
-DB_USER="${KMA_DB_USER:-ai}}"
-DB_DATABASE="${KMA_DB_DATABASE:-ai}}"
-DB_PASS="${KMA_DB_PASS:-ai}}"
+DB_HOST="${KMA_DB_HOST:-localhost}"
+DB_PORT="${KMA_DB_PORT:-5432}"
+DB_USER="${KMA_DB_USER:-ai}"
+DB_DATABASE="${KMA_DB_DATABASE:-ai}"
+DB_PASS="${KMA_DB_PASS:-ai}"
 
-BACKEND_PORT="${KMA_AGENT_OS_PORT:-8000}}"
-BACKEND_HOST="${KMA_AGENT_OS_HOST:-127.0.0.1}}"
+BACKEND_PORT="${KMA_AGENT_OS_PORT:-8000}"
+BACKEND_HOST="${KMA_AGENT_OS_HOST:-127.0.0.1}"
 if [[ -n "${KMA_BACKEND_URL:-}" ]]; then
   BACKEND_BASE="${KMA_BACKEND_URL%/}"
 else
   BACKEND_BASE="http://${BACKEND_HOST}:${BACKEND_PORT}"
 fi
 
-FRONTEND_PORT="${KMA_VITE_PORT:-${VITE_PORT:-5174}}"
+FRONTEND_PORT="${KMA_VITE_PORT:-5174}"
 if [[ -n "${KMA_FRONTEND_URL:-}" ]]; then
   FRONTEND_BASE="${KMA_FRONTEND_URL%/}"
 else
@@ -110,7 +110,7 @@ fi
 
 resolve_llm_base_url() {
   local raw host port base
-  raw="${KMA_LLM_BASE_URL:-${KMA_MLX_BASE_URL:-}}"
+  raw="${KMA_LLM_BASE_URL:-}"
   if [[ -n "$raw" ]]; then
     base="$(strip_quotes "$raw")"
     base="${base%/}"
@@ -120,8 +120,8 @@ resolve_llm_base_url() {
     printf '%s' "$base"
     return 0
   fi
-  host="$(strip_quotes "${KMA_LLM_HOST:-${LLM_HOST:-127.0.0.1}}")"
-  port="$(strip_quotes "${KMA_LLM_PORT:-${LLM_PORT:-7999}}")"
+  host="$(strip_quotes "${KMA_LLM_HOST:-127.0.0.1}")"
+  port="$(strip_quotes "${KMA_LLM_PORT:-7999}")"
   if [[ "$host" == http://* || "$host" == https://* ]]; then
     base="${host%/}"
     if [[ "$base" != */v1 ]]; then
@@ -149,7 +149,7 @@ resolve_embed_base_url() {
 }
 
 resolve_models_base_url() {
-  local llm_provider="${KMA_LLM_PROVIDER:-ollama}"
+  local llm_provider="${KMA_LLM_PROVIDER:-mlx}"
   case "$llm_provider" in
     mlx | ollama)
       resolve_llm_base_url

@@ -18,7 +18,7 @@ from agno.db.postgres import PostgresDb
 from agno.learn import LearnedKnowledgeConfig, LearningMachine, LearningMode
 from agno.models.base import Model
 
-from kma.agents.instructions import BASE_INSTRUCTIONS, EXA_INSTRUCTIONS, WIKI_INSTRUCTIONS
+from kma.agents.instructions import BASE_INSTRUCTIONS, WIKI_INSTRUCTIONS
 from kma.agents.settings import get_agent_db, get_kma_knowledge, get_kma_learnings, get_kma_wiki
 from kma.config import kma_agent_reasoning_enabled, kma_stream_events_enabled
 from kma.llm_factory import build_default_llm_model
@@ -26,10 +26,8 @@ from kma.tools.builder import build_navigator_tools
 
 
 def build_navigator_instructions() -> str:
-    """Build instructions for the Navigator agent (core ops + wiki-aware retrieval).
-    """
-    parts = [BASE_INSTRUCTIONS, EXA_INSTRUCTIONS, WIKI_INSTRUCTIONS]
-    return "".join(parts)
+    """Build instructions for the Navigator agent (core ops + wiki-aware retrieval)."""
+    return "".join([BASE_INSTRUCTIONS, WIKI_INSTRUCTIONS])
 
 
 def build_navigator_agent(

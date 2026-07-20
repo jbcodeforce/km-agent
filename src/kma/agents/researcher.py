@@ -5,9 +5,8 @@ Researcher Agent
 Gathers source material from the web and local files, converts to
 clean markdown, saves to raw/ with YAML frontmatter.
 
-Conditional — only instantiated when ``KMA_PARALLEL_API_KEY`` or ``PARALLEL_API_KEY`` is set (see ``kma.config``).
-Uses Parallel for web search (parallel_search) and content
-extraction (parallel_extract).
+Uses DuckDuckGo (``web_search``) for free web search and ``ingest_url`` /
+``ingest_text`` to save sources under ``raw/``.
 """
 
 from __future__ import annotations
@@ -15,7 +14,7 @@ from pathlib import Path
 from agno.agent import Agent
 from agno.knowledge import Knowledge
 from agno.models.base import Model
-from kma.config import get_parallel_api_key, kma_stream_events_enabled
+from kma.config import kma_stream_events_enabled
 from kma.llm_factory import build_default_llm_model
 from kma.agents.settings import get_agent_db, get_kma_knowledge
 from kma.tools.builder import build_researcher_tools
@@ -25,11 +24,10 @@ You are the Researcher, a specialist in gathering and ingesting source material.
 
 ## Your Job
 1. When ``web_site_ref.json`` exists under context (or the user names a sources file), call ``read_web_site_refs`` first
-2. Search the web using `parallel_search` to find relevant sources — bias toward trusted sites from step 1
-3. Extract content from URLs using `parallel_extract` (excerpts only — not full pages)
-4. Save to raw/ using `ingest_text` with proper YAML frontmatter
-5. For quick URL ingestion, use `ingest_url` which auto-fetches bounded excerpts via Parallel
-6. Update pal_knowledge with `Raw: {title}` metadata entries
+2. Search the web using `web_search` (DuckDuckGo) to find relevant sources — bias toward trusted sites from step 1
+3. For promising URLs, save content with `ingest_url` (fetches a bounded text excerpt) or summarize into `ingest_text`
+4. Update knowledge with `Raw: {title}` metadata entries
+5. List every new manifest ``file`` name you ingested
 
 ## Ingest Rules
 - Every raw file gets YAML frontmatter: title, source, ingested date, tags, type, compiled: false
@@ -40,9 +38,8 @@ You are the Researcher, a specialist in gathering and ingesting source material.
 - Prefer one source per run when running on local MLX — avoid batch-ingest in a single invocation
 
 ## Search Strategy (keep context small)
-- Use **one** `parallel_search` per topic (tool returns up to 2 results by default)
-- Use `parallel_extract` on **one URL at a time** with `excerpts=True`, `full_content=False`, `max_chars_per_excerpt=3000`
-- Prefer `ingest_text` with a concise summary over dumping full page text
+- Use **one** `web_search` per topic (tool returns a small fixed result count)
+- Prefer `ingest_url` on **one URL at a time**, or `ingest_text` with a concise summary
 - Prefer official documentation over blog posts or forums
 - When trusted sites are listed, search and ingest from those domains first
 - For error messages, include the fix or workaround
@@ -60,10 +57,8 @@ def build_researcher_agent(
     context_dir: Path | None = None,
     knowledge: Knowledge | None = None,
     model: Model | None = None,
-) -> Agent | None:
-    """Construct the Researcher agent when a Parallel API key is configured."""
-    if not get_parallel_api_key():
-        return None
+) -> Agent:
+    """Construct the Researcher agent (DuckDuckGo web search + ingest)."""
     km = knowledge or get_kma_knowledge()
     md = model or build_default_llm_model()
     return Agent(
@@ -87,7 +82,7 @@ _researcher: Agent | None = None
 _initialized = False
 
 
-def get_researcher() -> Agent | None:
+def get_researcher() -> Agent:
     global _researcher, _initialized
     if not _initialized:
         _researcher = build_researcher_agent()

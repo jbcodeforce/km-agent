@@ -11,21 +11,10 @@
             <path d="M15 11.5 12 8"/>
           </svg>
         </div>
-        <h3>Flink Studies expert</h3>
+        <h3>Knowledge Management Expert</h3>
         <p>
-          Ask about Apache Flink, streaming concepts, and this repository. The agent searches the indexed knowledge base first.
+          Ask about a specific domain, concepts,... The agent searches the indexed knowledge base first.
         </p>
-        <div class="suggested-prompts">
-          <button type="button" @click="sendSuggested('What are the core concepts of Flink?')">
-            Core concepts
-          </button>
-          <button type="button" @click="sendSuggested('How does checkpointing work in Flink?')">
-            Checkpointing
-          </button>
-          <button type="button" @click="sendSuggested('Where is the agentic Flink demo described in this repo?')">
-            Repo demos
-          </button>
-        </div>
       </div>
 
       <template v-for="(msg, index) in messages" :key="index">

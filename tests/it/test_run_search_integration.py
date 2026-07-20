@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-from kma.config import get_parallel_api_key
 from kma.tools.ingest import sync_manifest_from_raw_markdown
 from kma.workflows.enrichment import run_search_pipeline
 
@@ -108,10 +107,9 @@ def test_run_search_pipeline_skip_research(tmp_path: Path) -> None:
     assert summary.is_file()
 
 
-@pytest.mark.skipif(not get_parallel_api_key(), reason="PARALLEL_API_KEY required for live research")
 @pytest.mark.usefixtures("require_postgres")
 def test_run_search_pipeline_full_research(tmp_path: Path) -> None:
-    """Optional live research step when Parallel API key is configured."""
+    """Live research step via DuckDuckGo (may skip on LLM/network infra issues)."""
     ctx = _sandbox_context(tmp_path)
 
     try:

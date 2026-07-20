@@ -19,6 +19,8 @@ from kma.config import (
     get_parallel_max_chars_per_result,
     get_parallel_max_results,
     get_parallel_ingest_max_chars,
+    get_web_search_max_results,
+    get_ingest_max_chars,
     kma_agent_reasoning_enabled,
     kma_stream_events_enabled,
     kma_show_team_member_responses_enabled,
@@ -65,22 +67,24 @@ def test_llm_configs() -> None:
     assert get_embed_model_id() == "nomical-modernbert-embed-base-4bit"
     assert get_embed_dimensions() == 768
 
-def test_parallel_config_defaults(monkeypatch) -> None:
+def test_web_search_and_ingest_config_defaults(monkeypatch) -> None:
     monkeypatch.setenv(Env.KMA_PARALLEL_API_KEY, "test-key")
+    monkeypatch.delenv(Env.KMA_WEB_SEARCH_MAX_RESULTS, raising=False)
     monkeypatch.delenv(Env.KMA_PARALLEL_MAX_RESULTS, raising=False)
     monkeypatch.delenv(Env.KMA_PARALLEL_MAX_CHARS_PER_RESULT, raising=False)
+    monkeypatch.delenv(Env.KMA_INGEST_MAX_CHARS, raising=False)
     monkeypatch.delenv(Env.KMA_PARALLEL_INGEST_MAX_CHARS, raising=False)
     assert get_parallel_api_key() == "test-key"
-    assert get_parallel_max_results() == 2
+    assert get_web_search_max_results() == 5
+    assert get_parallel_max_results() == 5
     assert get_parallel_max_chars_per_result() == 3000
+    assert get_ingest_max_chars() == 8000
     assert get_parallel_ingest_max_chars() == 8000
 
 
 def test_auto_compile_after_research(monkeypatch) -> None:
     monkeypatch.setenv(Env.KMA_AUTO_COMPILE_AFTER_RESEARCH, "0")
-    monkeypatch.delenv(Env.KMA_PARALLEL_API_KEY, raising=False)
     assert kma_auto_compile_after_research_enabled() is False
 
     monkeypatch.delenv(Env.KMA_AUTO_COMPILE_AFTER_RESEARCH, raising=False)
-    monkeypatch.setenv(Env.KMA_PARALLEL_API_KEY, "key")
     assert kma_auto_compile_after_research_enabled() is True

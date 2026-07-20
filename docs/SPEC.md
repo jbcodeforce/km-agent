@@ -10,13 +10,14 @@ The approach is to use native query interface, to look at files, slack channel, 
 
 * agno agent OS to serve the agents and team
 * km-agent - to define agents, tools and team
+```sh
     ├── Navigator    — routes queries, reads wiki, handles SQL/files
     ├── Researcher   - web search, source gathering and write to context/raw/
     ├── Compiler     — reads raw/, writes wiki articles, maintains index
     ├── Linter       — health checks, finds gaps, suggests research
-
+```
 * PostgreSQL 18 to keep agent knowledge,  with pgvector (hybrid vector + keyword search)
-* Ollama on the **host** (native CLI; `scripts/setup.sh` + `scripts/starter.sh`) to serve local LLM — not run in Docker Compose for memory reason
+* OMLX on the **host**  or remote to serve local LLM
 *  **Language**: Python 3.12+, managed with `uv`
 
 ![](./images/architecture.drawio.png)
@@ -31,7 +32,7 @@ The approach is to use native query interface, to look at files, slack channel, 
 
 There are two types of raw knowledge: the docs folder of a studies repository, like flink-studies, and new raw data discovered by the researcher agent.
 
-```
+```sh
 ├── docs
 ├── wiki
 │   ├── raw
@@ -43,7 +44,7 @@ There are two types of raw knowledge: the docs folder of a studies repository, l
 
 Raw data flows through a compilation pipeline into a structured wiki:
 
-```
+```sh
 Ingest (Researcher)     →  context/raw/     →  .manifest.json tracks state
 Compile (Compiler)      →  context/wiki/    →  concepts/, summaries/, index.md
 Query (Navigator)       →  index-first and/or search_wiki →  pulls specific articles
@@ -112,7 +113,7 @@ This keeps worker agents fast and focused while the user-facing agents maintain 
 
 ### 7. Context Directory
 
-```
+```sh
 context/
 ├── about-me.md             # User background, goals
 ├── preferences.md          # Working style, file conventions
@@ -130,8 +131,8 @@ context/
 
 ### 8. Web Research
 
-- **Parallel** (Researcher): Search + extract via `parallel_search` and `parallel_extract`. Requires `PARALLEL_API_KEY`. When configured, Researcher is active and `ingest_url` auto-fetches content.
-- **Exa** (Navigator, Linter): General web search via Exa MCP server (always loaded). `EXA_API_KEY` optional for authenticated access.
+- **DuckDuckGo** (Researcher): Free web search via Agno `DuckDuckGoTools` (`web_search`). No API key required. Researcher is always a team member.
+- **`ingest_url`**: Fetches page text over HTTP (HTML stripped, length-capped via `KMA_INGEST_MAX_CHARS` / legacy `KMA_PARALLEL_INGEST_MAX_CHARS`). Prefer `ingest_text` for curated summaries when fetch quality is poor.
 
 
 
@@ -158,7 +159,7 @@ When the user asks for new external material, the team leader:
 3. Returns the answer to the user (streaming).
 4. Calls **`trigger_wiki_refresh`** — background compile (per new raw file) then lint. User is not blocked.
 
-Controlled by `KMA_AUTO_COMPILE_AFTER_RESEARCH` (default on when `PARALLEL_API_KEY` is set). Implementation: `src/kma/workflows/background.py`, `src/kma/agents/team_instructions.py`.
+Controlled by `KMA_AUTO_COMPILE_AFTER_RESEARCH` (default on). Implementation: `src/kma/workflows/background.py`, `src/kma/agents/team.py`.
 
 #### CLI: `run_search.py`
 
@@ -180,19 +181,19 @@ Chat uses the same Researcher + site refs; compile/lint stays async via `trigger
 
 ### Navigator
 
-Primary agent for user interaction. Handles SQL, files, web search, and wiki-aware Q&A.
+Primary agent for user interaction. Handles SQL, files, and wiki-aware Q&A (synthesis after Researcher ingest).
 
-Tools: SQLTools, FileTools, update_knowledge, read_wiki_index, read_wiki_state, read_manifest, search_wiki (when `kma_wiki` is indexed).
+Tools: SQLTools, FileTools, update_knowledge, read_wiki_index, read_wiki_state, read_manifest, ontology tools, search_wiki (when `kma_wiki` is indexed). No live web-search toolkit.
 
-Wiki retrieval priority: `search_wiki` (if indexed) → `wiki/index.md` + `read_file` on concepts/summaries → `raw/` → live sources.
+Wiki retrieval priority: `search_wiki` (if indexed) → ontology / `wiki/index.md` + `read_file` on concepts/summaries → `raw/`.
 
 ### Researcher
 
 Gathers sources from the web, extracts content, converts to clean markdown, saves to `raw/`.
 
-Tools: FileTools, ParallelTools (parallel_search, parallel_extract), update_knowledge, read_web_site_refs, ingest_url (auto-fetches via Parallel), ingest_text, read_manifest.
+Tools: FileTools, DuckDuckGoTools (`web_search`), update_knowledge, read_web_site_refs, ingest_url (HTTP fetch + text extract), ingest_text, read_manifest.
 
-Conditional — only instantiated when `PARALLEL_API_KEY` is set. Without it, Navigator handles basic web search via Exa.
+Always available (no paid search API key).
 
 Does NOT compile wiki articles, modify wiki/, or interact with email/calendar/slack.
 
@@ -210,7 +211,7 @@ Does NOT interact with users, query live sources, or run web searches.
 
 Periodic health checks on the wiki.
 
-Tools: FileTools, MCPTools (Exa), update_knowledge, read_wiki_index, read_wiki_state, update_wiki_state.
+Tools: FileTools, update_knowledge, read_wiki_index, read_wiki_state, update_wiki_state, ontology tools.
 
 Checks: contradictions, stale articles, missing concepts, orphans, thin articles, duplicates, gap analysis.
 

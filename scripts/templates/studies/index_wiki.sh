@@ -1,25 +1,23 @@
 #!/usr/bin/env bash
-# Compile studies docs/ into context/wiki/ via km-agent Compiler + Linter.
+# Embed compiled wiki markdown into pgvector for semantic search.
 #
 # Usage (from studies repo):
-#   ./assistants/km-agent/compile-docs.sh
-#   ./assistants/km-agent/compile-docs.sh --dry-run
-#   ./assistants/km-agent/compile-docs.sh --skip-compiler
+#   ./assistants/km-agent/index_wiki.sh
+#   ./assistants/km-agent/index_wiki.sh --dry-run
+#   ./assistants/km-agent/index_wiki.sh --recreate
 #
-# Requires Postgres + LLM running (see starter-mac.sh --dev).
+# Requires Postgres running (see starter_mac.sh).
 
 set -euo pipefail
 
 STUDIES_KMA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STUDIES_ROOT="$(cd "${STUDIES_KMA_DIR}/../.." && pwd)"
-DOCS_DIR="${STUDIES_ROOT}/docs"
 KMA_HOME_FILE="${STUDIES_KMA_DIR}/.kma-home"
 ENV_FILE="${STUDIES_KMA_DIR}/.env"
-CONTEXT_DIR="${STUDIES_ROOT}/context"
-STUDIES_LABEL="__STUDIES_LABEL__"
+CONTEXT_DIR="${STUDIES_ROOT}/docs/context"
 
 die() {
-  echo "compile-docs.sh: $*" >&2
+  echo "index_wiki.sh: $*" >&2
   exit 1
 }
 
@@ -29,7 +27,6 @@ fi
 
 KMA_HOME="$(tr -d '[:space:]' < "${KMA_HOME_FILE}")"
 [[ -d "${KMA_HOME}" ]] || die "KMA_HOME not found: ${KMA_HOME}"
-[[ -d "${DOCS_DIR}" ]] || die "docs directory not found: ${DOCS_DIR}"
 
 command -v uv >/dev/null 2>&1 || die "uv not found; install uv"
 
@@ -43,7 +40,6 @@ fi
 CONTEXT_DIR="${KMA_CONTEXT_DIR:-${CONTEXT_DIR}}"
 
 exec uv run --directory "${KMA_HOME}" --env-file "${ENV_FILE}" \
-  python scripts/compile_docs_folder.py "${DOCS_DIR}" \
+  python scripts/index_wiki.py \
   --context "${CONTEXT_DIR}" \
-  --label studies \
   "$@"

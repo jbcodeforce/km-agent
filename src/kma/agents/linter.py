@@ -61,9 +61,9 @@ N critical | N warnings | N suggestions
 ```
 
 ### Optional: Fill Gaps
-If you have web search available (web_search_exa), you can research missing
-data to suggest concrete content for thin articles or missing concepts.
-Include these as suggestions in the report, not direct edits.
+Suggest concrete content for thin articles or missing concepts from wiki/raw
+context only. Do not invent web-search tools. Include these as suggestions in
+the report, not direct edits.
 
 ## What You Do NOT Do
 - Do not modify concept articles directly — report findings, let the Compiler fix them

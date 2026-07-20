@@ -17,14 +17,30 @@ cp example.env .env
 # edit .env — LLM keys, ports
 
 # 2. Start stack (Postgres + AgentOS + chat UI)
-./starter-mac.sh --dev --frontend
+./starter_mac.sh --dev --frontend
 
 # 3. Verify
 ./verify_config.sh --frontend
 
-# 4. Compile docs into context/wiki/
-./compile-docs.sh
+# 4. Ensure raw frontmatter, then compile docs into context/wiki/
+./add_raw_frontmatter.sh --check
+./compile_docs_folder.sh
 ```
+
+## Wrapper scripts
+
+| Script | Purpose |
+|--------|---------|
+| `starter_mac.sh` | Start Postgres + AgentOS (+ frontend) |
+| `verify_config.sh` | Check env, DB, LLM, UI |
+| `add_raw_frontmatter.sh` | Add km-agent frontmatter to `docs/` |
+| `compile_docs_folder.sh` | Compile `docs/` into `context/wiki/` |
+| `index_wiki.sh` | Embed wiki markdown into pgvector |
+| `index_studies_code.sh` | Catalog `code/`/`src/` into wiki concepts |
+| `build_ontology.sh` | Rebuild `context/ontology/` from wiki |
+| `run_search.sh` | Research query → ingest → compile → lint |
+
+All wrappers load `.env` and delegate into the km-agent clone. Extra CLI flags are forwarded (`"$@"`).
 
 ## Layout
 

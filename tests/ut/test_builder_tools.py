@@ -1,28 +1,23 @@
-"""Researcher tool assembly — Parallel limits and wiring."""
-
-from unittest.mock import MagicMock
+"""Researcher tool assembly — DuckDuckGo wiring."""
 
 from kma.config import Env
 from kma.tools.builder import build_researcher_tools
 
 
-def test_build_researcher_tools_parallel_limits(monkeypatch, mock_knowledge) -> None:
-    monkeypatch.setenv(Env.KMA_PARALLEL_API_KEY, "test-key")
-    monkeypatch.setenv(Env.KMA_PARALLEL_MAX_RESULTS, "2")
-    monkeypatch.setenv(Env.KMA_PARALLEL_MAX_CHARS_PER_RESULT, "3000")
-
-    tools = build_researcher_tools(mock_knowledge)
-    parallel = next(t for t in tools if getattr(t, "name", None) == "parallel_tools")
-    assert parallel.max_results == 2
-    assert parallel.max_chars_per_result == 3000
-
-
-def test_build_researcher_tools_parallel_defaults(monkeypatch, mock_knowledge) -> None:
-    monkeypatch.setenv(Env.KMA_PARALLEL_API_KEY, "test-key")
+def test_build_researcher_tools_includes_duckduckgo(monkeypatch, mock_knowledge) -> None:
+    monkeypatch.setenv(Env.KMA_WEB_SEARCH_MAX_RESULTS, "3")
     monkeypatch.delenv(Env.KMA_PARALLEL_MAX_RESULTS, raising=False)
-    monkeypatch.delenv(Env.KMA_PARALLEL_MAX_CHARS_PER_RESULT, raising=False)
 
     tools = build_researcher_tools(mock_knowledge)
-    parallel = next(t for t in tools if getattr(t, "name", None) == "parallel_tools")
-    assert parallel.max_results == 2
-    assert parallel.max_chars_per_result == 3000
+    web = next(t for t in tools if getattr(t, "name", None) == "websearch")
+    assert web.fixed_max_results == 3
+    assert "web_search" in web.functions
+
+
+def test_build_researcher_tools_max_results_legacy_env(monkeypatch, mock_knowledge) -> None:
+    monkeypatch.delenv(Env.KMA_WEB_SEARCH_MAX_RESULTS, raising=False)
+    monkeypatch.setenv(Env.KMA_PARALLEL_MAX_RESULTS, "2")
+
+    tools = build_researcher_tools(mock_knowledge)
+    web = next(t for t in tools if getattr(t, "name", None) == "websearch")
+    assert web.fixed_max_results == 2

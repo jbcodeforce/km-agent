@@ -39,10 +39,12 @@ class Env:
     KMA_EMBED_BASE_URL: Final = "KMA_EMBED_BASE_URL"
 
     # Integrations
-    KMA_PARALLEL_API_KEY: Final = "KMA_PARALLEL_API_KEY"
-    KMA_PARALLEL_MAX_RESULTS: Final = "KMA_PARALLEL_MAX_RESULTS"
+    KMA_PARALLEL_API_KEY: Final = "KMA_PARALLEL_API_KEY"  # legacy; unused for search
+    KMA_PARALLEL_MAX_RESULTS: Final = "KMA_PARALLEL_MAX_RESULTS"  # legacy alias for web search max
     KMA_PARALLEL_MAX_CHARS_PER_RESULT: Final = "KMA_PARALLEL_MAX_CHARS_PER_RESULT"
-    KMA_PARALLEL_INGEST_MAX_CHARS: Final = "KMA_PARALLEL_INGEST_MAX_CHARS"
+    KMA_PARALLEL_INGEST_MAX_CHARS: Final = "KMA_PARALLEL_INGEST_MAX_CHARS"  # legacy alias
+    KMA_WEB_SEARCH_MAX_RESULTS: Final = "KMA_WEB_SEARCH_MAX_RESULTS"
+    KMA_INGEST_MAX_CHARS: Final = "KMA_INGEST_MAX_CHARS"
     SGAI_API_KEY: Final = "SGAI_API_KEY"
     EXA_API_KEY: Final = "EXA_API_KEY"
 
@@ -63,6 +65,7 @@ class Env:
     KMA_VERIFY_TRACE_ENV: Final = "KMA_VERIFY_TRACE_ENV"
 
     # Agent behavior / Agno
+    KMA_NUM_HISTORY_RUNS: Final = "KMA_NUM_HISTORY_RUNS"
     KMA_AGENT_REASONING: Final = "KMA_AGENT_REASONING"
     KMA_STREAM_EVENTS: Final = "KMA_STREAM_EVENTS"
     KMA_SHOW_TEAM_MEMBERS: Final = "KMA_SHOW_TEAM_MEMBERS"
@@ -245,7 +248,7 @@ def get_embed_host() -> str:
 
 
 def get_parallel_api_key() -> str | None:
-    """Parallel API key for Researcher web search/extract (`PARALLEL_API_KEY` legacy alias)."""
+    """Legacy Parallel API key (no longer required for Researcher)."""
     return _env_first_nonempty(Env.KMA_PARALLEL_API_KEY, "PARALLEL_API_KEY")
 
 
@@ -262,26 +265,42 @@ def _env_positive_int(name: str, default: int) -> int:
     return value
 
 
+def get_web_search_max_results() -> int:
+    """Max DuckDuckGo search hits per Researcher call."""
+    raw = os.getenv(Env.KMA_WEB_SEARCH_MAX_RESULTS)
+    if raw is not None and str(raw).strip():
+        return _env_positive_int(Env.KMA_WEB_SEARCH_MAX_RESULTS, 5)
+    return _env_positive_int(Env.KMA_PARALLEL_MAX_RESULTS, 5)
+
+
 def get_parallel_max_results() -> int:
-    """Default max Parallel search hits per call (Researcher)."""
-    return _env_positive_int(Env.KMA_PARALLEL_MAX_RESULTS, 2)
+    """Alias for ``get_web_search_max_results`` (legacy name)."""
+    return get_web_search_max_results()
 
 
 def get_parallel_max_chars_per_result() -> int:
-    """Default max excerpt chars per Parallel search hit (Researcher)."""
+    """Legacy Parallel excerpt limit (unused after DuckDuckGo switch)."""
     return _env_positive_int(Env.KMA_PARALLEL_MAX_CHARS_PER_RESULT, 3000)
 
 
-def get_parallel_ingest_max_chars() -> int:
-    """Max chars saved per ``ingest_url`` Parallel extract."""
+def get_ingest_max_chars() -> int:
+    """Max chars saved per ``ingest_url`` page fetch."""
+    raw = os.getenv(Env.KMA_INGEST_MAX_CHARS)
+    if raw is not None and str(raw).strip():
+        return _env_positive_int(Env.KMA_INGEST_MAX_CHARS, 8000)
     return _env_positive_int(Env.KMA_PARALLEL_INGEST_MAX_CHARS, 8000)
+
+
+def get_parallel_ingest_max_chars() -> int:
+    """Alias for ``get_ingest_max_chars`` (legacy name)."""
+    return get_ingest_max_chars()
 
 
 def kma_auto_compile_after_research_enabled() -> bool:
     """When True, team enrichment workflow schedules compile+lint after research ingest."""
     raw = os.getenv(Env.KMA_AUTO_COMPILE_AFTER_RESEARCH)
     if raw is None or not str(raw).strip():
-        return get_parallel_api_key() is not None
+        return True
     return _env_truthy(Env.KMA_AUTO_COMPILE_AFTER_RESEARCH)
 
 

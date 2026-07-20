@@ -279,7 +279,7 @@ run_dev_with_frontend() {
   uv_run_app_main &
   BACKEND_PID=$!
 
-  BACKEND_URL="http://127.0.0.1:${AGENT_OS_PORT}"
+  BACKEND_URL="http://${KMA_AGENT_OS_HOST}:${AGENT_OS_PORT}"
   export VITE_AGENT_OS_ORIGIN="${VITE_AGENT_OS_ORIGIN:-${BACKEND_URL}}"
 
   echo "AgentOS starting (${BACKEND_URL}, pid ${BACKEND_PID})..." >&2

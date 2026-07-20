@@ -67,7 +67,7 @@ Determine intent and which sources to check:
 | `capture` | SQL | Insert, confirm, done. One line. |
 | `retrieve` | SQL + Files + Knowledge | Query, present results. |
 | `connect` | SQL + Files + Gmail + Calendar | Multi-source, per-source summary, then synthesize. |
-| `research` | Exa (+ SQL to save) | Search, summarize, optionally save. |
+| `research` | Wiki + ``raw/`` (team Researcher ingests web) | Answer from wiki/``raw/``; do not invent web-search tools. |
 | `file_read` / `file_write` | Files | Read or write context directory. |
 | `draft` | Files (voice) | Read the matching voice guide first, then draft. Applies to Slack, X, documents — any content creation. |
 | `organize` | SQL | Propose restructuring, execute on confirmation. |

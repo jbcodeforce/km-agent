@@ -26,7 +26,7 @@ The Compiler may use **multiple raw roots** on disk; agents then see virtual pat
 |----------|-------|---------------------------|
 | `build_compiler_tools` | Compiler | File I/O (wiki + raw), `update_knowledge`, manifest read/update, full wiki tools |
 | `build_navigator_tools` | Navigator | SQL, files, `update_knowledge`, read-only wiki index/state, ontology graph tools, `read_manifest`, optional `search_wiki` |
-| `build_researcher_tools` | Researcher | Files, Parallel search/extract, `update_knowledge`, `read_web_site_refs`, ingest + manifest |
+| `build_researcher_tools` | Researcher | Files, DuckDuckGo `web_search`, `update_knowledge`, `read_web_site_refs`, ingest + manifest |
 | `build_linter_tools` | Linter | Files, `update_knowledge`, wiki index/state (read + update state) |
 | `build_team_tools` | kma team leader | `trigger_wiki_refresh` — background compile + lint after research ingest |
 
@@ -51,7 +51,7 @@ Shared by Compiler, Navigator, Researcher, and Linter.
 
 **Intent:** Bring **external content into `raw/`** and track what still needs compilation.
 
-- `ingest_url` — Fetch URL (Parallel when configured), save markdown + frontmatter, append manifest
+- `ingest_url` — Fetch URL over HTTP (HTML→text, length-capped), save markdown + frontmatter, append manifest
 - `ingest_text` — Save user/research text as a raw markdown file
 - `read_manifest` — List ingested files and `compiled` status
 - `update_manifest_compiled` — Mark a source as compiled after wiki work
@@ -81,7 +81,7 @@ When only the default single `raw/` under context exists, the Compiler uses Agno
 ## Data flow (simplified)
 
 ```
-Researcher: Parallel + ingest_*  →  raw/*.md + .manifest.json
+Researcher: DuckDuckGo + ingest_*  →  raw/*.md + .manifest.json
 Compiler:   read raw, write wiki/, mark manifest compiled
 Linter:     read wiki index/state, report gaps, update .state.json
 Navigator:  SQL + files + read manifest/index for routing user work

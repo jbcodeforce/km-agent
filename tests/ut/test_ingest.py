@@ -171,36 +171,33 @@ def test_ingest_text_as_file_honors_filename_and_overwrites(tmp_path: Path) -> N
     assert manifest[0]["source"] == "chat-export"
 
 
-def test_do_ingest_url_without_parallel_key_writes_stub(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv(Env.KMA_PARALLEL_API_KEY, raising=False)
-    monkeypatch.delenv("PARALLEL_API_KEY", raising=False)
+@patch("kma.tools.ingest._fetch_url_text")
+def test_do_ingest_url_fetch_failure_writes_stub(
+    mock_fetch: MagicMock,
+    tmp_path: Path,
+) -> None:
+    mock_fetch.side_effect = RuntimeError("timeout")
     raw = tmp_path / "raw"
     raw.mkdir()
     msg = _do_ingest_url(raw, "https://example.com/page", "Example Page", tags=None, doc_type="article")
-    assert "stub" in msg.lower() or "Ingested" in msg
+    assert "stub" in msg.lower()
     f = raw / "example-page.md"
     assert f.is_file()
     body = f.read_text(encoding="utf-8")
     assert "https://example.com/page" in body
+    assert "timeout" in body
     manifest = _read_manifest(raw)
     assert manifest[0]["source"] == "https://example.com/page"
 
 
-@patch("parallel.Parallel")
-def test_do_ingest_url_with_parallel_writes_extracted(
-    mock_parallel_cls: MagicMock,
+@patch("kma.tools.ingest._fetch_url_text")
+def test_do_ingest_url_writes_fetched_text(
+    mock_fetch: MagicMock,
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv(Env.KMA_PARALLEL_API_KEY, "fake-key")
+    mock_fetch.return_value = "# Extracted\n\nHello."
     raw = tmp_path / "raw"
     raw.mkdir()
-    result_row = MagicMock()
-    result_row.excerpts = ["# Extracted\n\nHello."]
-    result_row.full_content = None
-    mock_result = MagicMock()
-    mock_result.results = [result_row]
-    mock_parallel_cls.return_value.beta.extract.return_value = mock_result
 
     msg = _do_ingest_url(raw, "https://ex.com", "My Article", tags=["t"], doc_type="article")
     assert "content" in msg.lower() or "chars" in msg.lower()
@@ -208,10 +205,7 @@ def test_do_ingest_url_with_parallel_writes_extracted(
     text = f.read_text(encoding="utf-8")
     assert "# Extracted" in text
     assert "Hello." in text
-    mock_parallel_cls.return_value.beta.extract.assert_called_once()
-    call_kwargs = mock_parallel_cls.return_value.beta.extract.call_args.kwargs
-    assert call_kwargs["urls"] == ["https://ex.com"]
-    assert call_kwargs["excerpts"] == {"max_chars_per_result": 8000}
+    mock_fetch.assert_called_once_with("https://ex.com", 8000)
 
 
 def test_create_ingest_tools_read_manifest_empty(tmp_path: Path) -> None:

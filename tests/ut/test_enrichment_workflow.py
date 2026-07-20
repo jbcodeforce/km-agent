@@ -93,7 +93,6 @@ def test_run_search_pipeline_research_only(monkeypatch, tmp_path: Path) -> None:
         (raw / ".manifest.json").write_text(json.dumps(manifest))
         return mock_out, ["fresh.md"]
 
-    monkeypatch.setattr("kma.workflows.enrichment.get_parallel_api_key", lambda: "test-key")
     monkeypatch.setattr("kma.workflows.enrichment.run_research_step", fake_research_step)
 
     result = run_search_pipeline("topic", tmp_path, skip_compile=True)
@@ -101,9 +100,3 @@ def test_run_search_pipeline_research_only(monkeypatch, tmp_path: Path) -> None:
     assert result.ingested_file_ids == ["fresh.md"]
     assert result.compiled_file_ids == []
     assert result.linter_ok is None
-
-
-def test_run_search_pipeline_requires_parallel_when_researching(monkeypatch, tmp_path: Path) -> None:
-    monkeypatch.setattr("kma.workflows.enrichment.get_parallel_api_key", lambda: None)
-    with pytest.raises(RuntimeError, match="Parallel"):
-        run_search_pipeline("topic", tmp_path)

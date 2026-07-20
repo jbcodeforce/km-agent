@@ -24,7 +24,11 @@ Creates:
   <studies-root>/assistants/km-agent/
     context/{raw,wiki,ontology}/
     example.env, .env, .kma-home
-    starter_mac.sh, verify_config.sh, compile_docs.sh, README.md
+    starter_mac.sh, verify_config.sh, compile_docs_folder.sh,
+    add_raw_frontmatter.sh, index_wiki.sh, index_studies_code.sh,
+    build_ontology.sh, run_search.sh, README.md
+
+Idempotent: re-running skips existing files and writes any new wrappers.
 
 After setup, from the studies repo:
   ./assistants/km-agent/starter_mac.sh --dev --frontend
@@ -151,7 +155,12 @@ done
 write_file "example.env"
 write_file "starter_mac.sh"
 write_file "verify_config.sh"
-write_file "compile_docs.sh"
+write_file "compile_docs_folder.sh"
+write_file "add_raw_frontmatter.sh"
+write_file "index_wiki.sh"
+write_file "index_studies_code.sh"
+write_file "build_ontology.sh"
+write_file "run_search.sh"
 write_file "README.md"
 
 if [[ -f "${ASSISTANTS_DIR}/.kma-home" && "${FORCE}" -eq 0 ]]; then
@@ -177,7 +186,8 @@ Next steps (from studies repo):
   1. Edit assistants/km-agent/.env (LLM keys, ports if needed)
   2. ./assistants/km-agent/starter_mac.sh --dev --frontend
   3. ./assistants/km-agent/verify_config.sh --frontend --trace-env
-  4. ./assistants/km-agent/compile_docs.sh --dry-run
+  4. ./assistants/km-agent/add_raw_frontmatter.sh --check
+  5. ./assistants/km-agent/compile_docs_folder.sh --dry-run
 
 Postgres container: ${DB_CONTAINER} on port ${DB_PORT}
 Context directory:  ${CONTEXT_DIR}

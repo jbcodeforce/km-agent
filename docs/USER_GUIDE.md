@@ -15,61 +15,74 @@ The following figure illustrates the components involved in the solution:
 * Solution interacts with local or Frontier LLMs via agents
 * User preferences, embeddings and learning collection are saved to database
 
+## What you need to get started
+
+- Docker engine or Mac contrainer (Tahoe version)
+- curl
+- git cli
+
 ## Use Cases
 
 In this section we present the high level use cases and workflow a user can follow:
 
-### Work on a white page to build knowledge
+### Work on a new studies repository to build knowledge
 
-Once the km-agent repository is cloned, use can add content from the web or create raw markdown file under the context/raw folder and perform deep research to enhance the knowledge content and build a body of knowledge on a given domain.
+Once the km-agent repository is cloned, you can add content from the web or create your own notes as markdown files under the context/raw folder and perform deep research to enhance the knowledge content and build a body of knowledge on a given domain.
+
+The steps are:
 
 1. clone the repository to km-agent
+  ```sh
+  git clone https://github.com/jbcodeforce/km-agent
+  cd km-agent
+  ```
 1. Create a folder at the same level as km-agent folder for managing your domain specific knowledge. As a supporting example we will use environment engineering studies.
   ```sh
   mkdir env-eng-studies
   cd env-eng-studies
   mkdir docs
   ```
-1. Use the setup studies to add agentic support to help you develop your deep research and knownledge
+1. Use the setup studies to add agentic support to help you develop your deep research and knownledge using local AI agents of researcher, document compiler and linter, and navigator/orchestrator agent to route your future queries.
+
   ```sh
   cd kma-agent
   # create with default
   ./scripts/setup_studies.sh ~/Documents/Code/env-eng-studies 
   # same as 
-  /scripts/setup_studies.sh ~/Documents/Code/env-eng-studies --kma-home $PWD --label env-eng-studies
+  ./scripts/setup_studies.sh ~/Documents/Code/env-eng-studies --kma-home $PWD --label env-eng-studies
   ```
 
 1. Use one of the starter shell to run the km-agent solution:
   ```sh
+  cd xxx-studies/assistant/km-agent
   # under xxxx-studies/assistants/km-agent
   ./starter_mac.sh --dev --frontend
   ```
+1 Verify your configuration (before or after starting components):
+  ```sh
+  cd xxx-studies/assistant/km-agent
+  ./verify_config.sh
+  ./verify_config.sh --frontend   # also check the Vite dev server
+  ```
+
+1. Go to [http://localhost:5174/](http://localhost:5174/), set your name on the left side of as User ID, start to chat (see next)
+1. Consult the trace and the logs/kma.log file to understand what the system does
+
+#### Example of directive sent to agents via chat conversations:
+
+* I want to get a roadmap to learn environment engineering, using public content and training. save in the context/raw/env_engineer_roadmap.md
+* Help me to build a knowledge roadmap for environment engineering and science with python
+* let assume beginner level is already address, let start by searching for geospacial analysis for environment engineering. Develop a detailed plan
 
 
 ### Work from existing content
 
-User has already a set of notes, in the form of markdown files to manage his own knowledge. The tool will help to build semantic search and knowledge graph as wiki, and add more content via deep research.
+User has already a set of notes, in the form of markdown files to manage his/her own knowledge. The tool will help to build semantic search and knowledge graph as wiki, and add more content via deep research.
 
 
 ## Getting started
 
-### What you need
 
-- Docker engine or Mac contrainer (Tahoe version)
-- curl
-- git cli
-
-### 1. Clone the repository and create `.env` and setup.
-
-* Clone
-  ```sh
-  git clone https://github.com/jbcodeforce/km-agent
-  cd km-agent
-  ```
-* Set environment variables: From the repository root:
-  ```bash
-  cp example.env .env
-  ```
 
 Edit **`.env`** at minimum for:
 
@@ -80,18 +93,11 @@ Edit **`.env`** at minimum for:
 | Chat model | `KMA_LLM_PROVIDER`, `KMA_MODEL_ID` (or provider-specific keys) | Pull the LLM model you reference before first chat. |
 | Embeddings | `KMA_EMBED_PROVIDER`, `KMA_EMBED_MODEL`, `KMA_EMBED_DIMENSIONS` | Vector size must match the model; do not change dimensions on an existing DB without a plan (see developer practices). |
 
-Optional:
 
-- **`PARALLEL_API_KEY`** — enables the **Researcher** agent for web search and richer ingest (see use case *Ingest new material from the web*).
-- **`EXA_API_KEY`** — higher limits for Exa-backed search where configured (see `example.env` comments).
 
 Adjust the model names to match `KMA_MODEL_ID` and `KMA_EMBED_MODEL` in `.env`.
 
-* Verify your configuration (before or after starting components):
-  ```sh
-  ./scripts/verify_config.sh
-  ./scripts/verify_config.sh --frontend   # also check the Vite dev server
-  ```
+
 
 ### 2- Start the Knowledge Management Agent components
 
@@ -125,18 +131,21 @@ This creates `assistants/km-agent/` with `context/`, `example.env`, `.env`, `.km
 
 ```bash
 cd /path/to/ML-studies
-./assistants/km-agent/starter-mac.sh --dev --frontend
+./assistants/km-agent/starter_mac.sh --dev --frontend
 ./assistants/km-agent/verify_config.sh --frontend
 ```
 
 ### Compile studies docs into the wiki
 
 ```bash
-./assistants/km-agent/compile-docs.sh
-./assistants/km-agent/compile-docs.sh --dry-run   # preview only
+./assistants/km-agent/add_raw_frontmatter.sh --check
+./assistants/km-agent/compile_docs_folder.sh
+./assistants/km-agent/compile_docs_folder.sh --dry-run   # preview only
 ```
 
-Output lands in `assistants/km-agent/context/wiki/`. The studies `docs/` tree and `docs/.manifest.json` stay in place; the Compiler reads them via the `studies` raw root label.
+Other pipeline wrappers (same directory): `index_wiki.sh`, `index_studies_code.sh`, `build_ontology.sh`, `run_search.sh`.
+
+Output lands under the studies `KMA_CONTEXT_DIR` wiki (typically `docs/context/wiki/`). The studies `docs/` tree and `docs/.manifest.json` stay in place; the Compiler reads them via the studies raw root label.
 
 See also `assistants/km-agent/README.md` in the studies repo after setup.
 
@@ -181,7 +190,7 @@ mkdir  /path/to/docs --source flink-studies
 - Embedding model will be pulled on the first calls
 - Input files have frontmatter information
 
-**Studies-hosted layout:** If you used [`setup_studies.sh`](https://github.com/jbcodeforce/km-agent/tree/main/scripts/setup_studies.sh), start the stack with `./assistants/km-agent/starter-mac.sh --dev --frontend` and compile with `./assistants/km-agent/compile-docs.sh` from the studies repo root. Context is under `assistants/km-agent/context/`.
+**Studies-hosted layout:** If you used [`setup_studies.sh`](https://github.com/jbcodeforce/km-agent/tree/main/scripts/setup_studies.sh), start the stack with `./assistants/km-agent/starter_mac.sh --dev --frontend` and compile with `./assistants/km-agent/compile_docs_folder.sh` from the studies repo root. Context is under `KMA_CONTEXT_DIR` (typically `docs/context/`).
 
 #### Steps (outline)
 
@@ -201,10 +210,10 @@ mkdir  /path/to/docs --source flink-studies
 1. From the studies repo:
 
    ```bash
-   ./assistants/km-agent/compile-docs.sh
+   ./assistants/km-agent/compile_docs_folder.sh
    ```
 
-2. Inspect `assistants/km-agent/context/wiki/index.md` and `assistants/km-agent/context/wiki/concepts/` after a successful run.
+2. Inspect `docs/context/wiki/index.md` and `docs/context/wiki/concepts/` after a successful run (paths follow `KMA_CONTEXT_DIR`).
 
 **Success:** Uncompiled sources in the manifest move to **compiled**, and the wiki index reflects new or updated articles.
 
@@ -227,6 +236,8 @@ uv run python scripts/index_studies_code.py \
 # Embed the new wiki pages for semantic chat retrieval
 uv run python scripts/index_wiki.py --context ./context
 ```
+
+**Studies-hosted:** `./assistants/km-agent/index_studies_code.sh` then `./assistants/km-agent/index_wiki.sh`.
 
 Use `--dry-run` to list categories/labs without writes; `--force` to re-summarize when packs changed little; `--limit N` for a smoke run.
 

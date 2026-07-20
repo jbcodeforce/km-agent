@@ -3,12 +3,62 @@
 import json
 import re
 from datetime import datetime, timezone
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Sequence
 
+import httpx
 from agno.tools import tool
 
-from kma.config import get_parallel_api_key, get_parallel_ingest_max_chars
+from kma.config import get_ingest_max_chars
+
+
+class _HTMLTextExtractor(HTMLParser):
+    """Strip tags/scripts/styles and collect visible text."""
+
+    _SKIP = frozenset({"script", "style", "noscript", "svg", "template"})
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self._parts: list[str] = []
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag: str, attrs) -> None:  # noqa: ANN001
+        if tag.lower() in self._SKIP:
+            self._skip_depth += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() in self._SKIP and self._skip_depth:
+            self._skip_depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_depth:
+            return
+        text = data.strip()
+        if text:
+            self._parts.append(text)
+
+    def text(self) -> str:
+        return re.sub(r"\n{3,}", "\n\n", "\n".join(self._parts)).strip()
+
+
+def _fetch_url_text(url: str, max_chars: int) -> str:
+    """Fetch a URL and return plain text (bounded). Raises on hard failures."""
+    headers = {"User-Agent": "km-agent/0.1 (+local research ingest)"}
+    with httpx.Client(follow_redirects=True, timeout=20.0, headers=headers) as client:
+        resp = client.get(url)
+        resp.raise_for_status()
+        content_type = (resp.headers.get("content-type") or "").lower()
+        body = resp.text
+    if "html" in content_type or body.lstrip().lower().startswith("<!"):
+        parser = _HTMLTextExtractor()
+        parser.feed(body)
+        text = parser.text()
+    else:
+        text = body.strip()
+    if len(text) > max_chars:
+        text = text[:max_chars].rstrip() + "\n\n*(truncated)*"
+    return text
 
 def _slugify(text: str) -> str:
     """Convert text to a filesystem-safe slug."""
@@ -312,35 +362,25 @@ def _do_ingest_url(raw_dir: Path, url: str, title: str, tags: list[str] | None =
     file_path = raw_dir / filename
     frontmatter = _build_frontmatter(title, url, tags or [], doc_type)
 
-    # Try to fetch content via Parallel (bounded excerpts — keeps MLX context small)
+    # Fetch page text over HTTP (bounded — keeps local LLM context small)
     extracted = ""
-    parallel_key = get_parallel_api_key()
-    if parallel_key:
-        try:
-            from parallel import Parallel
+    fetch_error = ""
+    try:
+        extracted = _fetch_url_text(url, get_ingest_max_chars())
+    except Exception as e:
+        fetch_error = str(e)
 
-            max_chars = get_parallel_ingest_max_chars()
-            client = Parallel(api_key=parallel_key)
-            result = client.beta.extract(
-                urls=[url],
-                excerpts={"max_chars_per_result": max_chars},
-            )
-            if result and result.results:
-                r = result.results[0]
-                if getattr(r, "excerpts", None):
-                    extracted = "\n\n".join(r.excerpts)
-                elif getattr(r, "full_content", None):
-                    extracted = (r.full_content or "")[:max_chars]
-        except Exception as e:
-            extracted = f"*(Content extraction failed: {e}. Stub saved — fetch manually.)*"
-
-    if extracted and not extracted.startswith("*(Content extraction failed"):
+    if extracted:
         file_path.write_text(frontmatter + extracted + "\n")
         status = f"Ingested with content: {filename} ({len(extracted)} chars)"
     else:
-        stub = extracted or f"Source: {url}\n\n*(Content pending — configure PARALLEL_API_KEY or use ingest_text.)*"
+        stub = (
+            f"Source: {url}\n\n"
+            f"*(Content fetch failed: {fetch_error or 'empty response'}. "
+            f"Stub saved — use ingest_text with a summary.)*"
+        )
         file_path.write_text(frontmatter + stub + "\n")
-        status = f"Ingested stub: {filename}" + (" (extraction failed)" if extracted else "")
+        status = f"Ingested stub: {filename} (fetch failed)"
 
     # Update manifest
     manifest = _read_manifest(raw_dir)

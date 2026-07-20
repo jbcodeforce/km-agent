@@ -10,7 +10,6 @@ from agno.run.agent import RunOutput
 from agno.run.base import RunStatus
 
 from kma.agents.researcher import build_researcher_agent
-from kma.config import get_parallel_api_key
 from kma.tools.ingest import _read_manifest, list_uncompiled_file_ids
 from kma.tools.site_refs import (
     WebSiteRef,
@@ -77,10 +76,6 @@ def run_research_step(
     raw_dir.mkdir(parents=True, exist_ok=True)
 
     agent = build_researcher_agent(context_dir=ctx)
-    if agent is None:
-        raise RuntimeError(
-            "Researcher unavailable: set KMA_PARALLEL_API_KEY or PARALLEL_API_KEY for web research."
-        )
 
     site_refs = load_site_refs_for_context(ctx, site_refs_path)
     prompt = build_research_prompt(query, site_refs or None)
@@ -113,10 +108,6 @@ def run_search_pipeline(
     file_ids: list[str] = []
 
     if not skip_research:
-        if not get_parallel_api_key():
-            raise RuntimeError(
-                "Parallel API key required for research. Set KMA_PARALLEL_API_KEY or use --skip-research."
-            )
         final, file_ids = run_research_step(query, ctx, site_refs_path=site_refs_path)
         if final is None:
             research_status = "no_output"

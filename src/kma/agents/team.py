@@ -18,37 +18,73 @@ from kma.config import (
 from kma.llm_factory import build_default_llm_model
 
 
+def build_team_instructions(*, researcher_available: bool) -> str:
+    """Team-leader instructions; content depends on whether Researcher is a member."""
+    members = [
+        "- **Navigator** — Primary user-facing agent: wiki Q&A, SQL, files, synthesis from existing materials.",
+    ]
+    if researcher_available:
+        members.append(
+            "- **Researcher** — Web search and ingest to ``raw/``. Available now. Does not answer users directly."
+        )
+    members.extend(
+        [
+            "- **Compiler** — Turns one raw file into wiki articles (explicit ``file_id`` per run).",
+            "- **Linter** — Wiki health checks; writes ``wiki/lint-report.md``.",
+        ]
+    )
+    members_block = "\n".join(members)
 
-TEAM_INSTRUCTIONS = """\
+    if researcher_available:
+        routing_research = (
+            "| Research, enrich knowledge, search news, ingest URL/topic | **Researcher** "
+            "| Ask **Navigator** to synthesize an answer from ingested raw + wiki; call ``trigger_wiki_refresh`` |"
+        )
+        enrichment = """\
+## Enrichment workflow (research / news / enrich)
+
+Researcher is a team member. For any request that needs new external material
+(research a topic, search news, enrich the knowledge base, ingest a URL/topic):
+
+1. **Always delegate to Researcher** with a clear task: search, extract, ingest to ``raw/`` with tags. Ask Researcher to call ``read_web_site_refs`` when ``web_site_ref.json`` exists under context (or when the user names a sources file). Ask Researcher to list every new manifest ``file`` name ingested (e.g. ``my-topic.md``).
+2. **Delegate to Navigator** to answer the user's question using the newly ingested raw files (``read_file`` on ``raw/...``) plus existing wiki index. Do not repeat live web search.
+3. **Tell the user** in one line that the wiki is updating in the background (non-blocking).
+4. **Call ``trigger_wiki_refresh``** with the new file ids from step 1 (comma-separated or JSON array). If Researcher ingested nothing, skip this step.
+
+**Never** claim Researcher is unavailable. **Never** ask Navigator to perform live web search.
+"""
+    else:
+        routing_research = (
+            "| Research, enrich knowledge, search news, ingest URL/topic | **Navigator** "
+            "| Answer from wiki/``raw`` only; do not call ``trigger_wiki_refresh`` for new web ingest |"
+        )
+        enrichment = """\
+## Enrichment workflow (research / news / enrich)
+
+Researcher is not on this team. For research-style requests:
+
+1. **Delegate to Navigator** to answer from existing wiki and ``raw/`` materials only.
+2. Do **not** invent web-search tools.
+3. Do **not** call ``trigger_wiki_refresh`` for new web ingest (nothing new was ingested).
+"""
+
+    return f"""\
 You are KMA, the team leader coordinating specialist agents for personal knowledge management.
 
 ## Members
 
-- **Navigator** — Primary user-facing agent: wiki Q&A, SQL, files, synthesis from existing materials.
-- **Researcher** — Web search and ingest to ``raw/`` (when available). Does not answer users directly.
-- **Compiler** — Turns one raw file into wiki articles (explicit ``file_id`` per run).
-- **Linter** — Wiki health checks; writes ``wiki/lint-report.md``.
+{members_block}
 
 ## Routing
 
 | User intent | Delegate to | Your role after member returns |
 |-------------|-------------|--------------------------------|
-| Research, enrich knowledge, search news, ingest URL/topic | **Researcher** | Ask **Navigator** to synthesize an answer from ingested raw + wiki; call ``trigger_wiki_refresh`` |
+{routing_research}
 | Knowledge Q&A, SQL, files, drafts | **Navigator** | Synthesize and return |
 | "Compile wiki" / process raw file | **Compiler** | Pass explicit ``file_id`` from manifest |
 | "Lint wiki" / find gaps | **Linter** | Return lint summary |
 
-## Enrichment workflow (research / news / enrich)
-
-When the user wants new external material (research a topic, search news, enrich the knowledge base):
-
-1. **Delegate to Researcher** with a clear task: search, extract, ingest to ``raw/`` with tags. Ask Researcher to call ``read_web_site_refs`` when ``web_site_ref.json`` exists under context (or when the user names a sources file). Ask Researcher to list every new manifest ``file`` name ingested (e.g. ``my-topic.md``).
-2. **Delegate to Navigator** to answer the user's question using the newly ingested raw files (``read_file`` on ``raw/...``) plus existing wiki index. Do not repeat live web search.
-3. **Tell the user** in one line that the wiki is updating in the background (non-blocking).
-4. **Call ``trigger_wiki_refresh``** with the new file ids from step 1 (comma-separated or JSON array). If Researcher ingested nothing, skip this step.
-
-If Researcher is unavailable (no Parallel API key), delegate research-style requests to **Navigator** (Exa web search) and do not call ``trigger_wiki_refresh``.
-
+{enrichment}
 ## General rules
 
 - You are the voice the user hears — synthesize member outputs into one cohesive response.
@@ -57,19 +93,25 @@ If Researcher is unavailable (no Parallel API key), delegate research-style requ
 """
 
 
+# Default export for tests / docs: instructions when Researcher is present.
+TEAM_INSTRUCTIONS = build_team_instructions(researcher_available=True)
+
+
 def _build_members() -> list[Agent | Team]:
     return [m for m in [get_navigator(), get_researcher(), get_compiler(), get_linter()] if m is not None]
 
 
 def build_kma_team() -> Team:
+    members = _build_members()
+    researcher_available = any(getattr(m, "id", None) == "researcher" for m in members)
     return Team(
         id="kma",
         name="KMA",
         mode=TeamMode.coordinate,
         model=build_default_llm_model(),
-        members=_build_members(),
+        members=members,
         db=get_agent_db(),
-        instructions=TEAM_INSTRUCTIONS,
+        instructions=build_team_instructions(researcher_available=researcher_available),
         tools=build_team_tools(get_kma_context_dir()),
         learning=LearningMachine(
             knowledge=get_kma_knowledge(),
