@@ -691,19 +691,19 @@ def create_ingest_tools(raw_dir: Path) -> list:
         return json.dumps(manifest, indent=2)
 
     @tool
-    def update_manifest_compiled(filename: str) -> str:
+    def update_manifest_compiled(file_name: str) -> str:
         """Mark a document as compiled in the shared context manifest.
 
         Call this after successfully compiling a raw document into wiki articles.
 
         Args:
-            filename: ``file_id`` (``ingested:name.md`` or ``studies:path.md``), or a bare
+            file_name: ``file_id`` (``ingested:name.md`` or ``studies:path.md``), or a bare
                 raw filename (treated as ``ingested:…``).
 
         Returns:
             Confirmation message.
         """
-        key = filename.strip()
+        key = file_name.strip()
         if ":" not in key:
             key = make_file_id(INGESTED_LABEL, key)
         if mark_manifest_compiled(context_dir, key):
@@ -751,9 +751,13 @@ def create_compiler_manifest_tools(
         return json.dumps(rows, indent=2)
 
     @tool
-    def update_manifest_compiled(filename: str) -> str:
-        """Mark a document compiled. Prefer ``file_id`` from read_manifest (``label:relpath``)."""
-        key = filename.strip()
+    def update_manifest_compiled(file_name: str) -> str:
+        """Mark a document compiled. Prefer ``file_id`` from read_manifest (``label:relpath``).
+
+        Args:
+            file_name: The ``file_id`` string (e.g. ``studies:sql/joins.md`` or ``ingested:notes.md``).
+        """
+        key = file_name.strip()
         if ":" not in key:
             # Ambiguous bare name: try ingested: first, then any matching file field
             ingested_key = make_file_id(INGESTED_LABEL, key)

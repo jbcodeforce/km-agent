@@ -149,7 +149,7 @@ def build_compile_file_prompt(file_id: str, *, automated: bool = False) -> str:
         f"2) Read {read_path} via read_file.\n"
         f"3) Write wiki/summaries/{summary_name} with a concise markdown summary.\n"
         "4) Create or update concept articles under wiki/concepts/ for key topics from this file.\n"
-        f"5) Call update_manifest_compiled with filename {file_id}.\n"
+        f"5) Call update_manifest_compiled with file_name={file_id}.\n"
         "6) Call update_wiki_index with paths starting with wiki/.\n"
         "7) Call update_wiki_state with mark_compiled true.\n"
         + ("Keep responses short; complete the workflow." if automated else "")

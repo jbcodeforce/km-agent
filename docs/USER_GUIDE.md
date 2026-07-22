@@ -23,6 +23,7 @@ Be sure to have:
 - Docker engine or Mac contrainer (Tahoe version)
 - curl
 - git cli
+- oMLX or ollama for serving models
 
 As most of the user interaction depends on the km-agent repository, it needs to be cloned. It includes the agent definitions and a set of tools to manage knowledge:
 
@@ -32,15 +33,32 @@ As most of the user interaction depends on the km-agent repository, it needs to 
   cd km-agent
   ```
 
+### oMLX server
+
+[]()
+
+### Models
+
 ## Use Cases
 
 In this section we present the high level use cases and workflow a user can follow. 
 
 ### UC-1 Work on a new studies repository to build knowledge
 
-Once the km-agent repository is cloned, you can add content from the web or create your own notes as markdown files under the context/raw folder and perform deep research to enhance the knowledge content and build a body of knowledge on a given domain.
+Once the km-agent repository is cloned, you can add content from the web or create your own notes as markdown files under the docs folder and perform deep researches to enhance the knowledge content and build a body of knowledge on a given domain.
 
-The steps are:
+The current deployment model looks like in the following figure
+
+<figure markdown='span'>
+![](./images/uc1-component.drawio.png)
+</figure>
+
+* the setup studies script will create the green components, tools and prepare the environment to persist data to and access to the tools.
+* km-agent repository is, as of now, is needed as scripts installed in the user repository is using scripts, codes from km-agent
+* the km-agent solution are runtime components
+* oMLX server is external server for LLM inference
+
+#### The steps are:
 
 1. Create a folder at the same level as km-agent folder for managing your domain specific knowledge. As a supporting example we will use environment engineering studies.
   ```sh
@@ -49,7 +67,6 @@ The steps are:
   mkdir docs
   ```
 1. Use the setup studies to add agentic support to help you develop your deep research and knownledge using local AI agents of researcher, document compiler and linter, and navigator/orchestrator agent to route your future queries.
-
   ```sh
   cd kma-agent
   # create with default
@@ -64,7 +81,8 @@ The steps are:
   # under xxxx-studies/assistants/km-agent
   ./starter_mac.sh --dev --frontend
   ```
-1 Verify your configuration (before or after starting components):
+
+1. Verify your configuration (before or after starting components):
   ```sh
   cd xxx-studies/assistant/km-agent
   ./verify_config.sh
@@ -72,18 +90,24 @@ The steps are:
   ```
 
 1. Go to [http://localhost:5174/](http://localhost:5174/), set your name on the left side of as User ID, start to chat with the ageent team to do deep researches.
-1. Consult the trace and the logs/kma.log file to understand what the system does
+  ![](./images/chat_ui.png)
+
+1. Consult the trace and the logs/kma.log file to understand what the system does.
 
 #### Example of directive sent to agents via chat conversations:
 
 * I want to get a roadmap to learn environment engineering, using public content and training. save in the context/raw/env_engineer_roadmap.md
 * Help me to build a knowledge roadmap for environment engineering and science with python
-* let assume beginner level is already address, let start by searching for geospacial analysis for environment engineering. Develop a detailed plan
+* Let assume beginner level is already addressed, let start by searching for geospacial analysis for environment engineering. Develop a detailed plan
 
 
 ### Uc-2 Work from existing content
 
-User has already a set of notes, in the form of markdown files to manage his/her own knowledge. The tool will help to build semantic search and knowledge graph as wiki and build ontology. From there is is possible to add more content via deep research as in previous section.
+User has already a set of notes, in the form of markdown files to manage his/her own knowledge. The tool will help to build semantic search and knowledge graph as wiki and build ontology. From there is is possible to add more content via deep research as in previous section. This time the component looks like:
+
+<figure markdown='span'>
+![](./images/uc2-component.drawio.png)
+</figure>
 
 As in previous use case, the  km-agent should run **from inside the studies repo**. As an example we will use the [flink-studies](https://github.com/jbcodeforce/flink-studies) repository which includes a lot of documentations for Apache Flink and Confluent Cloud and code. 
 
@@ -108,11 +132,40 @@ As in previous use case, the  km-agent should run **from inside the studies repo
   ```bash
   ./assistants/km-agent/add_raw_frontmatter.sh --check
   ```
-1. Compile studies docs into the wiki
+  This will add frontmatter to each md files in the docs folder. As an example of metadata created:
+  ```yaml
+  ---
+  title: "Agentic Applications Cross Systems"
+  source: flink-studies/docs/architecture/agentic_flink.md
+  ingested:
+  tags: [flink, architecture, agents]
+  type: article
+  compiled: false
+  ---
+  ```
+
+1. Compile studies docs into the wiki (for flink-studies this tool was already executed.) The **Goal:** is from an existing Markdown tree (for example a `docs/` folder of the [flink-studies](https://github.com/jbcodeforce/flink-studies)), update a tracking manifest entries, and run the **Compiler** and **linter** agents so **`context/wiki/`** gains summaries, concept pages, and an updated **`index.md`**.
   ```bash
   ./assistants/km-agent/compile_docs_folder.sh
   ./assistants/km-agent/compile_docs_folder.sh --dry-run   # preview only
+  # more specific:
+   ./assistants/km-agent/compile_docs_folder.sh /path/to/docs --context ./context  --label studies
   ```
+  
+  This tool initiates the wiki build concepts. Inspect `./context/wiki/index.md` and `./context/wiki/concepts/` after a successful run (paths follow `KMA_CONTEXT_DIR`).
+
+  ```sh
+  km-agent/context/
+  ├  .manifest.json
+  └── wiki
+    ├── concepts
+    │   ├── agentic-ai-architecture.md
+        ├── index.md
+    ├── lint-report.md
+    └── summaries
+  ```
+
+For details on what this tool does [see this developer section](./DEVELOPER_PRACTICES.md#compile-to-wiki).
 
 ---
 TBC
@@ -122,75 +175,7 @@ Other pipeline wrappers (same directory): `index_wiki.sh`, `index_studies_code.s
 Output lands under the studies `KMA_CONTEXT_DIR` wiki (typically `assistants/km-agent/context/wiki/`). Sources stay under studies `docs/` and `context/raw/`; compile state is tracked in the single shared `context/.manifest.json` (entries use `file_id` like `flink:architecture/foo.md` or `ingested:notes.md`).
 
 
-See also `assistants/km-agent/README.md` in the studies repo after setup.
-
 ---
-
-## Use cases
-
-### UC-1 Add annotation to sources file(s)
-
-*Goal:** The source knowledge may not have the frontmatter manifest in each markdown file, and it is needed for metadata managment of the wiki.
-
-* Files that already have km-agent raw frontmatter get a manifest sync only (no rewrite unless --force).
-* When specifying a directory, it crawls **/*.md, skips excluded dirs, and updates the shared `context/.manifest.json` with `file_id` values like `studies:sub/needs.md`.
-* Files with non-km YAML frontmatter are skipped unless --force.
-* Batch runs print a summary line at the end.
-
-#### Preconditions
-
-* python and uv available.
-
-#### Steps (outline)
-
-```sh
-# Audit only — report which files have frontmatter (exit 1 if any are missing)
-uv run python scripts/add_raw_frontmatter.py /path/to/docs --check
-
-# Single file (unchanged behavior)
-uv run python scripts/add_raw_frontmatter.py path/to/doc.md --source flink-studies
-# Crawl a folder — adds frontmatter to files missing it, updates manifest with relative paths
-mkdir  /path/to/docs --source flink-studies
-```
-
-
-### UC-2 — Attach a studies repository and compile and lint documentation into the wiki
-
-**Goal:** From an existing Markdown tree (for example a `docs/` folder of the [flink-studies](https://github.com/jbcodeforce/flink-studies)), update a tracking manifest entries, and run the **Compiler** and **linter** agents so **`context/wiki/`** gains summaries, concept pages, and an updated **`index.md`**.
-
-#### Preconditions
-
-- Postgres running; LLM and embedder configured (`KMA_LLM_PROVIDER`, `KMA_EMBED_*`).
-- OMLX server (or cloud) models pulled for chat.
-- Embedding model will be pulled on the first calls
-- Input files have frontmatter information
-
-**Studies-hosted layout:** If you used [`setup_studies.sh`](https://github.com/jbcodeforce/km-agent/tree/main/scripts/setup_studies.sh), start the stack with `./assistants/km-agent/starter_mac.sh --dev --frontend` and compile with `./assistants/km-agent/compile_docs_folder.sh` from the studies repo root. Context is under `KMA_CONTEXT_DIR` (typically `docs/context/`).
-
-#### Steps (outline)
-
-**Option A — from km-agent repo:**
-
-1. From the km-agent repo folder, run the crawler and knowledge Compiler agent:
-
-   ```bash
-   uv run python scripts/compile_docs_folder.py /path/to/docs \
-     --context ./context  --label studies
-   ```
-
-   Use `--dry-run` or `--skip-compiler` to only prepare manifests and front matter without invoking the agent.
-
-   Unchanged docs are skipped when their content SHA-256 matches the `sha256` stored for that `file_id` in `context/.manifest.json`. Edit a file or pass `--recompile` to force the Compiler again.
-
-**Option B — studies-hosted layout:**
-
-1. From the studies repo:
-
-   ```bash
-   ./assistants/km-agent/compile_docs_folder.sh
-   ```
-
-2. Inspect `docs/context/wiki/index.md` and `docs/context/wiki/concepts/` after a successful run (paths follow `KMA_CONTEXT_DIR`).
 
 **Success:** Processed sources move to **compiled** (with `sha256` recorded on the shared context manifest), and the wiki index reflects new or updated articles. Unchanged files are left alone on later runs.
 
@@ -295,13 +280,3 @@ Use `--dry-run` to list categories/labs without writes; `--force` to re-summariz
 
 - Manifest field reference and `file_id` with labelled roots.
 - How to force a full recompile safely (if ever needed).
-
----
-
-## Contributing to this guide
-
-When you add or refine a use case:
-
-1. Keep **Goal → Preconditions → Steps → Success → Next** so readers can skim.
-2. Link to **`SPEC.md`** or **`DEVELOPER_PRACTICES.md`** instead of duplicating long environment tables.
-3. Use real commands and paths where possible; mark placeholders like `/path/to/your-studies/docs` clearly.

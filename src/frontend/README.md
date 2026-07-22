@@ -21,7 +21,7 @@ src/frontend/
 │   ├── main.js             # App bootstrap
 │   ├── App.vue             # Router outlet shell
 │   ├── router/index.js     # Routes and document title
-│   ├── views/ChatView.vue  # Shell: sidebar + chat, agent discovery
+│   ├── views/ChatView.vue  # Shell: sidebar + chat, team discovery
 │   ├── components/
 │   │   ├── SessionSidebar.vue   # Session list, user id, pagination
 │   │   └── KmChatPanel.vue      # Messages, streaming run, trace panel
@@ -38,14 +38,14 @@ sequenceDiagram
   participant Proxy as Vite /agent-os
   participant OS as AgentOS (FastAPI)
 
-  UI->>API: createAgentRunStream(agentId, message)
-  API->>Proxy: POST /agent-os/agents/{id}/runs
-  Proxy->>OS: POST /agents/{id}/runs (stream=true)
+  UI->>API: createTeamRunStream(teamId, message)
+  API->>Proxy: POST /agent-os/teams/{id}/runs
+  Proxy->>OS: POST /teams/{id}/runs (stream=true)
   OS-->>API: SSE body
-  API-->>UI: onTextChunk / onSessionId / onTrace / onDone
+  API-->>UI: onTextChunk / onSessionId / onProgress / onDone
 ```
 
-Session list and history use JSON endpoints (`listSessions`, `getSession`) on the same `/agent-os` prefix.
+Session list and history use JSON endpoints (`listTeamSessions`, `getSession`) on the same `/agent-os` prefix.
 
 ## Development
 
@@ -82,9 +82,9 @@ The browser never calls AgentOS directly in dev: all API traffic goes to `/agent
 
 ## Key modules
 
-- **`services/agentOs.js`** — `listAgents`, `listSessions`, `getSession`, `createAgentRunStream`, `consumeAgentRunSse`, `formatTraceLine`, `chatHistoryToMessages`, `pickAgentId`.
+- **`services/agentOs.js`** — `listTeams`, `listTeamSessions`, `getSession`, `createTeamRunStream`, `consumeAgentRunSse`, `formatTraceLine`, `chatHistoryToMessages`, `pickTeamId`.
 - **`utils/sseParse.js`** — `parseOneSseBlock`, `effectiveEventName` for Agno run events.
-- **`views/ChatView.vue`** — Resolves default agent id on mount, wires sidebar and chat panel.
+- **`views/ChatView.vue`** — Resolves default team id on mount, wires sidebar and chat panel.
 - **`components/KmChatPanel.vue`** — Streaming UI, markdown-ish rendering, optional progress/reasoning panel.
 - **`components/SessionSidebar.vue`** — Paginated session list; exposes `refreshList()` after a run completes.
 

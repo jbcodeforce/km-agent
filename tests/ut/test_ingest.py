@@ -293,9 +293,9 @@ def test_create_ingest_tools_update_manifest_compiled(tmp_path: Path) -> None:
     )
     tools = create_ingest_tools(raw)
     upd = next(t for t in tools if t.name == "update_manifest_compiled")
-    assert upd.entrypoint(filename="x.md") == "Marked as compiled: ingested:x.md"
+    assert upd.entrypoint(file_name="x.md") == "Marked as compiled: ingested:x.md"
     assert _read_manifest(ctx)[0]["compiled"] is True
-    assert "Not found" in upd.entrypoint(filename="missing.md")
+    assert "Not found" in upd.entrypoint(file_name="missing.md")
 
 
 def test_sync_manifest_from_raw_markdown(tmp_path: Path) -> None:

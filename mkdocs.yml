@@ -37,13 +37,15 @@ theme:
       - navigation.top
       - navigation.footer
 extra_css: ["extra.css"]
+extra_javascript:
+  # Pin Mermaid so Material does not rely on unpkg@11 resolution (can fail silently).
+  - https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js
 plugins:
   - search:
       lang: en
   - minify:
       minify_html: true
   - mkdocstrings
-  - mermaid2
 markdown_extensions:
   - abbr
   - attr_list

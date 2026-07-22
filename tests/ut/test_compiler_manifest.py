@@ -92,7 +92,7 @@ def test_update_manifest_compiled_labelled(tmp_path: Path) -> None:
         ],
     )
     _, upd = create_compiler_manifest_tools(ctx, [("studies", r1)])
-    assert "Marked" in upd.entrypoint(filename="studies:a.md")
+    assert "Marked" in upd.entrypoint(file_name="studies:a.md")
     m = json.loads((ctx / ".manifest.json").read_text(encoding="utf-8"))
     assert m[0]["compiled"] is True
 

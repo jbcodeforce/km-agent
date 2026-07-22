@@ -1,5 +1,5 @@
 /**
- * AgentOS HTTP client: JSON session APIs and streaming agent runs (SSE).
+ * AgentOS HTTP client: JSON session APIs and streaming team runs (SSE).
  * Dev traffic uses the `/agent-os` prefix (Vite proxy → `VITE_AGENT_OS_ORIGIN`).
  */
 import { parseOneSseBlock, effectiveEventName } from '@/utils/sseParse.js'
@@ -143,11 +143,6 @@ async function jsonFetch(path, options = {}) {
   return text ? JSON.parse(text) : null
 }
 
-/** @returns {Promise<unknown>} Agent list from AgentOS. */
-export async function listAgents() {
-  return jsonFetch('/agents')
-}
-
 /** @returns {Promise<unknown>} Team list from AgentOS. */
 export async function listTeams() {
   return jsonFetch('/teams')
@@ -199,20 +194,6 @@ export async function listTeamSessions({ userId, teamId, page = 1, limit = 20 })
 }
 
 /**
- * @param {{ userId?: string, agentId: string, page?: number, limit?: number }} params
- */
-export async function listSessions({ userId, agentId, page = 1, limit = 20 }) {
-  const q = new URLSearchParams({
-    type: 'agent',
-    component_id: agentId,
-    page: String(page),
-    limit: String(limit)
-  })
-  if (userId) q.set('user_id', userId)
-  return jsonFetch(`/sessions?${q.toString()}`)
-}
-
-/**
  * @param {string} sessionId
  * @param {{ userId?: string }} [opts]
  */
@@ -221,18 +202,6 @@ export async function getSession(sessionId, opts = {}) {
   if (opts.userId) q.set('user_id', opts.userId)
   const qs = q.toString()
   return jsonFetch(`/sessions/${encodeURIComponent(sessionId)}${qs ? `?${qs}` : ''}`)
-}
-
-/**
- * Cancel an in-flight agent run (AgentOS marks it cancelled; streaming emits RunCancelled).
- * @param {string} agentId
- * @param {string} runId
- */
-export async function cancelAgentRun(agentId, runId) {
-  return jsonFetch(
-    `/agents/${encodeURIComponent(agentId)}/runs/${encodeURIComponent(runId)}/cancel`,
-    { method: 'POST' }
-  )
 }
 
 /**
@@ -270,7 +239,7 @@ export function chatHistoryToMessages(chatHistory) {
 }
 
 /**
- * Process AgentOS agent run SSE stream.
+ * Process AgentOS team (or agent) run SSE stream.
  * @param {ReadableStream<Uint8Array>} body
  * @param {{
  *   onTextChunk?: (s: string) => void,
@@ -361,90 +330,6 @@ export async function consumeAgentRunSse(body, handlers) {
 }
 
 /**
- * @param {string} agentId
- * @param {{ message: string, sessionId?: string | null, userId?: string | null }} input
- * @param {{
- *   onTextChunk?: (s: string) => void,
- *   onSessionId?: (id: string) => void,
- *   onRunId?: (id: string) => void,
- *   onRunMeta?: (meta: object) => void,
- *   onTrace?: (s: string) => void,
- *   onProgress?: (update: { mode: 'append' | 'line', text: string }) => void,
- *   onError?: (err: Error) => void,
- *   onDone?: () => void
- * }} handlers
- * @returns {{ promise: Promise<void>, stop: () => Promise<void> }}
- */
-export function createAgentRunStream(agentId, input, handlers) {
-  const abortController = new AbortController()
-  let runId = null
-
-  const promise = (async () => {
-    const form = new FormData()
-    form.set('message', input.message)
-    form.set('stream', 'true')
-    if (input.sessionId) form.set('session_id', input.sessionId)
-    if (input.userId) form.set('user_id', input.userId)
-
-    let res
-    try {
-      res = await fetch(url(`/agents/${encodeURIComponent(agentId)}/runs`), {
-        method: 'POST',
-        body: form,
-        signal: abortController.signal
-      })
-    } catch (e) {
-      if (e?.name === 'AbortError') return
-      handlers.onError?.(e instanceof Error ? e : new Error(String(e)))
-      handlers.onDone?.()
-      return
-    }
-
-    if (!res.ok) {
-      const text = await res.text()
-      let detail = res.statusText
-      try {
-        const j = JSON.parse(text)
-        if (j.detail != null) detail = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail)
-      } catch {
-        if (text) detail = text.slice(0, 500)
-      }
-      handlers.onError?.(new Error(detail))
-      handlers.onDone?.()
-      return
-    }
-
-    if (!res.body) {
-      handlers.onError?.(new Error('Empty response body'))
-      handlers.onDone?.()
-      return
-    }
-
-    await consumeAgentRunSse(res.body, {
-      ...handlers,
-      onRunId: (id) => {
-        runId = id
-        handlers.onRunId?.(id)
-      }
-    })
-  })()
-
-  return {
-    promise,
-    stop: async () => {
-      if (runId) {
-        try {
-          await cancelAgentRun(agentId, runId)
-        } catch {
-          /* run may have already finished */
-        }
-      }
-      abortController.abort()
-    }
-  }
-}
-
-/**
  * @param {string} teamId
  * @param {{ message: string, sessionId?: string | null, userId?: string | null }} input
  * @param {{
@@ -526,22 +411,6 @@ export function createTeamRunStream(teamId, input, handlers) {
       abortController.abort()
     }
   }
-}
-
-/**
- * Choose agent id from AgentOS list response, preferring `fallback` when present.
- * @param {unknown} agentsResponse - Array or `{ agents: [...] }`
- * @param {string} [fallback]
- * @returns {string}
- */
-export function pickAgentId(agentsResponse, fallback = 'expert-agent') {
-  if (!agentsResponse) return fallback
-  const list = Array.isArray(agentsResponse) ? agentsResponse : agentsResponse.agents
-  if (!Array.isArray(list) || list.length === 0) return fallback
-  const byId = list.find((a) => a.id === fallback || a.agent_id === fallback)
-  if (byId) return byId.id ?? byId.agent_id ?? fallback
-  const first = list[0]
-  return first.id ?? first.agent_id ?? fallback
 }
 
 /**
