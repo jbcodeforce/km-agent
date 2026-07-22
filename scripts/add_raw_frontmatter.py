@@ -25,12 +25,15 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "src"))
 
+from kma.config import get_kma_context_dir  # noqa: E402  # pyright: ignore[reportMissingImports]
 from kma.tools.ingest import (  # noqa: E402  # pyright: ignore[reportMissingImports]
     apply_raw_frontmatter_to_text,
     append_manifest_entry,
+    ensure_manifest_exists,
     has_km_raw_frontmatter,
     has_yaml_frontmatter,
     iter_markdown_files,
+    make_file_id,
     title_from_markdown,
 )
 
@@ -50,23 +53,23 @@ def _fallback_title(path: Path, docs_root: Path) -> str:
 def _check_paths(paths: list[Path], docs_root: Path) -> int:
     with_fm: list[str] = []
     without_fm: list[str] = []
+    print(f"inspected: {len(paths)} markdown file(s)")
     for path in paths:
         text = path.read_text(encoding="utf-8")
         rel = _manifest_rel(path, docs_root)
+        print(f"  inspected: {path}")
         if has_yaml_frontmatter(text):
             with_fm.append(rel)
+            print(f"  status:    with frontmatter ({rel})")
         else:
             without_fm.append(rel)
-
-    for rel in sorted(with_fm):
-        print(f"with frontmatter: {rel}")
-    for rel in sorted(without_fm):
-        print(f"without frontmatter: {rel}")
+            print(f"  status:    without frontmatter ({rel})")
 
     total = len(paths)
     print(
-        f"summary: {total} markdown file(s); "
-        f"{len(with_fm)} with frontmatter, {len(without_fm)} without"
+        f"summary: {total} inspected; "
+        f"{len(with_fm)} with frontmatter, {len(without_fm)} without; "
+        f"0 modified (--check)"
     )
     return 1 if without_fm else 0
 
@@ -75,6 +78,8 @@ def _process_file(
     path: Path,
     docs_root: Path,
     *,
+    context_dir: Path,
+    label: str,
     title: str | None,
     source: str,
     tags: list[str],
@@ -82,16 +87,20 @@ def _process_file(
     force: bool,
     dry_run: bool,
 ) -> tuple[str, str | None]:
-    """Return (status, error). status is updated, skipped, or dry_run."""
+    """Return (status, error). status is modified, skipped, unchanged, or dry_run."""
     text = path.read_text(encoding="utf-8")
     rel = _manifest_rel(path, docs_root)
+    file_id = make_file_id(label, rel)
     fallback = _fallback_title(path, docs_root)
+    print(f"inspected: {path}")
 
     if has_km_raw_frontmatter(text) and not force:
         if dry_run:
+            print(f"  dry-run:   would leave unchanged ({file_id})")
             return "dry_run", None
-        append_manifest_entry(docs_root, rel, title or fallback, source)
-        return "updated", None
+        append_manifest_entry(context_dir, file_id, title or fallback, source)
+        print(f"  unchanged: already has km-agent frontmatter ({file_id})")
+        return "unchanged", None
 
     new_text, resolved_title, skip_reason = apply_raw_frontmatter_to_text(
         text,
@@ -103,18 +112,19 @@ def _process_file(
         force=force,
     )
     if skip_reason:
+        print(f"  skipped:   {skip_reason} ({file_id})")
         return "skipped", f"{skip_reason}: {path}"
 
     if dry_run:
-        print(f"[dry-run] would update {rel}")
-        print(new_text.splitlines()[0])
-        print("...")
+        print(f"  dry-run:   would modify ({file_id})")
+        print(f"  preview:   {new_text.splitlines()[0]}")
+        print("  ...")
         return "dry_run", None
 
     path.write_text(new_text, encoding="utf-8")
-    append_manifest_entry(docs_root, rel, resolved_title, source)
-    print(f"updated: {path}")
-    return "updated", None
+    append_manifest_entry(context_dir, file_id, resolved_title, source)
+    print(f"modified:  {path}")
+    return "modified", None
 
 
 def main() -> int:
@@ -143,6 +153,17 @@ def main() -> int:
         default="article",
         dest="doc_type",
         help="Frontmatter type: paper, article, repo, notes, ... (default: article)",
+    )
+    parser.add_argument(
+        "--context",
+        type=Path,
+        default=None,
+        help="KMA context dir for the shared .manifest.json (default: KMA_CONTEXT_DIR)",
+    )
+    parser.add_argument(
+        "--label",
+        default="studies",
+        help="Manifest file_id label for this docs tree (default: studies)",
     )
     parser.add_argument(
         "--check",
@@ -181,12 +202,27 @@ def main() -> int:
     if args.check:
         return _check_paths(paths, docs_root)
 
+    context_dir = (args.context or get_kma_context_dir()).resolve()
+    if not args.dry_run:
+        ensure_manifest_exists(context_dir)
+
     tags = [t.strip() for t in args.tags.split(",") if t.strip()]
-    updated = skipped = dry_run = errors = 0
+    inspected: list[Path] = []
+    modified: list[Path] = []
+    unchanged: list[Path] = []
+    skipped: list[Path] = []
+    dry_run_paths: list[Path] = []
+    errors = 0
+
+    print(f"scanning: {target} ({len(paths)} markdown file(s))")
+    print(f"manifest context: {context_dir} (label={args.label})")
     for path in paths:
+        inspected.append(path)
         status, err = _process_file(
             path,
             docs_root,
+            context_dir=context_dir,
+            label=args.label,
             title=args.title,
             source=args.source,
             tags=tags,
@@ -194,30 +230,49 @@ def main() -> int:
             force=args.force,
             dry_run=args.dry_run,
         )
-        if status == "updated":
-            updated += 1
+        if status == "modified":
+            modified.append(path)
         elif status == "dry_run":
-            dry_run += 1
+            dry_run_paths.append(path)
+        elif status == "unchanged":
+            unchanged.append(path)
         elif status == "skipped":
-            skipped += 1
+            skipped.append(path)
             if err:
                 print(f"error: {err}", file=sys.stderr)
                 errors += 1
 
-    if len(paths) > 1:
-        print(
-            f"summary: {len(paths)} file(s); "
-            f"{updated} updated, {skipped} skipped, {dry_run} dry-run, {errors} error(s)"
-        )
+    print("")
+    print("── result ──")
+    print(f"inspected ({len(inspected)}):")
+    for path in inspected:
+        print(f"  · {path}")
+    print(f"modified ({len(modified)}):")
+    if modified:
+        for path in modified:
+            print(f"  · {path}")
+    else:
+        print("  · (none)")
+    if unchanged:
+        print(f"unchanged ({len(unchanged)}):")
+        for path in unchanged:
+            print(f"  · {path}")
+    if dry_run_paths:
+        print(f"dry-run ({len(dry_run_paths)}):")
+        for path in dry_run_paths:
+            print(f"  · {path}")
+    if skipped:
+        print(f"skipped ({len(skipped)}):")
+        for path in skipped:
+            print(f"  · {path}")
+
+    if (modified or unchanged) and not args.dry_run:
+        from kma.tools.ingest import context_manifest_path
+
+        print(f"manifest: {context_manifest_path(context_dir)}")
 
     if errors:
         return 1
-
-    if len(paths) == 1 and updated == 1 and not args.dry_run:
-        manifest_path = docs_root / ".manifest.json"
-        rel = _manifest_rel(paths[0], docs_root)
-        print(f"manifest: {manifest_path} (entry for {rel})")
-
     return 0
 
 

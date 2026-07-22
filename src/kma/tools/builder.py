@@ -177,7 +177,7 @@ def build_team_tools(context_dir: Path | str | None = None) -> list:
         """
         ids = _parse_wiki_refresh_file_ids(file_ids)
         if not ids:
-            ids = list_uncompiled_file_ids(raw_dir)
+            ids = list_uncompiled_file_ids(ctx)
         from kma.workflows.background import schedule_wiki_refresh
 
         return schedule_wiki_refresh(ctx, ids)

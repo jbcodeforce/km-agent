@@ -8,8 +8,9 @@ Technical deep dives (Postgres volumes, integration tests, frontend proxy detail
 
 The following figure illustrates the components involved in the solution:
 
-![](./images/agents_solution.drawio.png)
-
+<figure markdown='span'>
+![](./images/agents_solution.drawio.png){ width=800 }
+</figure>
 * User interacts with CLIs and chat interface to the backend system, file system and external systems.
 * Knowledge can come from existing notes in markdown format, but will be created and compiled in wiki folder, with concept, indexing and ontology.
 * Solution interacts with local or Frontier LLMs via agents
@@ -17,25 +18,30 @@ The following figure illustrates the components involved in the solution:
 
 ## What you need to get started
 
+Be sure to have:
+
 - Docker engine or Mac contrainer (Tahoe version)
 - curl
 - git cli
 
+As most of the user interaction depends on the km-agent repository, it needs to be cloned. It includes the agent definitions and a set of tools to manage knowledge:
+
+* clone the repository to km-agent
+  ```sh
+  git clone https://github.com/jbcodeforce/km-agent
+  cd km-agent
+  ```
+
 ## Use Cases
 
-In this section we present the high level use cases and workflow a user can follow:
+In this section we present the high level use cases and workflow a user can follow. 
 
-### Work on a new studies repository to build knowledge
+### UC-1 Work on a new studies repository to build knowledge
 
 Once the km-agent repository is cloned, you can add content from the web or create your own notes as markdown files under the context/raw folder and perform deep research to enhance the knowledge content and build a body of knowledge on a given domain.
 
 The steps are:
 
-1. clone the repository to km-agent
-  ```sh
-  git clone https://github.com/jbcodeforce/km-agent
-  cd km-agent
-  ```
 1. Create a folder at the same level as km-agent folder for managing your domain specific knowledge. As a supporting example we will use environment engineering studies.
   ```sh
   mkdir env-eng-studies
@@ -65,7 +71,7 @@ The steps are:
   ./verify_config.sh --frontend   # also check the Vite dev server
   ```
 
-1. Go to [http://localhost:5174/](http://localhost:5174/), set your name on the left side of as User ID, start to chat (see next)
+1. Go to [http://localhost:5174/](http://localhost:5174/), set your name on the left side of as User ID, start to chat with the ageent team to do deep researches.
 1. Consult the trace and the logs/kma.log file to understand what the system does
 
 #### Example of directive sent to agents via chat conversations:
@@ -75,77 +81,46 @@ The steps are:
 * let assume beginner level is already address, let start by searching for geospacial analysis for environment engineering. Develop a detailed plan
 
 
-### Work from existing content
+### Uc-2 Work from existing content
 
-User has already a set of notes, in the form of markdown files to manage his/her own knowledge. The tool will help to build semantic search and knowledge graph as wiki, and add more content via deep research.
+User has already a set of notes, in the form of markdown files to manage his/her own knowledge. The tool will help to build semantic search and knowledge graph as wiki and build ontology. From there is is possible to add more content via deep research as in previous section.
 
+As in previous use case, the  km-agent should run **from inside the studies repo**. As an example we will use the [flink-studies](https://github.com/jbcodeforce/flink-studies) repository which includes a lot of documentations for Apache Flink and Confluent Cloud and code. 
 
-## Getting started
+1. From the **km-agent** repository:
+  ```bash
+  ./scripts/setup_studies.sh /path/to/flink-studies --kma-home $PWD --label flink
+  ```
+  This creates `assistants/km-agent/` with `context/`, `example.env`, `.env`, `.kma-home`, and wrapper scripts. Edit `assistants/km-agent/.env` for LLM keys and ports. The setup uses a dedicated Postgres container name and port (`5433` by default) so it does not clash with a km-agent repo running on `5432`.
 
+1. Start the backend, frontend servers
+  ```bash
+  cd /path/to/flink-studies
+  ./assistants/km-agent/starter_mac.sh --dev --frontend
+  ```
 
+1. Verify the configuration
+  ```bash
+  ./assistants/km-agent/verify_config.sh
+  ```
 
-Edit **`.env`** at minimum for:
-
-| Area | Variables (examples) | Notes |
-|------|------------------------|--------|
-| Context on disk | `KMA_CONTEXT_DIR` | Default `./context` — it will contaign `raw/`, `wiki/`, and other files agents read and write. You can have different contexts |
-| Database | `KMA_DB_HOST`, `KMA_DB_PORT`, `KMA_DB_USER`, `KMA_DB_PASS`, `KMA_DB_DATABASE` | On the **host**, use `localhost`). See [DEVELOPER_PRACTICES — Postgres](DEVELOPER_PRACTICES.md#postgres-data). |
-| Chat model | `KMA_LLM_PROVIDER`, `KMA_MODEL_ID` (or provider-specific keys) | Pull the LLM model you reference before first chat. |
-| Embeddings | `KMA_EMBED_PROVIDER`, `KMA_EMBED_MODEL`, `KMA_EMBED_DIMENSIONS` | Vector size must match the model; do not change dimensions on an existing DB without a plan (see developer practices). |
-
-
-
-Adjust the model names to match `KMA_MODEL_ID` and `KMA_EMBED_MODEL` in `.env`.
-
-
-
-### 2- Start the Knowledge Management Agent components
-
-In a separate terminal, from the repo root, start the Postgresql server, the km-agent server:
-
-```bash
-./scripts/starter.sh
-```
-
-On macOS with Apple's native `container` CLI (no Docker Compose), use `./scripts/starter-mac.sh --dev --frontend` instead — see [`DEVELOPER_PRACTICES.md`](./DEVELOPER_PRACTICES.md#).
-
-After the stack is up, re-run `./scripts/verify_config.sh --frontend` to confirm Postgres, AgentOS, LLM models, and the chat UI are reachable.
+1. The documents need to have a frontmatter in each markdown file.  This can be run as many time as needed, when new files are added. 
+  ```bash
+  ./assistants/km-agent/add_raw_frontmatter.sh --check
+  ```
+1. Compile studies docs into the wiki
+  ```bash
+  ./assistants/km-agent/compile_docs_folder.sh
+  ./assistants/km-agent/compile_docs_folder.sh --dry-run   # preview only
+  ```
 
 ---
-
-## Attach a studies repository (hosted layout)
-
-Use this when km-agent should run **from inside a studies repo** (for example [flink-studies](https://github.com/jbcodeforce/flink-studies)) while keeping `context/` and configuration in that repo. AgentOS and the chat UI still run from your km-agent clone; the studies repo holds context, `.env`, and wrapper scripts under `assistants/km-agent/`.
-
-### Bootstrap (once)
-
-From the **km-agent** repository:
-
-```bash
-./scripts/setup_studies.sh /path/to/ML-studies
-```
-
-This creates `assistants/km-agent/` with `context/`, `example.env`, `.env`, `.kma-home`, and wrapper scripts. Edit `assistants/km-agent/.env` for LLM keys and ports. The setup uses a dedicated Postgres container name and port (`5433` by default) so it does not clash with a km-agent repo running on `5432`.
-
-### Start from the studies repo
-
-```bash
-cd /path/to/ML-studies
-./assistants/km-agent/starter_mac.sh --dev --frontend
-./assistants/km-agent/verify_config.sh --frontend
-```
-
-### Compile studies docs into the wiki
-
-```bash
-./assistants/km-agent/add_raw_frontmatter.sh --check
-./assistants/km-agent/compile_docs_folder.sh
-./assistants/km-agent/compile_docs_folder.sh --dry-run   # preview only
-```
+TBC
 
 Other pipeline wrappers (same directory): `index_wiki.sh`, `index_studies_code.sh`, `build_ontology.sh`, `run_search.sh`.
 
-Output lands under the studies `KMA_CONTEXT_DIR` wiki (typically `docs/context/wiki/`). The studies `docs/` tree and `docs/.manifest.json` stay in place; the Compiler reads them via the studies raw root label.
+Output lands under the studies `KMA_CONTEXT_DIR` wiki (typically `assistants/km-agent/context/wiki/`). Sources stay under studies `docs/` and `context/raw/`; compile state is tracked in the single shared `context/.manifest.json` (entries use `file_id` like `flink:architecture/foo.md` or `ingested:notes.md`).
+
 
 See also `assistants/km-agent/README.md` in the studies repo after setup.
 
@@ -158,7 +133,7 @@ See also `assistants/km-agent/README.md` in the studies repo after setup.
 *Goal:** The source knowledge may not have the frontmatter manifest in each markdown file, and it is needed for metadata managment of the wiki.
 
 * Files that already have km-agent raw frontmatter get a manifest sync only (no rewrite unless --force).
-* When specifying a directory, it crawls **/*.md, skips excluded dirs, writes manifest at the folder root with paths like sub/needs.md.
+* When specifying a directory, it crawls **/*.md, skips excluded dirs, and updates the shared `context/.manifest.json` with `file_id` values like `studies:sub/needs.md`.
 * Files with non-km YAML frontmatter are skipped unless --force.
 * Batch runs print a summary line at the end.
 
@@ -205,6 +180,8 @@ mkdir  /path/to/docs --source flink-studies
 
    Use `--dry-run` or `--skip-compiler` to only prepare manifests and front matter without invoking the agent.
 
+   Unchanged docs are skipped when their content SHA-256 matches the `sha256` stored for that `file_id` in `context/.manifest.json`. Edit a file or pass `--recompile` to force the Compiler again.
+
 **Option B — studies-hosted layout:**
 
 1. From the studies repo:
@@ -215,7 +192,7 @@ mkdir  /path/to/docs --source flink-studies
 
 2. Inspect `docs/context/wiki/index.md` and `docs/context/wiki/concepts/` after a successful run (paths follow `KMA_CONTEXT_DIR`).
 
-**Success:** Uncompiled sources in the manifest move to **compiled**, and the wiki index reflects new or updated articles.
+**Success:** Processed sources move to **compiled** (with `sha256` recorded on the shared context manifest), and the wiki index reflects new or updated articles. Unchanged files are left alone on later runs.
 
 ### UC-2b — Catalog studies code into the wiki (intent summaries)
 

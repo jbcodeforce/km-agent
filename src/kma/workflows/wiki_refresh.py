@@ -81,7 +81,7 @@ def compile_raw_files(
             logger.error("%s", e)
             continue
 
-        if manifest_entry_compiled(raw_home, rel):
+        if manifest_entry_compiled(ctx, compile_id):
             logger.info("skip already compiled: %s", compile_id)
             compiled.append(compile_id)
             continue
@@ -94,7 +94,7 @@ def compile_raw_files(
             print(f"compiler run failed for {compile_id}: {out.status}", file=sys.stderr)
             continue
 
-        if not mark_manifest_compiled(raw_home, rel):
+        if not mark_manifest_compiled(ctx, compile_id):
             logger.warning("manifest entry not updated after compile: %s", compile_id)
 
         compiled.append(compile_id)

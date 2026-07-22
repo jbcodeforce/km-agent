@@ -135,7 +135,7 @@ STUDIES_SLUG="$(slugify "${STUDIES_LABEL}")"
 [[ -n "${STUDIES_SLUG}" ]] || die "could not derive slug from label: ${STUDIES_LABEL}"
 
 TARGET_DIR="${STUDIES_ROOT}/docs"
-CONTEXT_DIR="${TARGET_DIR}/context"
+CONTEXT_DIR="${STUDIES_ROOT}/assistants/km-agent/context"
 ASSISTANTS_DIR="${STUDIES_ROOT}/assistants/km-agent"
 DB_CONTAINER="kma-${STUDIES_SLUG}-db"
 DB_PORT=5433
@@ -188,6 +188,10 @@ Next steps (from studies repo):
   3. ./assistants/km-agent/verify_config.sh --frontend --trace-env
   4. ./assistants/km-agent/add_raw_frontmatter.sh --check
   5. ./assistants/km-agent/compile_docs_folder.sh --dry-run
+  6. ./assistants/km-agent/index_wiki.sh
+  7. ./assistants/km-agent/index_studies_code.sh
+  8. ./assistants/km-agent/build_ontology.sh
+  9. ./assistants/km-agent/run_search.sh
 
 Postgres container: ${DB_CONTAINER} on port ${DB_PORT}
 Context directory:  ${CONTEXT_DIR}

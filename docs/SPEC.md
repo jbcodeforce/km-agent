@@ -45,7 +45,7 @@ There are two types of raw knowledge: the docs folder of a studies repository, l
 Raw data flows through a compilation pipeline into a structured wiki:
 
 ```sh
-Ingest (Researcher)     →  context/raw/     →  .manifest.json tracks state
+Ingest (Researcher)     →  context/raw/     →  context/.manifest.json tracks state
 Compile (Compiler)      →  context/wiki/    →  concepts/, summaries/, index.md
 Query (Navigator)       →  index-first and/or search_wiki →  pulls specific articles
 File outputs (Navigator)→  wiki/outputs/    →  compounds back into wiki
@@ -118,8 +118,8 @@ context/
 ├── about-me.md             # User background, goals
 ├── preferences.md          # Working style, file conventions
 ├── templates/              # Document scaffolds
+├── .manifest.json          # Shared ingest/compile state (file_id keys)
 ├── raw/                    # Ingested source material
-│   ├── .manifest.json      # Ingest/compile state tracking
 │   └── *.md                # Raw documents with YAML frontmatter
 └── wiki/                   # LLM-compiled knowledge base
     ├── index.md            # Master index with article summaries

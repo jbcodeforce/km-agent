@@ -13,23 +13,23 @@ from kma.workflows.background import schedule_wiki_refresh
 
 
 def test_list_uncompiled_file_ids(tmp_path: Path) -> None:
-    raw = tmp_path / "raw"
-    raw.mkdir()
+    ctx = tmp_path
+    (ctx / "raw").mkdir()
     manifest = [
-        {"file": "a.md", "compiled": False},
-        {"file": "b.md", "compiled": True},
-        {"file": "c.md", "compiled": False},
+        {"file_id": "ingested:a.md", "file": "a.md", "compiled": False},
+        {"file_id": "ingested:b.md", "file": "b.md", "compiled": True},
+        {"file_id": "ingested:c.md", "file": "c.md", "compiled": False},
     ]
-    (raw / ".manifest.json").write_text(json.dumps(manifest))
+    (ctx / ".manifest.json").write_text(json.dumps(manifest))
 
-    ids = list_uncompiled_file_ids(raw)
-    assert ids == ["a.md", "c.md"]
+    ids = list_uncompiled_file_ids(ctx)
+    assert ids == ["ingested:a.md", "ingested:c.md"]
 
 
 def test_list_uncompiled_file_ids_empty_manifest(tmp_path: Path) -> None:
-    raw = tmp_path / "raw"
-    raw.mkdir()
-    assert list_uncompiled_file_ids(raw) == []
+    ctx = tmp_path
+    (ctx / "raw").mkdir()
+    assert list_uncompiled_file_ids(ctx) == []
 
 
 def test_schedule_wiki_refresh_dedup(monkeypatch, tmp_path: Path) -> None:

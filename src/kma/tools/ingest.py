@@ -1,5 +1,6 @@
 """Ingest tools — fetch URLs and save text to raw/ with frontmatter."""
 
+import hashlib
 import json
 import re
 from datetime import datetime, timezone
@@ -69,46 +70,173 @@ def _slugify(text: str) -> str:
     return text[:80].strip("-")
 
 
-def _read_manifest(raw_dir: Path) -> list[dict]:
-    manifest_path = raw_dir / ".manifest.json"
-    if manifest_path.exists():
-        return json.loads(manifest_path.read_text())  # type: ignore[no-any-return]
-    return []
+MANIFEST_FILENAME = ".manifest.json"
+INGESTED_LABEL = "ingested"
 
 
-def _write_manifest(raw_dir: Path, manifest: list[dict]) -> None:
-    manifest_path = raw_dir / ".manifest.json"
-    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+def context_manifest_path(context_dir: Path) -> Path:
+    """Return ``<context>/.manifest.json`` — the single shared manifest for all raw roots."""
+    return Path(context_dir).resolve() / MANIFEST_FILENAME
 
 
-def manifest_entry_compiled(raw_dir: Path, file_rel: str) -> bool:
-    """Return whether ``file_rel`` is marked compiled in ``raw_dir/.manifest.json``."""
-    for entry in _read_manifest(raw_dir):
-        if entry.get("file") == file_rel:
-            return bool(entry.get("compiled"))
-    return False
+def make_file_id(label: str, file_rel: str) -> str:
+    """Build a stable ``label:relpath`` id (e.g. ``studies:sql/joins.md``)."""
+    rel = str(file_rel).replace("\\", "/").lstrip("/")
+    return f"{label}:{rel}"
 
 
-def mark_manifest_compiled(raw_dir: Path, file_rel: str) -> bool:
-    """Mark one manifest entry compiled. Returns True if the entry was found and updated."""
-    manifest = _read_manifest(raw_dir)
+def split_file_id(file_id: str) -> tuple[str, str]:
+    """Split ``label:relpath`` into ``(label, rel)``. Bare paths use the ingested label."""
+    key = (file_id or "").strip()
+    if ":" in key:
+        label, rel = key.split(":", 1)
+        if label and rel:
+            return label, rel
+    return INGESTED_LABEL, key
+
+
+def _entry_file_id(entry: dict) -> str:
+    """Resolve ``file_id`` from an entry, including legacy rows that only have ``file``."""
+    fid = entry.get("file_id")
+    if fid:
+        return str(fid)
+    rel = entry.get("file")
+    if rel:
+        return make_file_id(INGESTED_LABEL, str(rel))
+    return ""
+
+
+def _find_manifest_entry(manifest: list[dict], file_id: str) -> dict | None:
+    """Find an entry by ``file_id``, with legacy ``file``-only fallback."""
+    key = file_id.strip()
+    label, rel = split_file_id(key)
     for entry in manifest:
-        if entry.get("file") == file_rel:
-            entry["compiled"] = True
-            _write_manifest(raw_dir, manifest)
-            return True
-    return False
+        if _entry_file_id(entry) == key:
+            return entry
+        if _entry_file_id(entry) == make_file_id(label, rel):
+            return entry
+        # Legacy bare filename under ingested
+        if entry.get("file") == rel and not entry.get("file_id"):
+            return entry
+        if entry.get("file") == key and not entry.get("file_id"):
+            return entry
+    return None
 
 
-def list_uncompiled_file_ids(raw_dir: Path) -> list[str]:
-    """Return manifest ``file`` values where ``compiled`` is false."""
+def _read_manifest(context_dir: Path) -> list[dict]:
+    """Load ``context/.manifest.json`` (empty list if missing)."""
+    manifest_path = context_manifest_path(context_dir)
+    if not manifest_path.exists():
+        return []
+    try:
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in {manifest_path}: {e}") from e
+    if not isinstance(data, list):
+        raise ValueError(f"Manifest must be a JSON array: {manifest_path}")
+    return data  # type: ignore[no-any-return]
+
+
+def _write_manifest(context_dir: Path, manifest: list[dict]) -> None:
+    """Write ``context/.manifest.json``."""
+    context = Path(context_dir).resolve()
+    context.mkdir(parents=True, exist_ok=True)
+    manifest_path = context_manifest_path(context)
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+
+def ensure_manifest_exists(context_dir: Path) -> Path:
+    """Create an empty ``context/.manifest.json`` if missing. Returns the path."""
+    path = context_manifest_path(context_dir)
+    if not path.exists():
+        _write_manifest(context_dir, [])
+    return path
+
+
+def manifest_entry_compiled(context_dir: Path, file_id: str) -> bool:
+    """Return whether ``file_id`` is marked compiled in ``context/.manifest.json``."""
+    entry = _find_manifest_entry(_read_manifest(context_dir), file_id)
+    return bool(entry and entry.get("compiled"))
+
+
+def mark_manifest_compiled(context_dir: Path, file_id: str) -> bool:
+    """Mark one manifest entry compiled. Returns True if the entry was found and updated."""
+    return set_manifest_compiled(context_dir, file_id, True)
+
+
+def set_manifest_compiled(context_dir: Path, file_id: str, compiled: bool) -> bool:
+    """Set ``compiled`` on one manifest entry. Returns True if the entry was found and updated."""
+    manifest = _read_manifest(context_dir)
+    entry = _find_manifest_entry(manifest, file_id)
+    if entry is None:
+        return False
+    entry["compiled"] = compiled
+    # Normalize id on write
+    if not entry.get("file_id"):
+        entry["file_id"] = make_file_id(*split_file_id(file_id))
+    _write_manifest(context_dir, manifest)
+    return True
+
+
+def sha256_file(path: Path) -> str:
+    """Return the hex SHA-256 digest of ``path`` file bytes."""
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def manifest_entry_sha256(context_dir: Path, file_id: str) -> str | None:
+    """Return stored ``sha256`` for ``file_id``, or None if missing."""
+    entry = _find_manifest_entry(_read_manifest(context_dir), file_id)
+    if entry is None:
+        return None
+    value = entry.get("sha256")
+    return str(value) if value else None
+
+
+def manifest_content_unchanged(context_dir: Path, file_id: str, path: Path) -> bool:
+    """True only when a stored sha256 exists and matches the current file bytes."""
+    stored = manifest_entry_sha256(context_dir, file_id)
+    if not stored:
+        return False
+    return stored == sha256_file(path)
+
+
+def set_manifest_sha256(context_dir: Path, file_id: str, digest: str) -> bool:
+    """Set ``sha256`` on the matching entry, or append a minimal row if missing."""
+    manifest = _read_manifest(context_dir)
+    entry = _find_manifest_entry(manifest, file_id)
+    label, rel = split_file_id(file_id)
+    canonical = make_file_id(label, rel)
+    if entry is not None:
+        entry["sha256"] = digest
+        entry["file_id"] = canonical
+        entry.setdefault("file", rel)
+        _write_manifest(context_dir, manifest)
+        return True
+    manifest.append(
+        {
+            "file_id": canonical,
+            "file": rel,
+            "compiled": False,
+            "sha256": digest,
+        }
+    )
+    _write_manifest(context_dir, manifest)
+    return True
+
+
+def list_uncompiled_file_ids(context_dir: Path) -> list[str]:
+    """Return manifest ``file_id`` values where ``compiled`` is false."""
     out: list[str] = []
-    for entry in _read_manifest(raw_dir):
-        rel = entry.get("file")
-        if not rel:
+    for entry in _read_manifest(context_dir):
+        fid = _entry_file_id(entry)
+        if not fid:
             continue
         if not entry.get("compiled"):
-            out.append(str(rel))
+            out.append(fid)
     return out
 
 
@@ -149,17 +277,29 @@ def _compiled_bool(val: str) -> bool:
     return val.strip().lower() in ("true", "1", "yes")
 
 
-def sync_manifest_from_raw_markdown(raw_dir: Path) -> str:
-    """Rebuild ``raw_dir/.manifest.json`` from ``*.md`` files using each file's YAML frontmatter.
+def sync_manifest_from_raw_markdown(
+    context_dir: Path,
+    *,
+    label: str = INGESTED_LABEL,
+    raw_dir: Path | None = None,
+) -> str:
+    """Rebuild ``ingested:*`` (or ``label:*``) rows in ``context/.manifest.json`` from raw markdown.
 
-    Manifest rows match :func:`_do_ingest_text` / :func:`_do_ingest_url` (``file``, ``title``,
-    ``source``, ``ingested``, ``compiled``). Overwrites any existing manifest.
+    Other labels' entries are preserved. Rows match :func:`_do_ingest_text` shape
+    (``file_id``, ``file``, ``title``, ``source``, ``ingested``, ``compiled``).
     """
-    raw_path = Path(raw_dir).resolve()
+    context = Path(context_dir).resolve()
+    raw_path = Path(raw_dir).resolve() if raw_dir is not None else (context / "raw")
     if not raw_path.is_dir():
         return f"Not a directory: {raw_path}"
 
-    rows: list[dict] = []
+    prefix = f"{label}:"
+    kept = [e for e in _read_manifest(context) if not _entry_file_id(e).startswith(prefix)]
+    # Drop legacy bare-file rows when refreshing ingested
+    if label == INGESTED_LABEL:
+        kept = [e for e in kept if e.get("file_id") or not e.get("file")]
+
+    rows: list[dict] = list(kept)
     for path in sorted(raw_path.glob("*.md")):
         if not path.is_file():
             continue
@@ -178,6 +318,7 @@ def sync_manifest_from_raw_markdown(raw_dir: Path) -> str:
         compiled = _compiled_bool(meta.get("compiled", "false"))
         rows.append(
             {
+                "file_id": make_file_id(label, path.name),
                 "file": path.name,
                 "title": title,
                 "source": source,
@@ -186,8 +327,8 @@ def sync_manifest_from_raw_markdown(raw_dir: Path) -> str:
             }
         )
 
-    _write_manifest(raw_path, rows)
-    return f"Synced {len(rows)} manifest entries under {raw_path}"
+    _write_manifest(context, rows)
+    return f"Synced {len(rows) - len(kept)} {label} manifest entries under {context_manifest_path(context)}"
 
 
 def _coerce_tags(tags: list[str] | str | None) -> list[str]:
@@ -297,35 +438,40 @@ def iter_markdown_files(
 
 
 def append_manifest_entry(
-    raw_dir: Path,
-    file_rel: str,
+    context_dir: Path,
+    file_id: str,
     title: str,
     source: str,
     *,
     reset_compiled: bool = False,
 ) -> None:
-    """Insert or update one row in ``raw_dir/.manifest.json``."""
-    manifest = _read_manifest(raw_dir)
+    """Insert or update one row in ``context/.manifest.json`` keyed by ``file_id``."""
+    manifest = _read_manifest(context_dir)
     ingested = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    for entry in manifest:
-        if entry.get("file") == file_rel:
-            entry["title"] = title
-            entry["source"] = source
-            entry["ingested"] = ingested
-            if reset_compiled:
-                entry["compiled"] = False
-            _write_manifest(raw_dir, manifest)
-            return
+    label, rel = split_file_id(file_id)
+    canonical = make_file_id(label, rel)
+    entry = _find_manifest_entry(manifest, canonical)
+    if entry is not None:
+        entry["file_id"] = canonical
+        entry["file"] = rel
+        entry["title"] = title
+        entry["source"] = source
+        entry["ingested"] = ingested
+        if reset_compiled:
+            entry["compiled"] = False
+        _write_manifest(context_dir, manifest)
+        return
     manifest.append(
         {
-            "file": file_rel,
+            "file_id": canonical,
+            "file": rel,
             "title": title,
             "source": source,
             "ingested": ingested,
             "compiled": False,
         }
     )
-    _write_manifest(raw_dir, manifest)
+    _write_manifest(context_dir, manifest)
 
 
 def apply_raw_frontmatter_to_text(
@@ -352,6 +498,12 @@ def apply_raw_frontmatter_to_text(
     if not new_text.endswith("\n"):
         new_text += "\n"
     return new_text, resolved_title, None
+
+
+def _context_dir_from_raw(raw_dir: Path) -> Path:
+    """Derive context dir: parent of ``raw/``, else the given path itself."""
+    raw = Path(raw_dir).resolve()
+    return raw.parent if raw.name == "raw" else raw
 
 
 def _do_ingest_url(raw_dir: Path, url: str, title: str, tags: list[str] | None = None, doc_type: str = "article") -> str:
@@ -382,18 +534,14 @@ def _do_ingest_url(raw_dir: Path, url: str, title: str, tags: list[str] | None =
         file_path.write_text(frontmatter + stub + "\n")
         status = f"Ingested stub: {filename} (fetch failed)"
 
-    # Update manifest
-    manifest = _read_manifest(raw_dir)
-    manifest.append(
-        {
-            "file": filename,
-            "title": title,
-            "source": url,
-            "ingested": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "compiled": False,
-        }
+    context_dir = _context_dir_from_raw(raw_dir)
+    append_manifest_entry(
+        context_dir,
+        make_file_id(INGESTED_LABEL, filename),
+        title,
+        url,
+        reset_compiled=True,
     )
-    _write_manifest(raw_dir, manifest)
 
     return status
 
@@ -430,7 +578,7 @@ def ingest_text_as_file(
     """Write ``content`` to ``raw_dir/filename`` with frontmatter and update the manifest.
 
     Honors the given filename (after sanitization). Overwrites an existing file and
-    resets ``compiled`` on that manifest row.
+    resets ``compiled`` on that manifest row in ``context/.manifest.json``.
     """
     raw_path = Path(raw_dir)
     raw_path.mkdir(parents=True, exist_ok=True)
@@ -440,7 +588,14 @@ def ingest_text_as_file(
     frontmatter = _build_frontmatter(resolved_title, source, tags or [], doc_type)
     body = content if content.endswith("\n") else f"{content}\n"
     file_path.write_text(frontmatter + body, encoding="utf-8")
-    append_manifest_entry(raw_path, safe, resolved_title, source, reset_compiled=True)
+    context_dir = _context_dir_from_raw(raw_path)
+    append_manifest_entry(
+        context_dir,
+        make_file_id(INGESTED_LABEL, safe),
+        resolved_title,
+        source,
+        reset_compiled=True,
+    )
     return f"Ingested: {safe} ({len(content)} chars)"
 
 
@@ -463,14 +618,15 @@ def _do_ingest_text(
 
 
 def create_ingest_tools(raw_dir: Path) -> list:
-    """Create ingest tools bound to the raw/ directory.
+    """Create ingest tools bound to ``raw/`` and the shared ``context/.manifest.json``.
 
     Args:
-        raw_dir: Path to raw/ (resolved from PAL_CONTEXT_DIR).
+        raw_dir: Path to ``context/raw/`` (context is ``raw_dir.parent``).
 
     Returns:
         List of tool functions.
     """
+    context_dir = _context_dir_from_raw(raw_dir)
 
     @tool
     def ingest_url(
@@ -524,105 +680,93 @@ def create_ingest_tools(raw_dir: Path) -> list:
 
     @tool
     def read_manifest() -> str:
-        """Read the raw/ manifest to see all ingested documents and their compile status.
+        """Read the shared context manifest (studies + ingested) and compile status.
 
         Returns:
             JSON string of the manifest entries.
         """
-        manifest = _read_manifest(raw_dir)
+        manifest = _read_manifest(context_dir)
         if not manifest:
-            return "No documents ingested yet. The raw/ directory is empty."
+            return "No documents ingested yet. The manifest is empty."
         return json.dumps(manifest, indent=2)
 
     @tool
     def update_manifest_compiled(filename: str) -> str:
-        """Mark a raw document as compiled in the manifest.
+        """Mark a document as compiled in the shared context manifest.
 
         Call this after successfully compiling a raw document into wiki articles.
 
         Args:
-            filename: The filename in raw/ to mark as compiled.
+            filename: ``file_id`` (``ingested:name.md`` or ``studies:path.md``), or a bare
+                raw filename (treated as ``ingested:…``).
 
         Returns:
             Confirmation message.
         """
-        if mark_manifest_compiled(raw_dir, filename):
-            return f"Marked as compiled: {filename}"
-        return f"Not found in manifest: {filename}"
+        key = filename.strip()
+        if ":" not in key:
+            key = make_file_id(INGESTED_LABEL, key)
+        if mark_manifest_compiled(context_dir, key):
+            return f"Marked as compiled: {key}"
+        return f"Not found in manifest: {key}"
 
     @tool
     def sync_raw_manifest_from_disk() -> str:
-        """Rebuild .manifest.json from existing *.md files in raw/ using YAML frontmatter.
+        """Rebuild ``ingested:*`` rows in context/.manifest.json from raw/*.md frontmatter.
 
         Use when raw markdown was added or restored without going through ingest_url /
-        ingest_text. Overwrites the current manifest.
+        ingest_text. Preserves other labels (e.g. studies).
         """
-        return sync_manifest_from_raw_markdown(raw_dir)
+        return sync_manifest_from_raw_markdown(context_dir, label=INGESTED_LABEL, raw_dir=raw_dir)
 
     return [ingest_url, ingest_text, read_manifest, update_manifest_compiled, sync_raw_manifest_from_disk]
-
-
-def _compiler_uses_labelled_manifest_ids(raw_roots: Sequence[tuple[str, Path]], context_dir: Path) -> bool:
-    ctx = context_dir.resolve()
-    default_raw = (ctx / "raw").resolve()
-    if len(raw_roots) != 1:
-        return True
-    _, only = raw_roots[0]
-    return only.resolve() != default_raw
 
 
 def create_compiler_manifest_tools(
     context_dir: Path, raw_roots: Sequence[tuple[str, Path]]
 ) -> tuple[object, object]:
-    """Merged ``read_manifest`` / ``update_manifest_compiled`` for one or more raw directories.
+    """``read_manifest`` / ``update_manifest_compiled`` over the shared ``context/.manifest.json``.
 
-    Each raw root keeps its own ``.manifest.json``. When multiple roots or an external
-    single raw path is used, entries include ``file_id`` as ``label:relpath`` for updates.
+    ``raw_roots`` is kept for API compatibility; entries are keyed by ``file_id``
+    (``label:relpath``).
     """
 
     ctx = context_dir.resolve()
-    roots: list[tuple[str, Path]] = [(str(lab), Path(root).resolve()) for lab, root in raw_roots]
-    labelled = _compiler_uses_labelled_manifest_ids(roots, ctx)
+    _ = raw_roots  # content lives under each root; tracking is unified under context
 
     @tool
     def read_manifest() -> str:
-        """Read merged manifests for all raw roots (see file_id when multiple roots)."""
-        merged: list[dict] = []
-        for label, raw_dir in roots:
-            for entry in _read_manifest(raw_dir):
-                row = dict(entry)
-                rel = row.get("file", "")
-                if labelled:
-                    row["file_id"] = f"{label}:{rel}"
-                else:
-                    row["file_id"] = rel
-                merged.append(row)
-        if not merged:
-            return "No documents ingested yet. The raw/ directory is empty."
-        return json.dumps(merged, indent=2)
+        """Read the shared context manifest (all raw roots). Each row includes ``file_id``."""
+        manifest = _read_manifest(ctx)
+        if not manifest:
+            return "No documents ingested yet. The manifest is empty."
+        # Ensure file_id is present for agents
+        rows: list[dict] = []
+        for entry in manifest:
+            row = dict(entry)
+            fid = _entry_file_id(row)
+            if fid:
+                row["file_id"] = fid
+            rows.append(row)
+        return json.dumps(rows, indent=2)
 
     @tool
     def update_manifest_compiled(filename: str) -> str:
-        """Mark a raw document compiled. Use file_id from read_manifest (label:relpath if multi-root)."""
+        """Mark a document compiled. Prefer ``file_id`` from read_manifest (``label:relpath``)."""
         key = filename.strip()
-        if labelled and ":" in key:
-            label, rel = key.split(":", 1)
-            raw_home = next((r for lab, r in roots if lab == label), None)
-            if raw_home is None:
-                return f"Unknown raw root label: {label}"
-            manifest = _read_manifest(raw_home)
-            if mark_manifest_compiled(raw_home, rel):
+        if ":" not in key:
+            # Ambiguous bare name: try ingested: first, then any matching file field
+            ingested_key = make_file_id(INGESTED_LABEL, key)
+            if mark_manifest_compiled(ctx, ingested_key):
+                return f"Marked as compiled: {ingested_key}"
+            if mark_manifest_compiled(ctx, key):
                 return f"Marked as compiled: {key}"
-            return f"Not found in manifest: {key}"
-        if len(roots) == 1:
-            raw_home = roots[0][1]
-            if mark_manifest_compiled(raw_home, key):
-                return f"Marked as compiled: {key}"
-            return f"Not found in manifest: {key}"
-        # multi-root but caller passed bare file — ambiguous
-        return (
-            f"Not found in manifest: {key}. "
-            "Use file_id label:relpath from read_manifest when multiple raw roots exist."
-        )
+            return (
+                f"Not found in manifest: {key}. "
+                "Use file_id label:relpath from read_manifest when multiple raw roots exist."
+            )
+        if mark_manifest_compiled(ctx, key):
+            return f"Marked as compiled: {key}"
+        return f"Not found in manifest: {key}"
 
     return read_manifest, update_manifest_compiled

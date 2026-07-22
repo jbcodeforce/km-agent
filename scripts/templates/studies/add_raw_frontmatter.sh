@@ -13,6 +13,7 @@ STUDIES_ROOT="$(cd "${STUDIES_KMA_DIR}/../.." && pwd)"
 DOCS_DIR="${STUDIES_ROOT}/docs"
 KMA_HOME_FILE="${STUDIES_KMA_DIR}/.kma-home"
 ENV_FILE="${STUDIES_KMA_DIR}/.env"
+CONTEXT_DIR="${STUDIES_KMA_DIR}/context"
 STUDIES_LABEL="__STUDIES_LABEL__"
 
 die() {
@@ -37,7 +38,11 @@ if [[ -f "${ENV_FILE}" ]]; then
   set +a
 fi
 
+CONTEXT_DIR="${KMA_CONTEXT_DIR:-${CONTEXT_DIR}}"
+
 exec uv run --directory "${KMA_HOME}" --env-file "${ENV_FILE}" \
   python scripts/add_raw_frontmatter.py "${DOCS_DIR}" \
   --source "${STUDIES_LABEL}" \
+  --context "${CONTEXT_DIR}" \
+  --label "${STUDIES_LABEL}" \
   "$@"

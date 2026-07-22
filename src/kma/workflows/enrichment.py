@@ -45,23 +45,29 @@ def build_research_prompt(query: str, site_refs: list[WebSiteRef] | None) -> str
     return "\n".join(parts)
 
 
-def snapshot_manifest_files(raw_dir: Path) -> set[str]:
-    """Return manifest ``file`` values currently tracked under ``raw_dir``."""
-    return {str(entry.get("file", "")).strip() for entry in _read_manifest(raw_dir) if entry.get("file")}
+def snapshot_manifest_files(context_dir: Path) -> set[str]:
+    """Return manifest ``file_id`` values currently tracked under ``context``."""
+    return {
+        str(entry.get("file_id") or entry.get("file", "")).strip()
+        for entry in _read_manifest(context_dir)
+        if entry.get("file_id") or entry.get("file")
+    }
 
 
-def new_uncompiled_file_ids(raw_dir: Path, before: set[str]) -> list[str]:
+def new_uncompiled_file_ids(context_dir: Path, before: set[str]) -> list[str]:
     """Return newly added uncompiled manifest entries; fall back to all uncompiled."""
+    from kma.tools.ingest import _entry_file_id
+
     added: list[str] = []
-    for entry in _read_manifest(raw_dir):
-        rel = str(entry.get("file", "")).strip()
-        if not rel or entry.get("compiled"):
+    for entry in _read_manifest(context_dir):
+        fid = _entry_file_id(entry)
+        if not fid or entry.get("compiled"):
             continue
-        if rel not in before:
-            added.append(rel)
+        if fid not in before:
+            added.append(fid)
     if added:
         return added
-    return list_uncompiled_file_ids(raw_dir)
+    return list_uncompiled_file_ids(context_dir)
 
 
 def run_research_step(
@@ -79,14 +85,14 @@ def run_research_step(
 
     site_refs = load_site_refs_for_context(ctx, site_refs_path)
     prompt = build_research_prompt(query, site_refs or None)
-    before = snapshot_manifest_files(raw_dir)
+    before = snapshot_manifest_files(ctx)
 
     final: RunOutput | None = None
     for chunk in agent.run(prompt, stream=True, yield_run_output=True):
         if isinstance(chunk, RunOutput):
             final = chunk
 
-    file_ids = new_uncompiled_file_ids(raw_dir, before)
+    file_ids = new_uncompiled_file_ids(ctx, before)
     return final, file_ids
 
 
@@ -119,7 +125,7 @@ def run_search_pipeline(
             if any(k in msg for k in ("memory", "not found", "requires more", "timeout")):
                 logger.warning("researcher run infra issue: %s", final.content)
     else:
-        file_ids = list_uncompiled_file_ids(raw_dir)
+        file_ids = list_uncompiled_file_ids(ctx)
 
     compiled: list[str] = []
     linter_ok: bool | None = None

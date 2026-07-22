@@ -260,11 +260,19 @@ run_dev_backend() {
   fi
 }
 
+ensure_frontend_deps() {
+  have_cmd npm || die "npm not found; install Node.js to run the frontend."
+  [[ -d "${FRONTEND_DIR}" ]] || die "frontend directory not found: ${FRONTEND_DIR}"
+  if [[ -d "${FRONTEND_DIR}/node_modules" ]]; then
+    return 0
+  fi
+  echo "starter-mac.sh: frontend dependencies missing; running npm ci in ${FRONTEND_DIR}..."
+  (cd "${FRONTEND_DIR}" && npm ci) || die "npm ci failed in ${FRONTEND_DIR}"
+}
+
 run_dev_with_frontend() {
   prepare_dev_backend
-  have_cmd npm || die "npm not found; install Node.js to run the frontend."
-  [[ -d "${FRONTEND_DIR}/node_modules" ]] ||
-    die "frontend dependencies missing; run: (cd src/frontend && npm ci)"
+  ensure_frontend_deps
 
   BACKEND_PID=""
   cleanup() {

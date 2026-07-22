@@ -12,7 +12,7 @@ Agent-specific bundles are assembled in `builder.py`.
 | `wiki/index.md` | Table of contents / summaries for compiled articles |
 | `wiki/.state.json` | Last compile/lint timestamps and counts |
 | `raw/` | Source documents (markdown + YAML frontmatter) |
-| `raw/.manifest.json` | Index of ingested files and `compiled` flags |
+| `context/.manifest.json` | Shared index of studies + ingested files (`file_id`, `compiled`, optional `sha256`) |
 
 The Compiler may use **multiple raw roots** on disk; agents then see virtual paths `raw/<label>/...` (see `compiler_fs.py`).
 
@@ -81,7 +81,7 @@ When only the default single `raw/` under context exists, the Compiler uses Agno
 ## Data flow (simplified)
 
 ```
-Researcher: DuckDuckGo + ingest_*  →  raw/*.md + .manifest.json
+Researcher: DuckDuckGo + ingest_*  →  raw/*.md + context/.manifest.json
 Compiler:   read raw, write wiki/, mark manifest compiled
 Linter:     read wiki index/state, report gaps, update .state.json
 Navigator:  SQL + files + read manifest/index for routing user work

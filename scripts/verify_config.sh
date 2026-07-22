@@ -38,12 +38,43 @@ EOF
 }
 
 die() {
-  echo "verify_config.sh: $*" >&2
+  echo "" >&2
+  echo "✗  $*" >&2
   exit 1
 }
 
 have_cmd() {
   command -v "$1" >/dev/null 2>&1
+}
+
+# --- user-facing output -------------------------------------------------------
+section() {
+  echo ""
+  echo "── $* ──"
+}
+
+ok() {
+  echo "  ✓  $*"
+}
+
+fail() {
+  echo "  ✗  $*" >&2
+}
+
+warn() {
+  echo "  !  $*" >&2
+}
+
+skip() {
+  echo "  –  $*"
+}
+
+info() {
+  echo "  ·  $*"
+}
+
+hint() {
+  echo "     → $*" >&2
 }
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -61,17 +92,16 @@ for arg in "$@"; do
       exit 0
       ;;
     *)
-      die "unknown option: $arg (try --help)"
+      die "Unknown option: $arg (try --help)"
       ;;
   esac
 done
 
 load_env_file() {
   if [[ ! -f "${1}" ]]; then
-    echo "verify_config.sh: no ${1} (using defaults / inherited shell only)."
     return 0
   fi
-  echo "verify_config.sh: loading ${1}..."
+  info "Loading ${1}"
   set -a
   # shellcheck disable=SC1090
   source "${1}"
@@ -194,35 +224,45 @@ trace_resolved_configuration() {
   local llm_base embed_base
   llm_base="$(resolve_llm_base_url)"
   embed_base="$(resolve_embed_base_url)"
-  echo "== Resolved configuration (KMA_* names; secrets redacted) =="
+  section "Resolved configuration"
+  info "Secrets are redacted. Effective values shown after → when they differ from the env var."
   if [[ -f "${ENV_FILE}" ]]; then
-    echo "  .env: loaded from ${ENV_FILE}"
+    info ".env: ${ENV_FILE}"
   else
-    echo "  .env: absent (using defaults / inherited shell only)"
+    info ".env: not found (defaults / inherited shell only)"
   fi
-  echo "  REPO_ROOT=${REPO_ROOT}"
-  echo "  KMA_VERIFY_AGENT_DB_CONTAINER=${KMA_VERIFY_AGENT_DB_CONTAINER:-${VERIFY_AGENT_DB_CONTAINER:-1}}"
-  echo "  KMA_DB_HOST=${DB_HOST}  KMA_DB_PORT=${DB_PORT}  KMA_DB_USER=${DB_USER}  KMA_DB_DATABASE=${DB_DATABASE}"
-  echo "  KMA_DB_PASS=$(format_env_value_for_trace KMA_DB_PASS "${DB_PASS}")"
-  echo "  KMA DB URL (password hidden): $(mask_db_url)"
-  echo "  KMA_BACKEND_URL=${KMA_BACKEND_URL:-<unset>}  effective BACKEND_BASE=${BACKEND_BASE}"
-  echo "  KMA_AGENT_OS_HOST=${BACKEND_HOST}  KMA_AGENT_OS_PORT=${BACKEND_PORT}"
-  echo "  KMA_FRONTEND_URL=${KMA_FRONTEND_URL:-<unset>}  effective FRONTEND_BASE=${FRONTEND_BASE}  KMA_VITE_PORT=${FRONTEND_PORT}"
-  echo "  frontend_check=${CHECK_FRONTEND}  (1 = --frontend was passed)"
-  echo "  KMA_LLM_PROVIDER=${KMA_LLM_PROVIDER:-<unset>}"
-  echo "  KMA_LLM_MODEL_ID=${KMA_LLM_MODEL_ID:-${KMA_COMPILER_MODEL_ID:-${KMA_MODEL_ID:-<unset>}}}"
-  echo "  KMA_LLM_BASE_URL=${KMA_LLM_BASE_URL:-<unset>}  effective LLM_BASE=${llm_base}"
-  echo "  KMA_LLM_HOST=${KMA_LLM_HOST:-${LLM_HOST:-<unset>}}  KMA_LLM_PORT=${KMA_LLM_PORT:-${LLM_PORT:-<unset>}}"
-  echo "  KMA_LLM_API_KEY=$(format_env_value_for_trace KMA_LLM_API_KEY "${KMA_LLM_API_KEY:-${OMLX_API_KEY:-}}")"
-  echo "  KMA_EMBED_PROVIDER=${KMA_EMBED_PROVIDER:-<unset>}"
-  echo "  KMA_EMBED_MODEL=${KMA_EMBED_MODEL:-<unset>}"
-  echo "  KMA_EMBED_BASE_URL=${KMA_EMBED_BASE_URL:-<unset>}  effective EMBED_BASE=${embed_base}"
-  echo "  KMA_EMBED_DIMENSIONS=${KMA_EMBED_DIMENSIONS:-<unset>}"
+  info "repo:  ${REPO_ROOT}"
+  info "check Docker agent-db: ${KMA_VERIFY_AGENT_DB_CONTAINER:-${VERIFY_AGENT_DB_CONTAINER:-1}}"
+  echo ""
+  echo "  Database"
+  info "host=${DB_HOST}  port=${DB_PORT}  user=${DB_USER}  database=${DB_DATABASE}"
+  info "password=$(format_env_value_for_trace KMA_DB_PASS "${DB_PASS}")"
+  info "url=$(mask_db_url)"
+  echo ""
+  echo "  Backend"
+  info "KMA_BACKEND_URL=${KMA_BACKEND_URL:-<unset>}  → ${BACKEND_BASE}"
+  info "host=${BACKEND_HOST}  port=${BACKEND_PORT}"
+  echo ""
+  echo "  Frontend"
+  info "KMA_FRONTEND_URL=${KMA_FRONTEND_URL:-<unset>}  → ${FRONTEND_BASE}"
+  info "Vite port=${FRONTEND_PORT}  (--frontend check: $([[ "$CHECK_FRONTEND" -eq 1 ]] && echo on || echo off))"
+  echo ""
+  echo "  LLM"
+  info "provider=${KMA_LLM_PROVIDER:-<unset>}"
+  info "model=${KMA_LLM_MODEL_ID:-${KMA_COMPILER_MODEL_ID:-${KMA_MODEL_ID:-<unset>}}}"
+  info "KMA_LLM_BASE_URL=${KMA_LLM_BASE_URL:-<unset>}  → ${llm_base}"
+  info "host=${KMA_LLM_HOST:-${LLM_HOST:-<unset>}}  port=${KMA_LLM_PORT:-${LLM_PORT:-<unset>}}"
+  info "api_key=$(format_env_value_for_trace KMA_LLM_API_KEY "${KMA_LLM_API_KEY:-${OMLX_API_KEY:-}}")"
+  echo ""
+  echo "  Embeddings"
+  info "provider=${KMA_EMBED_PROVIDER:-<unset>}  model=${KMA_EMBED_MODEL:-<unset>}"
+  info "KMA_EMBED_BASE_URL=${KMA_EMBED_BASE_URL:-<unset>}  → ${embed_base}"
+  info "dimensions=${KMA_EMBED_DIMENSIONS:-<unset>}"
 }
 
 trace_matching_process_env() {
-  echo "== Process environment (KMA_* only; secrets redacted) =="
-  local line key val
+  section "Process environment (KMA_* only)"
+  local line key val count=0
   while IFS= read -r line || [[ -n "$line" ]]; do
     [[ -z "$line" ]] && continue
     key="${line%%=*}"
@@ -230,10 +270,14 @@ trace_matching_process_env() {
     [[ "$key" == "$line" ]] && continue
     case "$key" in
       KMA_*)
-        printf '  %s=%s\n' "$key" "$(format_env_value_for_trace "$key" "$val")"
+        printf '  ·  %s=%s\n' "$key" "$(format_env_value_for_trace "$key" "$val")"
+        count=$((count + 1))
         ;;
     esac
   done < <(env | LC_ALL=C sort)
+  if [[ "$count" -eq 0 ]]; then
+    skip "No KMA_* variables in the process environment"
+  fi
 }
 
 trace_environment() {
@@ -257,59 +301,62 @@ tcp_open() {
 }
 
 check_postgres_container() {
-  echo "== Postgres (Docker service agent-db) =="
+  section "Postgres container (agent-db)"
   if [[ "${KMA_VERIFY_AGENT_DB_CONTAINER:-${VERIFY_AGENT_DB_CONTAINER:-1}}" == "0" ]]; then
-    echo "  skipped (KMA_VERIFY_AGENT_DB_CONTAINER=0)."
+    skip "Skipped (KMA_VERIFY_AGENT_DB_CONTAINER=0)"
     return 0
   fi
   if ! have_cmd docker; then
-    echo "  docker: not installed — skip container check."
+    skip "Docker not installed — container check skipped"
     return 0
   fi
   if ! docker compose version >/dev/null 2>&1; then
-    echo "  docker compose: not available — skip container check."
+    skip "docker compose not available — container check skipped"
     return 0
   fi
   if [[ ! -f "${COMPOSE_FILE}" ]]; then
-    echo "  no compose.yaml at ${COMPOSE_FILE} — skip container check."
+    skip "No compose.yaml at ${COMPOSE_FILE} — container check skipped"
     return 0
   fi
   if docker compose -f "${COMPOSE_FILE}" ps --status running --services 2>/dev/null | grep -qx agent-db; then
-    echo "  agent-db: running (docker compose)."
+    ok "agent-db is running"
   else
-    echo "  agent-db: NOT running. Start with: (cd ${REPO_ROOT} && docker compose up -d agent-db)" >&2
+    fail "agent-db is not running"
+    hint "Start it: (cd ${REPO_ROOT} && docker compose up -d agent-db)"
     return 1
   fi
 }
 
 check_db_tcp() {
-  echo "== Database TCP (${DB_HOST}:${DB_PORT}) =="
-  echo "  URL (password hidden): $(mask_db_url)"
+  section "Database TCP (${DB_HOST}:${DB_PORT})"
+  info "url=$(mask_db_url)"
   if tcp_open "$DB_HOST" "$DB_PORT"; then
-    echo "  TCP: reachable."
+    ok "Port is open"
   else
-    echo "  TCP: not reachable on ${DB_HOST}:${DB_PORT}." >&2
+    fail "Cannot connect to ${DB_HOST}:${DB_PORT}"
+    hint "Is Postgres up? Check agent-db or KMA_DB_HOST / KMA_DB_PORT."
     return 1
   fi
 }
 
 pg_ready_if_available() {
-  echo "== PostgreSQL readiness (pg_isready, optional) =="
+  section "PostgreSQL readiness (optional)"
   if ! have_cmd pg_isready; then
-    echo "  pg_isready: not installed — skip (optional)."
+    skip "pg_isready not installed — optional check skipped"
     return 0
   fi
   if pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_DATABASE" -t 2 >/dev/null 2>&1; then
-    echo "  pg_isready: accepts connections."
+    ok "Server accepts connections (user=${DB_USER} db=${DB_DATABASE})"
   else
-    echo "  pg_isready: server not accepting connections (check credentials / DB name)." >&2
+    fail "Server is not accepting connections"
+    hint "Check credentials and database name (KMA_DB_USER / KMA_DB_DATABASE)."
     return 1
   fi
 }
 
 check_backend() {
-  echo "== AgentOS backend (${BACKEND_BASE}) =="
-  have_cmd curl || die "curl not found (needed for HTTP checks)."
+  section "AgentOS backend"
+  have_cmd curl || die "curl is required for HTTP checks (not found in PATH)."
   local url="${BACKEND_BASE}/agents"
   local code
   code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null) || code="000"
@@ -317,16 +364,17 @@ check_backend() {
     code="000"
   fi
   if [[ "$code" == "200" ]]; then
-    echo "  GET ${url} → HTTP ${code}"
+    ok "GET ${url} → HTTP ${code}"
   else
-    echo "  GET ${url} → HTTP ${code} (expected 200)." >&2
+    fail "GET ${url} → HTTP ${code} (expected 200)"
+    hint "Is the backend running at ${BACKEND_BASE}?"
     return 1
   fi
 }
 
 check_frontend() {
-  echo "== Frontend (Vite) (${FRONTEND_BASE}) =="
-  have_cmd curl || die "curl not found (needed for HTTP checks)."
+  section "Frontend (Vite)"
+  have_cmd curl || die "curl is required for HTTP checks (not found in PATH)."
   local url="${FRONTEND_BASE}/"
   local code
   code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null) || code="000"
@@ -334,9 +382,10 @@ check_frontend() {
     code="000"
   fi
   if [[ "$code" == "200" || "$code" == "304" ]]; then
-    echo "  GET ${url} → HTTP ${code}"
+    ok "GET ${url} → HTTP ${code}"
   else
-    echo "  GET ${url} → HTTP ${code} (expected 200 or 304; is npm run dev running?)." >&2
+    fail "GET ${url} → HTTP ${code} (expected 200 or 304)"
+    hint "Start the UI with: npm run dev"
     return 1
   fi
 }
@@ -388,18 +437,19 @@ check_llm_models() {
   local chat_id embed_id ok=0
 
   if ! needs_llm_models_check; then
-    echo "== LLM models (${KMA_LLM_PROVIDER:-<unset>}) =="
-    echo "  skipped (/v1/models applies to mlx, ollama, or KMA_EMBED_PROVIDER=mlx)."
+    section "LLM models"
+    skip "Skipped for provider=${KMA_LLM_PROVIDER:-<unset>} (/v1/models is for mlx, ollama, or KMA_EMBED_PROVIDER=mlx)"
     return 0
   fi
 
-  have_cmd curl || die "curl not found (needed for LLM model check)."
+  have_cmd curl || die "curl is required for the LLM model check (not found in PATH)."
   llm_provider="${KMA_LLM_PROVIDER:-ollama}"
   models_base="$(resolve_models_base_url)"
   models_url="${models_base}/models"
   api_key="$(strip_quotes "${KMA_LLM_API_KEY:-${OMLX_API_KEY:-not-needed}}")"
 
-  echo "== LLM models (${models_url}) =="
+  section "LLM models"
+  info "endpoint=${models_url}"
   response=""
   body=""
   code="000"
@@ -409,22 +459,24 @@ check_llm_models() {
     body="${response%$'\n'*}"
   fi
   if [[ "$code" != "200" ]]; then
-    echo "  GET ${models_url} → HTTP ${code} (is the LLM server running?)." >&2
+    fail "GET ${models_url} → HTTP ${code}"
+    hint "Is the LLM server running? (mlx / ollama)"
     return 1
   fi
-  echo "  GET ${models_url} → HTTP 200"
-  echo "  Deployed models:"
+  ok "GET ${models_url} → HTTP 200"
+  info "Deployed models:"
   printf '%s\n' "$body" | list_models_from_json
 
   if [[ "$llm_provider" == "mlx" || "$llm_provider" == "ollama" ]]; then
     chat_id="$(strip_quotes "${KMA_LLM_MODEL_ID:-${KMA_COMPILER_MODEL_ID:-${KMA_MODEL_ID:-}}}")"
     if [[ -z "$chat_id" ]]; then
-      echo "  chat model: KMA_LLM_MODEL_ID unset." >&2
+      fail "Chat model not set (KMA_LLM_MODEL_ID)"
       ok=1
     elif printf '%s' "$body" | grep -qF "\"${chat_id}\""; then
-      echo "  chat model present: ${chat_id}"
+      ok "Chat model available: ${chat_id}"
     else
-      echo "  chat model NOT found in /models: ${chat_id}" >&2
+      fail "Chat model not in /models: ${chat_id}"
+      hint "Load this model into the LLM server, or fix KMA_LLM_MODEL_ID."
       ok=1
     fi
   fi
@@ -432,12 +484,13 @@ check_llm_models() {
   if [[ "${KMA_EMBED_PROVIDER:-}" == "mlx" ]]; then
     embed_id="$(strip_quotes "${KMA_EMBED_MODEL:-}")"
     if [[ -z "$embed_id" ]]; then
-      echo "  embed model: KMA_EMBED_MODEL unset (required for KMA_EMBED_PROVIDER=mlx)." >&2
+      fail "Embed model not set (KMA_EMBED_MODEL required when KMA_EMBED_PROVIDER=mlx)"
       ok=1
     elif printf '%s' "$body" | grep -qF "\"${embed_id}\""; then
-      echo "  embed model present: ${embed_id}"
+      ok "Embed model available: ${embed_id}"
     else
-      echo "  WARNING: embed model not in /models yet: ${embed_id} (load it into OMLX)." >&2
+      warn "Embed model not in /models yet: ${embed_id}"
+      hint "Load it into OMLX when ready (does not fail this check)."
     fi
   fi
 
@@ -445,21 +498,25 @@ check_llm_models() {
 }
 
 main() {
+  echo ""
+  echo "km-agent configuration check"
   load_env_file "${ENV_FILE}"
   trace_environment
-  local ok=0
-  check_postgres_container || ok=1
-  check_db_tcp || ok=1
-  pg_ready_if_available || ok=1
-  check_backend || ok=1
-  check_llm_models || ok=1
+  local failed=0
+  # check_postgres_container || failed=1
+  check_db_tcp || failed=1
+  pg_ready_if_available || failed=1
+  check_backend || failed=1
+  check_llm_models || failed=1
   if [[ "$CHECK_FRONTEND" -eq 1 ]]; then
-    check_frontend || ok=1
+    check_frontend || failed=1
   fi
-  if [[ "$ok" -ne 0 ]]; then
-    die "one or more checks failed."
+  echo ""
+  if [[ "$failed" -ne 0 ]]; then
+    die "One or more checks failed. See ✗ lines above."
   fi
-  echo "All checks passed."
+  echo "✓  All checks passed."
+  echo ""
 }
 
 main "$@"

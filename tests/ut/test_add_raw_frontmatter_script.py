@@ -78,19 +78,33 @@ def test_check_folder_reports_frontmatter_status(tmp_path: Path) -> None:
         check=False,
     )
     assert r.returncode == 1
-    assert "with frontmatter: with.md" in r.stdout
-    assert "without frontmatter: without.md" in r.stdout
+    assert "inspected:" in r.stdout
+    assert "with frontmatter (with.md)" in r.stdout
+    assert "without frontmatter (without.md)" in r.stdout
+    assert "0 modified (--check)" in r.stdout
 
 
 def test_crawl_folder_adds_frontmatter_to_missing_only(tmp_path: Path) -> None:
     docs = tmp_path / "docs"
+    ctx = tmp_path / "context"
+    ctx.mkdir()
     sub = docs / "sub"
     sub.mkdir(parents=True)
     (docs / "ready.md").write_text("---\ntitle: T\nsource: s\ncompiled: false\n---\n\n# Ready\n", encoding="utf-8")
     (sub / "needs.md").write_text("# Needs Frontmatter\n", encoding="utf-8")
     env = {**__import__("os").environ, "PYTHONPATH": str(REPO_ROOT / "src")}
     r = subprocess.run(
-        [sys.executable, str(SCRIPT), str(docs), "--source", "test-import"],
+        [
+            sys.executable,
+            str(SCRIPT),
+            str(docs),
+            "--source",
+            "test-import",
+            "--context",
+            str(ctx),
+            "--label",
+            "studies",
+        ],
         cwd=str(REPO_ROOT),
         env=env,
         capture_output=True,
@@ -100,6 +114,9 @@ def test_crawl_folder_adds_frontmatter_to_missing_only(tmp_path: Path) -> None:
     assert r.returncode == 0, r.stderr + r.stdout
     assert (sub / "needs.md").read_text(encoding="utf-8").startswith("---\n")
     assert "compiled: false" in (sub / "needs.md").read_text(encoding="utf-8")
-    manifest = json.loads((docs / ".manifest.json").read_text(encoding="utf-8"))
-    files = {entry["file"] for entry in manifest}
-    assert "sub/needs.md" in files
+    assert "inspected:" in r.stdout
+    assert "modified:" in r.stdout
+    assert str(sub / "needs.md") in r.stdout
+    manifest = json.loads((ctx / ".manifest.json").read_text(encoding="utf-8"))
+    ids = {entry["file_id"] for entry in manifest}
+    assert "studies:sub/needs.md" in ids

@@ -1,4 +1,4 @@
-"""Compiler merged manifest and split-root file tools."""
+"""Compiler shared context manifest and split-root file tools."""
 
 from __future__ import annotations
 
@@ -46,12 +46,25 @@ def test_merged_read_manifest_two_roots(tmp_path: Path) -> None:
     r1.mkdir()
     r2.mkdir(parents=True)
     _write_manifest(
-        r1,
-        [{"file": "a.md", "title": "A", "source": "s", "ingested": "t", "compiled": False}],
-    )
-    _write_manifest(
-        r2,
-        [{"file": "b.md", "title": "B", "source": "s2", "ingested": "t2", "compiled": False}],
+        ctx,
+        [
+            {
+                "file_id": "studies:a.md",
+                "file": "a.md",
+                "title": "A",
+                "source": "s",
+                "ingested": "t",
+                "compiled": False,
+            },
+            {
+                "file_id": "ingested:b.md",
+                "file": "b.md",
+                "title": "B",
+                "source": "s2",
+                "ingested": "t2",
+                "compiled": False,
+            },
+        ],
     )
     read_m, _ = create_compiler_manifest_tools(ctx, [("studies", r1), ("ingested", r2)])
     out = json.loads(read_m.entrypoint())
@@ -66,12 +79,21 @@ def test_update_manifest_compiled_labelled(tmp_path: Path) -> None:
     r1 = tmp_path / "docs"
     r1.mkdir()
     _write_manifest(
-        r1,
-        [{"file": "a.md", "title": "A", "source": "s", "ingested": "t", "compiled": False}],
+        ctx,
+        [
+            {
+                "file_id": "studies:a.md",
+                "file": "a.md",
+                "title": "A",
+                "source": "s",
+                "ingested": "t",
+                "compiled": False,
+            }
+        ],
     )
     _, upd = create_compiler_manifest_tools(ctx, [("studies", r1)])
     assert "Marked" in upd.entrypoint(filename="studies:a.md")
-    m = json.loads((r1 / ".manifest.json").read_text(encoding="utf-8"))
+    m = json.loads((ctx / ".manifest.json").read_text(encoding="utf-8"))
     assert m[0]["compiled"] is True
 
 
