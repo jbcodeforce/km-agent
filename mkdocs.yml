@@ -5,11 +5,11 @@ copyright: Copyright &copy; 2026 Jerome Boyer
 nav:
   - Foundations: 
     - Specifications: SPEC.md
-    - Tracking: tracking.md
     - Architecture: architecture.md
     - Developer Guide: DEVELOPER_PRACTICES.md
     - User Guide: USER_GUIDE.md
     - Ontology: ONTOLOGY.md
+    - Tracking: tracking.md
 theme: 
   name: material 
   #logo: images/logo.drawio.png

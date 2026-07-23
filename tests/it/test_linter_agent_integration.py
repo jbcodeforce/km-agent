@@ -5,7 +5,8 @@ import pytest
 from agno.run.base import RunStatus
 from agno.run.agent import RunOutput
 from kma.agents.linter import build_linter_agent
-from pathlib import Path
+
+from helpers import assert_uses_configured_llm
 
 IT_CONTEXT = Path(__file__).resolve().parent.parent / "data"
 @pytest.mark.usefixtures("require_postgres")
@@ -13,9 +14,7 @@ def test_linter_agent_integration() -> None:
 
     agent = build_linter_agent(context_dir=IT_CONTEXT)
     assert agent is not None
-    assert agent.model is not None
-    assert agent.model.id == "Qwen3.6-27B-PARO"
-    assert type(agent.model).__name__ == "OpenAILike"
+    assert_uses_configured_llm(agent)
     assert agent.instructions
     user_request = "Run the linter agent"
     try:

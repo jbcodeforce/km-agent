@@ -3,7 +3,10 @@ from pathlib import Path
 from typing import Final, Literal
 import logging
 from dotenv import load_dotenv
-load_dotenv()
+
+# Prefer explicit path (e.g. KMA_ENV_FILE=tests/it/.env for integration tests).
+_env_file = os.getenv("KMA_ENV_FILE")
+load_dotenv(_env_file) if _env_file else load_dotenv()
 
 
 _LOG_FORMAT = "%(asctime)s %(levelname)s [%(name)s] %(filename)s:%(lineno)d %(message)s"

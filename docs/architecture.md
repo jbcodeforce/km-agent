@@ -1,5 +1,9 @@
 # Wiki as RAG: architecture decisions
 
+???- info "version"
+    - Created 02/2026
+    - Update with new refactoring 07/2026
+    
 This document explains how **Knowledge**, **Learnings**, and **Wiki** relate, and when to use the wiki index versus vector embeddings for retrieval.
 
 For pipeline overview and agent roles, see [`SPEC.md`](./SPEC.md).

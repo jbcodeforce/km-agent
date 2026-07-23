@@ -1,5 +1,9 @@
 # Developer practices
 
+???- info "version"
+    - Created 02/2026
+    - Update with new refactoring 07/2026
+    
 This chapter is for developer willing to work on this code base.
 
 ## Solution Architecture
@@ -18,10 +22,12 @@ src/
 ├── app/                 # ASGI entry: AgentOS + optional static UI
 │   ├── config.yaml      # Chat default queries
 │   └── main.py
-├── frontend/            # Vue chat UI — see [frontend/README.md](../src/frontend/README.md)
+├── frontend/            # Vue chat UI — see [frontend/README.md](https://github.com/jbcodeforce/km-agent/tree/
+main/src/frontend/README.md)
 └── kma/                 # Backend package: agents, tools, DB, ontology
     ├── agents/
-    ├── tools/           # see [tools/README.md](../src/kma/tools/README.md)
+    ├── tools/           # see [tools/README.md](https://github.com/jbcodeforce/km-agent/tree/
+main/src/kma/tools/README.md)
     ├── workflows/
     ├── ontology/
     ├── embeddings/
@@ -142,7 +148,10 @@ Agent(
 
 ##### Knowledge vs learnings
 
-km-agent keeps **three** Agno `Knowledge` bases (created in [`settings.py`](../src/kma/agents/settings.py) via [`create_knowledge`](../src/kma/db.py)). They are registered on AgentOS in [`main.py`](../src/app/main.py) so the API/UI can list them.
+km-agent keeps **three** Agno `Knowledge` bases (created in [`settings.py`](https://github.com/jbcodeforce/km-agent/tree/
+main/src/kma/agents/settings.py) via [`create_knowledge`](https://github.com/jbcodeforce/km-agent/tree/
+main/src/kma/db.py)). They are registered on AgentOS in [`main.py`](https://github.com/jbcodeforce/km-agent/tree/
+main/src/app/main.py) so the API/UI can list them.
 
 | Store | Factory | Role | How agents write |
 |-------|---------|------|------------------|
@@ -150,11 +159,13 @@ km-agent keeps **three** Agno `Knowledge` bases (created in [`settings.py`](../s
 | **Learnings** (the compass) | `get_kma_learnings()` → table `kma_learnings` | Operational memory of what worked (`Retrieval:`, `Pattern:`, `Correction:`). | Agno learning tools `save_learning` / `search_learnings` (Navigator / Team `LearningMachine` in `AGENTIC` mode). |
 | **Wiki index** | `get_kma_wiki()` → table `kma_wiki` | Optional semantic recall over compiled wiki text. | Populated by indexing pipelines; Navigator may call `search_wiki`. |
 
-Compiled wiki markdown still lives on disk under `context/wiki/` (and sources under `raw/`). Postgres knowledge stores are the **searchable overlay**, not a replacement for those files. See agent instructions in [`instructions.py`](../src/kma/agents/instructions.py) for the “map / compass / territory” framing.
+Compiled wiki markdown still lives on disk under `context/wiki/` (and sources under `raw/`). Postgres knowledge stores are the **searchable overlay**, not a replacement for those files. See agent instructions in [`instructions.py`](https://github.com/jbcodeforce/km-agent/tree/
+main/src/kma/agents/instructions.py) for the “map / compass / territory” framing.
 
 ##### Persistence in PostgreSQL
 
-One Postgres instance (URL from `KMA_DB_*` / `DB_*`, default DB `ai`) holds both Agno control-plane data and pgvector embeddings ([`kma.db`](../src/kma/db.py)):
+One Postgres instance (URL from `KMA_DB_*` / `DB_*`, default DB `ai`) holds both Agno control-plane data and pgvector embeddings ([`kma.db`](https://github.com/jbcodeforce/km-agent/tree/
+main/src/kma/db.py)):
 
 ```mermaid
 flowchart LR
@@ -214,7 +225,8 @@ Agent instructions also mention user `kma_*` business tables (notes, people, …
 
 **Goal:** The source knowledge may not have the frontmatter manifest in each markdown file, and it is needed for metadata managment to build the wiki.
 
-CLI: [`scripts/add_raw_frontmatter.py`]((https://github.com/jbcodeforce/km-agent/tree/main/scripts/add_raw_frontmatter.py). It uses `kma.config.get_kma_context_dir` and helpers from [`kma.tools.ingest`](../src/kma/tools/ingest.py) (crawl, frontmatter apply, manifest upsert). It does not call agents.
+CLI: [`scripts/add_raw_frontmatter.py`]((https://github.com/jbcodeforce/km-agent/tree/main/scripts/add_raw_frontmatter.py). It uses `kma.config.get_kma_context_dir` and helpers from [`kma.tools.ingest`](https://github.com/jbcodeforce/km-agent/tree/
+main/src/kma/tools/ingest.py) (crawl, frontmatter apply, manifest upsert). It does not call agents.
 
 * Files that already have km-agent raw frontmatter get a manifest sync only (no rewrite unless `--force`).
 * When specifying a directory, it crawls `**/*.md`, skips excluded dirs, and updates the shared `context/.manifest.json` with `file_id` values like `studies:sub/needs.md`.
@@ -277,7 +289,9 @@ sequenceDiagram
 
 **Goal:** Turn a studies `docs/` tree (already annotated with km-agent raw frontmatter) into wiki articles under `context/wiki/`, then optionally lint.
 
-CLI: [`scripts/compile_docs_folder.py`](../scripts/compile_docs_folder.py). It crawls `**/*.md`, filters for km-agent frontmatter, skips unchanged files via manifest `sha256`, then calls [`kma.workflows.wiki_refresh`](../src/kma/workflows/wiki_refresh.py) (`compile_raw_files` → Compiler agent, `run_linter` → Linter agent). Requires Postgres and configured LLM/embeddings.
+CLI: [`scripts/compile_docs_folder.py`](https://github.com/jbcodeforce/km-agent/tree/
+main/scripts/compile_docs_folder.py). It crawls `**/*.md`, filters for km-agent frontmatter, skips unchanged files via manifest `sha256`, then calls [`kma.workflows.wiki_refresh`](https://github.com/jbcodeforce/km-agent/tree/
+main/src/kma/workflows/wiki_refresh.py) (`compile_raw_files` → Compiler agent, `run_linter` → Linter agent). Requires Postgres and configured LLM/embeddings.
 
 * Docs root is registered as a labeled raw root (default `--label studies`) alongside `context/raw` as `ingested`.
 * Files without km-agent raw frontmatter are skipped — run `add_raw_frontmatter.py` first.
@@ -347,11 +361,17 @@ sequenceDiagram
 
 `--dry-run` and `--skip-compiler` only print `would compile` / `would skip unchanged` and exit before agents run.
 
+* **Relationship with Agno knowledge**: Markdown under context/wiki/ is the source of truth for domain content. Agents should not copy full wiki articles into Agno knowledge. Postgres stores are optional helpers for routing and semantic search.
+  * Navigator reads the wiki/index.md as catalog of content, then use search_wiki tools to read deeper content.
+  * Agno persistence may be used for faster routing across files/SQL/raw (kma_knowledge discoveries), and fuzzy recall when the index is large or questions don’t match titles (kma_wiki)
+
 #### Build ontology
 
 **Goal:** Rebuild the OWL/RDF graph under `context/ontology/` from wiki markdown, the raw manifest, and (optionally) a studies-repo code tree. Markdown stays the source of truth; Turtle is a rebuildable view for Navigator SPARQL / graph tools.
 
-CLI: [`scripts/build_ontology.py`](../scripts/build_ontology.py). It calls [`kma.ontology.rebuild_ontology`](../src/kma/ontology/builder.py) — no agents, no Postgres. Deeper layout, env vars, and agent tool list: [`ONTOLOGY.md`](./ONTOLOGY.md).
+CLI: [`scripts/build_ontology.py`](https://github.com/jbcodeforce/km-agent/tree/
+main/scripts/build_ontology.py). It calls [`kma.ontology.rebuild_ontology`](https://github.com/jbcodeforce/km-agent/tree/
+main/src/kma/ontology/builder.py) — no agents, no Postgres. Deeper layout, env vars, and agent tool list: [`ONTOLOGY.md`](./ONTOLOGY.md).
 
 * Writes `tbox.ttl`, `graph.ttl`, `graph.json`, and `.state.json` under `context/ontology/` (creates `proposed.ttl` if missing).
 * Default context is `KMA_CONTEXT_DIR` or `./context`; studies root defaults to `KMA_STUDIES_ROOT` (scans `code/**/deploy_manifest.json` and wiki `code:` links when set).
@@ -411,13 +431,17 @@ sequenceDiagram
   CLI-->>User: state_path, validation ok, counts
 ```
 
-After reviewing `proposed.ttl`, merge approvals with [`scripts/approve_ontology_proposals.py`](../scripts/approve_ontology_proposals.py). Wiki refresh can auto-rebuild when `KMA_ONTOLOGY_ENABLED=1` (see [`ONTOLOGY.md`](./ONTOLOGY.md)).
+After reviewing `proposed.ttl`, merge approvals with [`scripts/approve_ontology_proposals.py`](https://github.com/jbcodeforce/km-agent/tree/
+main/scripts/approve_ontology_proposals.py). Wiki refresh can auto-rebuild when `KMA_ONTOLOGY_ENABLED=1` (see [`ONTOLOGY.md`](./ONTOLOGY.md)).
 
 #### Index studies code
 
 **Goal:** Catalog a studies repo `code/` (or `src/`) tree into wiki concept pages — one `wiki/concepts/code-<category>.md` per top-level category — with short intent blurbs and `code:` path refs for ontology linking. Updates a script-owned `## Code catalogs` section in `wiki/index.md`.
 
-CLI: [`scripts/index_studies_code.py`](../scripts/index_studies_code.py). It calls [`kma.code_catalog.write_code_catalog`](../src/kma/code_catalog.py). Requires `--studies-root` or `KMA_STUDIES_ROOT`. Uses the configured LLM for intent summaries unless `--no-llm` / `--dry-run`. Does not embed for chat search — run [`scripts/index_wiki.py`](../scripts/index_wiki.py) afterward.
+CLI: [`scripts/index_studies_code.py`](https://github.com/jbcodeforce/km-agent/tree/
+main/scripts/index_studies_code.py). It calls [`kma.code_catalog.write_code_catalog`](https://github.com/jbcodeforce/km-agent/tree/
+main/src/kma/code_catalog.py). Requires `--studies-root` or `KMA_STUDIES_ROOT`. Uses the configured LLM for intent summaries unless `--no-llm` / `--dry-run`. Does not embed for chat search — run [`scripts/index_wiki.py`](https://github.com/jbcodeforce/km-agent/tree/
+main/scripts/index_wiki.py) afterward.
 
 * Discovers `code/` then `src/` under the studies root (override with `--code-subdir`).
 * Walks category dirs → lab packs (README + file index); skips unchanged pages when pack hash matches unless `--force`.
@@ -446,40 +470,33 @@ sequenceDiagram
   participant CLI as index_studies_code.py
   participant Config as kma.config
   participant Catalog as kma.code_catalog
-  participant Studies as studies code/
+  participant Studies as studies code tree
   participant LLM as configured LLM
-  participant Wiki as context/wiki
+  participant Wiki as context wiki
 
-  User->>CLI: --studies-root [--context] [--force] [--no-llm]
-  CLI->>Config: get_kma_studies_root / get_kma_context_dir
-  Config-->>CLI: studies_root, context_dir
-  CLI->>Catalog: write_code_catalog(...)
-  Catalog->>Studies: discover code/ or src/; iter categories + labs
-  loop each category
-    Catalog->>Catalog: build lab packs + pack hash
-    alt hash match and not --force
-      Catalog-->>CLI: skip unchanged (still list in index)
-    else needs write
-      loop each lab
-        alt use_llm
-          Catalog->>LLM: summarize lab intent
-          LLM-->>Catalog: intent blurb
-        else --no-llm
-          Catalog->>Catalog: README/path fallback
-        end
-      end
-      Catalog->>Wiki: write concepts/code-<category>.md
-    end
+  User->>CLI: studies-root plus optional flags
+  CLI->>Config: resolve studies root and context dir
+  Config-->>CLI: studies_root and context_dir
+  CLI->>Catalog: write_code_catalog
+  Catalog->>Studies: discover code or src, categories and labs
+  Catalog->>Catalog: build lab packs and pack hash per category
+  alt pack hash matches and not force
+    Catalog->>Catalog: skip write, keep existing page for index
+  else needs write
+    Catalog->>LLM: summarize each lab intent or README fallback
+    LLM-->>Catalog: intent blurbs
+    Catalog->>Wiki: write concepts code-category page
   end
-  Catalog->>Wiki: merge ## Code catalogs into index.md
-  CLI-->>User: summary counts; hint to run index_wiki.py
+  Catalog->>Wiki: merge Code catalogs section into wiki index
+  CLI-->>User: summary counts then hint to run index_wiki
 ```
 
 `--dry-run` only prints `would write` / `would update` lines and never calls the LLM or touches the wiki.
 
 ### Frontend
 
-The chat UI is a Vue 3 + Vite SPA under [`src/frontend`](../src/frontend/). It discovers the coordinating team from AgentOS, lists sessions, and streams team runs over SSE. Dev traffic uses the Vite `/agent-os` proxy so the browser stays same-origin (see [Frontend (Vue + Vite)](#frontend-vue-vite) for env and proxy details).
+The chat UI is a Vue 3 + Vite SPA under [`src/frontend`](https://github.com/jbcodeforce/km-agent/tree/
+main/src/frontend/). It discovers the coordinating team from AgentOS, lists sessions, and streams team runs over SSE. Dev traffic uses the Vite `/agent-os` proxy so the browser stays same-origin for env and proxy details).
 
 #### Code organization
 
@@ -550,21 +567,6 @@ sequenceDiagram
 
 `/save filename` is handled in the panel without a team run: it POSTs the last completed assistant reply via `saveRawExport` and shows a confirmation (or error) message.
 
----
-To BE REWORKED
----
-
-
-## Bootstrap CLI (`scripts/verify_config.sh`)
-
-* On macOS with Apple's native [`container` CLI](https://github.com/apple/container) (no Docker Compose), use:
-  ```sh
-  ./scripts/starter_mac.sh --dev --frontend
-  ```
-
-This starts Postgres as `agent-db`, runs AgentOS on the host via `uv`,  a foreground `omlx serve` if OMLX is down.
-
-Go to [http://localhost:5174](http://localhost:5174/) for chat user interface or [http://localhost:8000/docs](http://localhost:8000/docs) for AgentOS API backend.
 
 ## Postgres Data
 
@@ -572,7 +574,8 @@ Postgres data is stored under `.container-data/postgres` in the repo (override w
 
 ### Inspect with `scripts/pg_inspect.py`
 
-Use the CLI to list tables and run read-only SQL against the same DB as the app (`KMA_DB_*` / `DB_*`). Default is SELECT-only; pass `--write` only when you intend to mutate data. Starter queries live under [`scripts/sql/`](../scripts/sql/).
+Use the CLI to list tables and run read-only SQL against the same DB as the app (`KMA_DB_*` / `DB_*`). Default is SELECT-only; pass `--write` only when you intend to mutate data. Starter queries live under [`scripts/sql/`](https://github.com/jbcodeforce/km-agent/tree/
+main/scripts/sql/).
 
 ```bash
 uv run python scripts/pg_inspect.py tables
@@ -589,18 +592,7 @@ rm -rf .container-data/postgres
 ./scripts/starter_mac.sh --dev --frontend
 ```
 
-If you  use Docker Compose, stop its `agent-db` first to avoid port conflicts on `${KMA_DB_PORT:-5432}`.
-
-### Where data lives
-
-Postgres uses the Compose named volume declared as `km-agent-postgres` in `compose.yaml` (mounted at `/var/lib/postgresql` in the container). Docker registers it under a project-scoped name, usually `<compose_project_name>_km-agent-postgres`. The default project name is the directory name (for example `km-agent`), so the volume often appears as `km-agent_km-agent-postgres`. Confirm with:
-
-```bash
-docker volume ls
-docker volume inspect "$(docker volume ls -q --filter name=km-agent-postgres)"
-```
-
-On disk: With Docker, `Mountpoint` from `docker volume inspect` is a real host path (typically under `/var/lib/docker/volumes/.../_data`). With Docker Desktop (macOS or Windows), that path lives inside Docker’s Linux VM, not next to your project folder; you normally access the data only through Postgres or by running a one-off container that mounts the same volume (for example `docker run --rm -v km-agent_km-agent-postgres:/v alpine ls /v` — adjust the volume name to match `docker volume ls`).
+If you use Docker Compose, stop its `agent-db` first to avoid port conflicts on `${KMA_DB_PORT:-5432}`.
 
 ### Keeping data between sessions
 
@@ -626,48 +618,13 @@ docker compose up -d agent-db
 
 ---
 
-## LLM local server (native on the host)
+## Development Practices
 
-* The `km-agent` service in `compose.yaml` talks to the host via `LLM_HOST`, defaulting to `http://host.docker.internal:11434` so the container can reach a server bound on the host.
-* For oMLX the server is on port 7999
+### How the Frontend dev proxy works
 
-### Bootstrap CLI (`scripts/validate_config.sh`)
+In the browser, all API calls use the prefix `/agent-os` (see `src/services/agentOs.js`). Vite’s dev server rewrites that to the real AgentOS HTTP API. So the UI never needs a hard-coded backend origin in client code for local dev: align the proxy target with wherever AgentOS listens (see `scripts/starter.sh --dev --frontend`, which exports `VITE_AGENT_OS_ORIGIN` from `AGENT_OS_PORT` by default).
 
-From the repo root, `validate_config.sh` downloads `compose.yaml`, ensures environment variables are set, Docker is available, LLM server is reachable.
-
-
-## Frontend (Vue + Vite)
-
-The chat UI lives under `src/frontend`. It is a Vue 3 single-page app built with Vite, using Vue Router for routing and Vitest (Node environment) for small unit tests. It talks to Agno AgentOS over HTTP: the dev server proxies `/agent-os` to the backend so the browser can use same-origin requests and avoid CORS during local development.
-
-### Directory layout
-
-| Path | Purpose |
-|------|---------|
-| `index.html` | HTML shell; loads `/src/main.js`. |
-| `vite.config.js` | Vite + Vue plugin, `@` alias, dev server port, `/agent-os` proxy target. |
-| `vitest.config.js` | Test runner config (mirrors the `@` → `src` alias). |
-| `src/main.js` | App bootstrap: Vue app, router, global styles. |
-| `src/App.vue` | Root layout; renders `<router-view />`. |
-| `src/router/index.js` | Routes (currently `/` → `ChatView`). |
-| `src/views/ChatView.vue` | Main chat page: sidebar, chat panel, optional “back to docs” header. |
-| `src/components/` | Reusable UI (`SessionSidebar.vue`, `KmChatPanel.vue`). |
-| `src/services/agentOs.js` | AgentOS client: `fetch` to `/agent-os/...`, JSON helpers, SSE streaming for agent runs. |
-| `src/utils/` | Shared helpers (for example SSE parsing) and their tests. |
-| `src/assets/main.css` | Global styles. |
-
-Imports can use the `@/` alias as a shortcut for `src/` (configured in both Vite and Vitest).
-
-### How the dev proxy works
-
-In the browser, all API calls use the prefix `/agent-os` (see `src/services/agentOs.js`). Vite’s dev server rewrites that to the real AgentOS HTTP API:
-
-- Path: requests to `http://<vite-host>:<port>/agent-os/agents` are proxied to `{target}/agents` (the `/agent-os` prefix is stripped).
-- Target: `VITE_AGENT_OS_ORIGIN`, or if unset `AGENT_OS_ORIGIN`, or default `http://127.0.0.1:8000`. This is read in `vite.config.js` via `loadEnv` from env files and the shell environment when you run `npm run dev`.
-
-So the UI never needs a hard-coded backend origin in client code for local dev: align the proxy target with wherever AgentOS listens (see `scripts/starter.sh --dev --frontend`, which exports `VITE_AGENT_OS_ORIGIN` from `AGENT_OS_PORT` by default).
-
-### Environment and `.env`
+#### Frontend environment with `.env`
 
 Create `src/frontend/.env` (or `.env.local`, etc.) from `src/frontend/.env.example`. Vite loads these from the frontend directory (`process.cwd()` when you run `npm run dev` inside `src/frontend`).
 
@@ -681,7 +638,7 @@ Create `src/frontend/.env` (or `.env.local`, etc.) from `src/frontend/.env.examp
 
 Only variables prefixed with `VITE_` are available in application code via `import.meta.env`. The proxy target variables are consumed at build/config time in `vite.config.js`.
 
-### Running the UI locally
+#### Running the UI locally
 
 From `src/frontend` after `npm ci` (or `npm install`):
 
@@ -689,15 +646,7 @@ From `src/frontend` after `npm ci` (or `npm install`):
 npm run dev
 ```
 
-From the repository root, `./scripts/starter.sh --dev --frontend` starts AgentOS in the background, sets `VITE_AGENT_OS_ORIGIN` to match `AGENT_OS_PORT` (default `8000`), waits for `GET /agents`, then runs `npm run dev` in `src/frontend`. Use `./scripts/starter.sh --dev` for backend only. On macOS with Apple's native `container` CLI, use `./scripts/starter-mac.sh --dev --frontend` instead. See comments at the top of `scripts/starter.sh` for `KMA_AGENT_OS_HOST`, `KMA_AGENT_OS_PORT`, and `KMA_VITE_PORT`.
-
-Other npm scripts: `npm run build` (production bundle), `npm run preview` (serve the built app), `npm run test` (Vitest).
-
-## Application and KMA architecture
-
-Backend layout (packages under `src/app` and `src/kma`, how AgentOS is wired, and agent/tool factories) is documented under [Design → Agents → Backend organization](#backend-organization).
-
-## Unit tests
+### Backend Unit tests
 
 Install dependencies (once per clone or after dependency changes):
 
@@ -719,15 +668,15 @@ uv run pytest tests/ut -v
 
 Tests that talk to PostgreSQL (for example `tests/ut/test_db_public_schema.py`) use the same URL as `kma.db`. Run them on the host with `DB_HOST=localhost` (or `127.0.0.1`) — not `agent-db`, which only resolves inside the Compose network. Set `KMA_DB_PORT` default `5432`. Confirm the mapping with `docker compose ps` or `docker port agent-db`. If the server is not reachable, those tests skip instead of failing.
 
-## Integration tests
+### Backend Integration tests
 
 Integration tests live under `tests/it/`. They call real services (Ollama HTTP API when the compiler or embedder uses Ollama; OpenAI when `KMA_EMBED_PROVIDER=openai` for embeddings). They are marked with `@pytest.mark.integration` (registered in `pyproject.toml` under `[tool.pytest.ini_options]` → `markers`).
 
-### When to run them
+#### When to run them
 
 Use them to confirm Agno works against your configured compiler LLM (`KMA_LLM_PROVIDER`) and embeddings (`KMA_EMBED_PROVIDER`)—defaults match local Ollama. They are not required for every commit if you do not have those services configured.
 
-### How to run
+#### How to run
 
 From the repository root, after `uv sync`:
 
@@ -737,7 +686,7 @@ uv run pytest tests/it -m integration -v
 
 Running `uv run pytest tests` also collects `tests/it/`; those tests may skip (Ollama down, wrong model, insufficient RAM) or pass, depending on your machine.
 
-### OMLX (mlx) provider and integration suite
+#### OMLX (mlx) provider and integration suite
 
 km-agent can run chat (and optionally embeddings) on a local OMLX server, reached as an
 OpenAI-compatible endpoint at `KMA_MLX_BASE_URL` (default `http://127.0.0.1:7999/v1`).
@@ -766,7 +715,7 @@ KMA_IT_MLX=1 KMA_LLM_PROVIDER=mlx KMA_EMBED_PROVIDER=mlx \
   uv run pytest tests/it -m integration -k omlx -v
 ```
 
-### Compiler agent integration test
+#### Compiler agent integration test
 
 - **Module:** [`tests/it/test_compiler_agent_integration.py`](https://github.com/jbcodeforce/km-agent/tree/main/tests/it/test_compiler_agent_integration.py) (gated with `KMA_IT_COMPILER=1`).
 - **Requires:** reachable Postgres (`kma.db` / `DB_*`); chat still uses a pulled Ollama model in this test (`OllamaResponses` + `ollama_model_id_for_integration`). Embeddings: with `KMA_EMBED_PROVIDER=ollama` (default), the configured `KMA_EMBED_MODEL` must appear in `ollama list` (`ollama_embed_model_available`). With `KMA_EMBED_PROVIDER=openai`, set `OPENAI_API_KEY` (the fixture skips if missing); no Ollama embed check.
@@ -777,7 +726,7 @@ KMA_IT_MLX=1 KMA_LLM_PROVIDER=mlx KMA_EMBED_PROVIDER=mlx \
 KMA_IT_COMPILER=1 uv run pytest tests/it -m integration -k compiler -v
 ```
 
-### Multi-root raw and studies docs compile
+#### Multi-root raw and studies docs compile
 
 The Compiler can read multiple raw directories (for example a studies repo `docs/` tree and `context/raw/` from the Researcher) while writing only under `context/wiki/`. Pass labeled roots to `build_compiler_agent(..., raw_roots=[("studies", Path(...)), ("ingested", context_dir / "raw")])` — see `build_compiler_tools` in `src/kma/tools/builder.py`. When more than one root exists (or the only root is not `context/raw`), file paths use `raw/<label>/...` and `read_manifest` includes `file_id` values such as `studies:sql/joins.md`.
 
@@ -790,7 +739,7 @@ uv run python scripts/compile_docs_folder.py /path/to/flink-studies/docs \
 
 Use `--dry-run` or `--skip-compiler` to only refresh manifests and frontmatter. Requires Postgres and the configured compiler / embedding backends (see `example.env`).
 
-### Skip vs failure
+#### Skip vs failure
 
 - **Skip** if Ollama is not reachable at `LLM_HOST` when an integration check needs it (for example `ollama_tags` or Ollama embeddings). Start the server with `./scripts/starter.sh` or `ollama serve`.
 - **Skip** if `KMA_EMBED_PROVIDER=openai` and `OPENAI_API_KEY` is unset (compiler integration embed gate).
@@ -799,7 +748,7 @@ Use `--dry-run` or `--skip-compiler` to only refresh manifests and frontmatter. 
 
 Failures indicate an unexpected error from the model run (assertions on `RunStatus.completed` and non-empty content).
 
-### Adding new integration tests
+#### Adding new integration tests
 
 1. Place modules under `tests/it/`.
 2. Add `@pytest.mark.integration` to tests that touch external services.

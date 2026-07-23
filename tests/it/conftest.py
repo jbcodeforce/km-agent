@@ -1,4 +1,8 @@
-"""Shared fixtures for integration tests (Postgres, Ollama, OMLX, optional OpenAI embeddings)."""
+"""Shared fixtures for integration tests (Postgres, Ollama, OMLX, optional OpenAI embeddings).
+
+Loads env from ``KMA_ENV_FILE`` (default ``tests/it/.env``, else ``tests/it/.env.example``)
+before importing ``kma`` so LLM/DB settings match the IT environment.
+"""
 
 from __future__ import annotations
 
@@ -6,10 +10,45 @@ import json
 import os
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 import pytest
+from dotenv import load_dotenv
 
-from kma.config import Env, get_embed_provider
+_IT_DIR = Path(__file__).resolve().parent
+_DEFAULT_IT_ENV = _IT_DIR / ".env"
+_IT_ENV_EXAMPLE = _IT_DIR / ".env.example"
+
+
+def _bootstrap_it_env() -> Path:
+    """Resolve and load the IT env file; set ``KMA_ENV_FILE`` when unset."""
+    configured = os.environ.get("KMA_ENV_FILE")
+    if configured:
+        path = Path(configured).expanduser().resolve()
+    elif _DEFAULT_IT_ENV.is_file():
+        path = _DEFAULT_IT_ENV
+        os.environ["KMA_ENV_FILE"] = str(path)
+    elif _IT_ENV_EXAMPLE.is_file():
+        path = _IT_ENV_EXAMPLE
+        os.environ["KMA_ENV_FILE"] = str(path)
+    else:
+        raise pytest.UsageError(
+            "Integration tests need an env file. Set KMA_ENV_FILE or create "
+            f"{_DEFAULT_IT_ENV} (copy from {_IT_ENV_EXAMPLE})."
+        )
+    if not path.is_file():
+        raise pytest.UsageError(f"KMA_ENV_FILE={path} does not exist")
+    load_dotenv(path, override=True)
+    return path
+
+
+_IT_ENV_PATH = _bootstrap_it_env()
+
+from kma.config import (  # noqa: E402
+    Env,
+    get_embed_provider,
+    get_llm_model_id,
+)
 
 
 def _build_it_embedder():
@@ -45,14 +84,15 @@ def require_postgres() -> None:
     from sqlalchemy import create_engine, text
     from sqlalchemy.exc import OperationalError
 
-    from kma.db import db_url
+    from kma.db import build_db_url
 
-    eng = create_engine(db_url)
+    url = build_db_url()
+    eng = create_engine(url)
     try:
         with eng.connect() as conn:
             conn.execute(text("SELECT 1"))
     except OperationalError as exc:
-        pytest.skip(f"PostgreSQL not reachable ({db_url!r}): {exc}")
+        pytest.skip(f"PostgreSQL not reachable ({url!r}): {exc}")
     finally:
         eng.dispose()
 
@@ -86,9 +126,9 @@ def _fetch_omlx_models(base_url: str) -> dict | None:
 
 @pytest.fixture(scope="session")
 def omlx_base_url() -> str:
-    from kma.config import get_mlx_base_url
+    from kma.config import get_llm_base_url
 
-    return get_mlx_base_url()
+    return get_llm_base_url()
 
 
 @pytest.fixture(scope="session")
@@ -106,8 +146,6 @@ def omlx_model_id_for_integration(omlx_models: dict) -> str:
     Order: ``KMA_IT_MLX_MODEL`` if present in /models -> configured model id if present
     -> small default ``mlx-community--Qwen3-4B-Instruct-2507-4bit`` if present -> first listed.
     """
-    from kma.config import get_llm_model_id
-
     ids = {m.get("id") for m in omlx_models.get("data", []) if m.get("id")}
     it_model = os.environ.get("KMA_IT_MLX_MODEL")
     if it_model and it_model in ids:
@@ -126,7 +164,7 @@ def omlx_model_id_for_integration(omlx_models: dict) -> str:
 @pytest.fixture(scope="session")
 def omlx_embed_model_available(omlx_models: dict) -> str:
     """Ensure the configured mlx embed model is served and dimensions are set."""
-    from kma.config import get_embed_dimensions, get_embed_model_id, get_embed_provider
+    from kma.config import get_embed_dimensions, get_embed_model_id
 
     if get_embed_provider() != "mlx":
         pytest.skip("KMA_EMBED_PROVIDER must be 'mlx' for OMLX embedding integration tests")

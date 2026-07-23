@@ -12,6 +12,7 @@ from agno.run.agent import RunOutput
 from kma.agents.compiler import build_compile_file_prompt, build_compiler_agent
 from kma.tools.ingest import sync_manifest_from_raw_markdown
 
+from helpers import assert_uses_configured_llm
 
 
 IT_CONTEXT = Path(__file__).resolve().parent.parent / "data"
@@ -30,9 +31,7 @@ def test_compiler_processes() -> None:
         context_dir=IT_CONTEXT
     )
     assert agent is not None
-    assert agent.model is not None
-    assert agent.model.id == "Qwen3.6-35B-A3B-UD-MLX-4bit"
-    assert type(agent.model).__name__ == "OpenAILike"
+    assert_uses_configured_llm(agent)
     prompt = build_compile_file_prompt(SOURCE_RAW)
     try:
         final: RunOutput | None = None

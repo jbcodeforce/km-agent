@@ -43,7 +43,7 @@ def test_build_compiler_agent_uses_mock_db_by_default(mock_postgres_db, mock_kno
     assert agent.db is mock_postgres_db
     assert agent.knowledge is mock_knowledge
     assert agent.model is not None
-    assert type(agent.model).__name__ == "OpenAILike"
+    assert type(agent.model).__name__ == "OllamaResponses"
     assert agent.instructions
 
 def test_build_linter_agent_uses_mock_db_by_default(mock_postgres_db, mock_knowledge) -> None:
@@ -51,5 +51,5 @@ def test_build_linter_agent_uses_mock_db_by_default(mock_postgres_db, mock_knowl
     assert agent.db is mock_postgres_db
     assert agent.knowledge is mock_knowledge
     assert agent.model is not None
-    assert type(agent.model).__name__ == "OpenAILike"
+    assert type(agent.model).__name__ == "OllamaResponses"
     assert agent.instructions

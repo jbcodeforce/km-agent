@@ -165,7 +165,7 @@ As in previous use case, the  km-agent should run **from inside the studies repo
     └── summaries
   ```
 
-For details on what this tool does [see this developer section](./DEVELOPER_PRACTICES.md#compile-to-wiki).
+For details on what this tool does [see this developer section](./DEVELOPER_PRACTICES.md/#compile-documentations).
 
 ---
 TBC

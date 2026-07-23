@@ -15,6 +15,8 @@ from kma.agents.navigator import build_navigator_agent
 from kma.ontology.builder import rebuild_ontology
 from kma.ontology.retrieval import recall_at_k
 
+from helpers import assert_uses_configured_llm
+
 IT_CONTEXT = Path(__file__).resolve().parent.parent / "data"
 IT_QUESTIONS = IT_CONTEXT / "wiki_eval" / "questions.jsonl"
 STUDIES_FIXTURE = IT_CONTEXT / "studies-code"
@@ -62,9 +64,7 @@ def _build_it_navigator(
         enable_wiki_search=False,
     )
     assert agent is not None
-    assert agent.model is not None
-    assert agent.model.id == "Qwen3.6-27B-PARO"
-    assert type(agent.model).__name__ == "OpenAILike"
+    assert_uses_configured_llm(agent)
     assert agent.instructions
     return agent
 
