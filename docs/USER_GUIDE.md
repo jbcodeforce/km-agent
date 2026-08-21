@@ -1,4 +1,8 @@
-# User guide
+# User Guide
+
+???- Info "Version"
+    - Created 06/2026
+    - Update 08/2026
 
 This document is for user leveraging `km-agent` for day to day knowledge management activities: what to install, how to bring the stack up, and how to run the different **use cases**. 
 
@@ -14,7 +18,7 @@ The following figure illustrates the components involved in the solution:
 
 * User interacts with CLIs and chat interface to the backend system, file system and external systems.
 * Knowledge can come from existing notes in markdown format, but will be created and compiled in wiki folder, with concept, indexing and ontology.
-* Solution interacts with local or Frontier LLMs via agents
+* Solution interacts with local or Frontier LLMs via harnesses
 * User preferences, embeddings and learning collection are saved to database
 
 ## What you need to get started
@@ -55,7 +59,7 @@ In this section we present the different use cases supported.
 
 ### UC-1 Work on a new studies repository to build knowledge
 
-Once the km-agent repository is cloned, you can add content from the web or create your own notes as markdown files under the docs folder and perform deep researches to enhance the knowledge content and build a body of knowledge on a given domain.
+Once the km-agent repository is cloned, you can add content from the web or create your own notes as markdown files under the docs folder and perform deep researches. To get better search result, the knowledge content is indexed using wiki structure, concepts, entities and knowledge graph are built.
 
 The current deployment model looks like in the following figure
 

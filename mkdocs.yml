@@ -3,6 +3,7 @@ repo_url: https://github.com/jbcodeforce/km-agent.git
 site_url: https://jeromeboyer.net/km-agent
 copyright: Copyright &copy; 2026 Jerome Boyer
 nav:
+  - Introduction: index.md
   - Foundations: 
     - Specifications: SPEC.md
     - Architecture: architecture.md
