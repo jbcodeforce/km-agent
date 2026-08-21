@@ -11,6 +11,7 @@ The following figure illustrates the components involved in the solution:
 <figure markdown='span'>
 ![](./images/agents_solution.drawio.png){ width=800 }
 </figure>
+
 * User interacts with CLIs and chat interface to the backend system, file system and external systems.
 * Knowledge can come from existing notes in markdown format, but will be created and compiled in wiki folder, with concept, indexing and ontology.
 * Solution interacts with local or Frontier LLMs via agents
@@ -20,12 +21,12 @@ The following figure illustrates the components involved in the solution:
 
 Be sure to have:
 
-- Docker engine or Mac contrainer (Tahoe version)
-- curl
-- git cli
-- oMLX or ollama for serving models
+- Docker engine or Mac contrainer (Tahoe version), to run postgresql and pgvector
+- curl, to test APIs
+- git cli: to clone this repository
+- oMLX, llama.cpp, or ollama for serving models
 
-As most of the user interaction depends on the km-agent repository, it needs to be cloned. It includes the agent definitions and a set of tools to manage knowledge:
+As most of the user interaction depends on the km-agent repository, start by cloning it. It includes the agent definitions and a set of tools to manage knowledge:
 
 * clone the repository to km-agent
   ```sh
@@ -35,13 +36,22 @@ As most of the user interaction depends on the km-agent repository, it needs to 
 
 ### oMLX server
 
-[]()
+All the development was done om Mac M3 and M5 architecture, so [oMLX](https://omlx.ai/) is used to serve models.
+
+![](./images/oMLX-status.png)
 
 ### Models
 
+The models used on Mac needs to be MLX ready to leverage Mac hardware. The tested models are:
+
+* gemma-4-26b-a4b-it-4bit
+* Qwen3.8-27B-4bit
+* Qwen3.6-27B-PARO
+* Ornith-1.0-9B-6bit
+
 ## Use Cases
 
-In this section we present the high level use cases and workflow a user can follow. 
+In this section we present the different use cases supported.
 
 ### UC-1 Work on a new studies repository to build knowledge
 

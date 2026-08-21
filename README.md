@@ -1,4 +1,4 @@
-# Knowledge Management Agent (km-agent)
+# [Knowledge Management Agent (km-agent)](https://jbcodeforce.github.io/km-agent)
 
 **km-agent** is an agentic workspace that turns your study materials and newly discovered sources into a structured, queryable knowledge base you can talk to through chat. It is inspired by the [Karpathy LLM wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) and the Agno [Pal](https://github.com/agno-agi/pal) project,  built on [Agno](https://github.com/agno-agi/agno) AgentOS, PostgreSQL with pgvector, and an optional Vue chat UI. 
 
@@ -12,11 +12,11 @@ Technical notes, knowledge repos (for example my [flink-studies](https://github.
 
 Also tool like NotebookLM has a tendency to forget what was asked before. Vector Store with embeddings has some challenges with the quality of the embeddings: the size of the vector and how the text chunck was built while parsing the documents. Markdown files have the advantage to provide structured sections to help chunking. Wiki approach has the advantage to let the LLM, vias tools to search for indexing the content, so more a tree navigation, knowledge graph that pure <vector-text> mapping approach. 
 
-Knowledge management retrieval with Graph may perform better, by adding indexing, concepts, entities, links between concepts and entities. That Wiki LLM tries to support this approach. The next level is a **formal OWL/RDF layer** on top of the wiki — see [`docs/ONTOLOGY.md`](docs/ONTOLOGY.md). 
+Knowledge management retrieval with Graph may perform better, by adding indexing, concepts, entities, links between concepts and entities. That Wiki LLM tries to support this approach. The next level is a **formal OWL/RDF layer** on top of the wiki — see [`docs/ONTOLOGY.md`](https://jbcodeforce.github.io/km-agent/ONTOLOGY). 
 
 ### Why not using existing agent like Hermes and llm-wiki skill
 
-Hermes can be used with the llm-wiki SKILL.md to process file by file and it is doing an excellent job. Below is a command that was executed to create the base wiki in the `flink-studies` project.
+Hermes can be used with the llm-wiki SKILL.md to process file by file and it is doing an excellent job. Below is a command that may be executed to create the base wiki.
 
 ```sh
 /llm-wiki start './docs/coding/flink-sql-1.md'
@@ -59,12 +59,12 @@ For full architecture, capabilities (intents, memory tiers, context layout), and
 
 ## Specifications
 
-- [`SPEC.md`](./docs/SPEC.md)— product and system specification (agents, pipeline, knowledge model, context directory).  
+- [`SPEC.md`](https://jbcodeforce.github.io/km-agent/SPEC)— product and system specification (agents, pipeline, knowledge model, context directory).  
 
 ## Getting started
 
-* For developers [see the developer's guide](./docs/DEVELOPER_PRACTICES.md)
-* For end user [see user's guide](./docs/USER_GUIDE.md)
+* For developers [see the developer's guide](https://jbcodeforce.github.io/km-agent/DEVELOPER_PRACTICES)
+* For end user [see user's guide](https://jbcodeforce.github.io/km-agent/USER_GUIDE)
 
 ---
 
