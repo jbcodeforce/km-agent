@@ -57,20 +57,20 @@ The models used on Mac needs to be MLX ready to leverage Mac hardware. The teste
 
 In this section we present the different use cases supported.
 
-### UC-1 Work on a new studies repository to build knowledge
+### UC-1 Work on a new studies repository to build domain knowledge
 
-Once the km-agent repository is cloned, you can add content from the web or create your own notes as markdown files under the docs folder and perform deep researches. To get better search result, the knowledge content is indexed using wiki structure, concepts, entities and knowledge graph are built.
+Once the km-agent repository is cloned, you can add content from your own researches as markdown notes or perform deep researches with the research agent. To get better search result, the knowledge content is indexed using wiki structure, with concepts, entities, relationships and knowledge graph.
 
-The current deployment model looks like in the following figure
+The current deployment model looks like in the following figure:
 
 <figure markdown='span'>
 ![](./images/uc1-component.drawio.png)
 </figure>
 
-* the setup studies script will create the green components, tools and prepare the environment to persist data to and access to the tools.
-* km-agent repository is, as of now, is needed as scripts installed in the user repository is using scripts, codes from km-agent
-* the km-agent solution are runtime components
-* oMLX server is external server for LLM inference
+* The setup study script creates the green components, tools and prepares the environment to persist data.
+* km-agent repository is, as of now, needed as the scripts installed in the user repository is using scripts, codes from km-agent
+* The km-agent solution with all the runtime components
+* oMLX server for local LLM inference
 
 #### The steps are:
 
